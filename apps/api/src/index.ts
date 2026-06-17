@@ -14,6 +14,10 @@ import rentRoutes from './routes/rent.routes';
 import expenseRoutes from './routes/expense.routes';
 import complaintRoutes from './routes/complaint.routes';
 import marketplaceRoutes from './routes/marketplace.routes';
+import notificationRoutes from './routes/notification.routes';
+import reportRoutes from './routes/report.routes';
+import adminRoutes from './routes/admin.routes';
+
 
 dotenv.config();
 
@@ -37,6 +41,10 @@ app.use('/api/rent', rentRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'NexStay API is running 🚀', version: '1.0.0' });

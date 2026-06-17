@@ -9,6 +9,7 @@ export interface IBookingDoc extends Document {
   documents: string[];
   paymentId?: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const BookingSchema = new Schema<IBookingDoc>(

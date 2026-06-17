@@ -62,12 +62,13 @@ async function seed() {
   // ── 2. PG Owners ────────────────────────────────────────────────────────────
   const ownerPw = await hash('Owner@123');
   const owners = await User.insertMany([
-    { name: 'Vikram Patel', email: 'owner1@nexstay.in', phone: '9000000002', passwordHash: ownerPw, role: 'PG_OWNER', status: 'ACTIVE', isVerified: true },
-    { name: 'Sunita Desai', email: 'owner2@nexstay.in', phone: '9000000003', passwordHash: ownerPw, role: 'PG_OWNER', status: 'ACTIVE', isVerified: true },
-    { name: 'Ramesh Gupta', email: 'owner3@nexstay.in', phone: '9000000004', passwordHash: ownerPw, role: 'PG_OWNER', status: 'ACTIVE', isVerified: true },
+    { name: 'Vikram Patel', email: 'owner1@nexstay.in', phone: '9000000002', passwordHash: ownerPw, role: 'PG_OWNER', status: 'ACTIVE', isVerified: true, ownerVerificationStatus: 'APPROVED' },
+    { name: 'Sunita Desai', email: 'owner2@nexstay.in', phone: '9000000003', passwordHash: ownerPw, role: 'PG_OWNER', status: 'ACTIVE', isVerified: true, ownerVerificationStatus: 'APPROVED' },
+    { name: 'Ramesh Gupta', email: 'owner3@nexstay.in', phone: '9000000004', passwordHash: ownerPw, role: 'PG_OWNER', status: 'ACTIVE', isVerified: true, ownerVerificationStatus: 'APPROVED' },
+    { name: 'Pending Owner', email: 'owner_pending@nexstay.in', phone: '9000000009', passwordHash: ownerPw, role: 'PG_OWNER', status: 'ACTIVE', isVerified: true, ownerVerificationStatus: 'PENDING', businessName: 'NexStay Residences Ltd', gstNumber: '27AAAAA1111A1Z1', panNumber: 'ABCDE1111F' },
   ]);
-  console.log('👤 3 PG Owners created');
-
+  console.log('👤 4 PG Owners created (including 1 PENDING verification)');
+ 
   // ── 3. Property Manager ─────────────────────────────────────────────────────
   const managerPw = await hash('Manager@123');
   const manager = await User.create({
@@ -75,18 +76,49 @@ async function seed() {
     passwordHash: managerPw, role: 'PROPERTY_MANAGER', status: 'ACTIVE', isVerified: true,
   });
   console.log('👤 Property Manager created');
-
+ 
   // ── 4. Properties ────────────────────────────────────────────────────────────
-  const properties = await Property.insertMany(
-    PG_DATA.map((pg, i) => ({
-      ...pg,
-      ownerId: owners[Math.floor(i / 2)]._id,
-      description: `${pg.name} is a well-maintained PG in ${pg.city}, offering modern amenities including high-speed WiFi, hygienic meals, and 24/7 security. Ideal for students and working professionals.`,
-      images: [],
-      verificationStatus: 'APPROVED', // ALL approved for marketplace
-    }))
-  );
-  console.log('🏠 6 Properties created (all APPROVED for marketplace)');
+  const propertiesToInsert = PG_DATA.map((pg, i) => ({
+    ...pg,
+    ownerId: owners[Math.floor(i / 2)]._id,
+    description: `${pg.name} is a well-maintained PG in ${pg.city}, offering modern amenities including high-speed WiFi, hygienic meals, and 24/7 security. Ideal for students and working professionals.`,
+    images: [],
+    verificationStatus: 'APPROVED',
+  }));
+
+  // Add pending properties for admin verification manual testing
+  propertiesToInsert.push({
+    name: 'Pending Grand Mansion',
+    address: '42, Viman Nagar',
+    city: 'Pune',
+    amenities: ['WIFI', 'AC', 'CCTV'],
+    gender: 'CO_ED',
+    rentStartingFrom: 12000,
+    rating: 0,
+    ownerId: owners[0]._id,
+    description: 'A luxurious mansion pending approval. Contains premium single and double rooms.',
+    images: [],
+    verificationStatus: 'PENDING',
+    rejectionReason: '',
+  } as any);
+
+  propertiesToInsert.push({
+    name: 'Pending Cozy Nest',
+    address: '10, Koramangala 4th Block',
+    city: 'Bangalore',
+    amenities: ['WIFI', 'FOOD'],
+    gender: 'GIRLS',
+    rentStartingFrom: 9500,
+    rating: 0,
+    ownerId: owners[1]._id,
+    description: 'Cozy girls PG pending admin review.',
+    images: [],
+    verificationStatus: 'PENDING',
+    rejectionReason: '',
+  } as any);
+
+  const properties = await Property.insertMany(propertiesToInsert);
+  console.log('🏠 8 Properties created (6 APPROVED, 2 PENDING)');
 
   // ── 5. Floors, Rooms, Beds ───────────────────────────────────────────────────
   const allBeds: mongoose.Document[] = [];
@@ -116,7 +148,7 @@ async function seed() {
         allRooms.push(room);
 
         for (let bi = 1; bi <= capacity; bi++) {
-          const bedStatus = BED_STATUSES[Math.floor(Math.random() * BED_STATUSES.length)];
+          const bedStatus = bi === 1 ? 'AVAILABLE' : BED_STATUSES[Math.floor(Math.random() * BED_STATUSES.length)];
           const bed = await Bed.create({
             roomId: room._id,
             bedNumber: `B${bi}`,

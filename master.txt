@@ -1,0 +1,595 @@
+# NexStay — Master Build Prompt for Antigravity (Phased Development)
+
+This document is a ready-to-use master prompt set for building **NexStay**, a Hostel & PG Booking + Management Platform, using Antigravity (or any AI coding agent). It is broken into sequential phases so the agent can build the product incrementally without losing context or producing an inconsistent codebase.
+
+**How to use this:** Paste "Phase 0" first and let the agent complete it fully. Once it's done and you've reviewed the output, paste "Phase 1", and so on. Each phase prompt assumes the previous phases are already built — do not skip ahead.
+
+---
+
+## GLOBAL CONTEXT (Paste this once at the very start, before Phase 0)
+
+```
+You are building "NexStay" — a Hostel & PG Booking + Management Platform.
+
+PRODUCT SUMMARY:
+NexStay has three user types:
+1. STUDENT (tenant/customer) — searches and books PG/hostel beds, pays rent, raises complaints.
+2. PG OWNER / PROPERTY MANAGER — manages properties, rooms, beds, tenants, rent collection, complaints.
+3. SUPER ADMIN — manages the entire platform: verifies owners/properties, monitors revenue, manages users.
+
+CORE MODULES:
+Authentication, Marketplace, Booking Management, Property Management, Room Management,
+Bed Management, Tenant Management, Rent Management, Expense Management,
+Complaint Management, Reports, Notifications, Settings.
+
+NON-NEGOTIABLE PRODUCT RULES:
+- This is a SaaS-grade product, not a demo or prototype. Every screen must look like it belongs
+  in a real, funded SaaS product (think Notion, Linear, Stripe Dashboard, or Cred-level polish) —
+  NOT like a default AI-generated UI (no generic purple gradients, no centered "Welcome to App"
+  hero with a single button, no default shadcn theme left untouched, no emoji as icons).
+- Information density should feel "enterprise but friendly" — dashboards with real cards, tables,
+  filters, tabs, and empty/loading/error states — not sparse placeholder pages.
+- Every entity (Property, Room, Bed, Student, Booking, Rent Record, Complaint) must have:
+  list view (table with search/filter/sort/pagination), detail view, create/edit forms with
+  validation, and delete confirmation.
+- Role-based access must be enforced both in UI (hide/disable) and at the API layer (reject).
+
+DESIGN SYSTEM (apply consistently across all phases):
+- Tech for UI: React + TypeScript + Tailwind CSS + shadcn/ui components + lucide-react icons.
+- Color system: Define a custom Tailwind theme — do NOT use default shadcn slate/zinc + violet combo.
+  Primary: a deep indigo/blue (#3354F4 or similar) for primary actions and active states.
+  Neutral grays: a warm gray scale (not pure gray) for backgrounds, borders, text.
+  Semantic colors: green for success/paid/available, amber for pending/due, red for
+  overdue/occupied-conflict/errors, blue for info.
+- Typography: Use "Inter" or "Geist" font. Establish a clear type scale (page titles, section
+  headers, card titles, body, captions) and use it consistently — no random font sizes.
+- Layout: Persistent left sidebar navigation (collapsible) for Owner ERP and Admin Panel, with
+  a top bar showing breadcrumbs, search, notifications bell, and user/account menu. Student app
+  uses a mobile-first bottom tab bar (Home, Search, Bookings, Complaints, Profile) with a top
+  app bar.
+- Components: Use real shadcn/ui primitives (Card, Table, Tabs, Dialog, Sheet, Badge, Dropdown,
+  Form, Input, Select, Skeleton, Toast) — customize their styling to match the theme, don't
+  leave them in default gray/violet.
+- States: Every list/table must implement loading skeletons, empty states (with icon + helpful
+  text + CTA), and error states (with retry). Every form must implement inline validation errors,
+  loading/disabled button state during submit, and success/error toasts.
+- Spacing & density: Use a consistent 4px/8px spacing scale, consistent card padding (e.g. p-6),
+  consistent rounded corners (e.g. rounded-xl for cards, rounded-md for inputs/buttons), and
+  consistent shadow usage (subtle shadows only — shadow-sm).
+- Status badges: Build a single reusable <StatusBadge> component with consistent color mapping
+  for: Available/Occupied/Reserved (beds), Pending/Confirmed/Cancelled/CheckedIn/CheckedOut
+  (bookings), Paid/Unpaid/Partial (rent), Open/InProgress/Resolved (complaints).
+- Charts: Use Recharts for revenue charts, occupancy charts, and analytics — styled to match
+  the theme (no default rainbow colors; use the primary palette + 2-3 complementary tones).
+
+TECH STACK (confirm or adjust to match what Antigravity supports, but keep this as default):
+- Frontend: React + TypeScript + Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query,
+  React Hook Form + Zod for validation, Recharts.
+- Backend: Node.js + Express (or NestJS) + TypeScript, REST API.
+- Database: PostgreSQL with Prisma ORM.
+- Auth: JWT-based auth with refresh tokens, role-based middleware (Super Admin, PG Owner,
+  Property Manager, Student).
+- File storage: Local/S3-compatible storage for property images, documents (Aadhaar, Student ID,
+  photos).
+- Payments: Stub a PaymentService interface now (UPI / Card / Net Banking) that can later be
+  wired to a real gateway (Razorpay/Stripe) — for now implement a mock provider that simulates
+  success/failure so the booking flow is fully testable end-to-end.
+
+PROJECT STRUCTURE:
+Set up a monorepo with /apps/web (React frontend), /apps/api (backend), /packages/shared
+(shared TypeScript types/interfaces for entities like Property, Room, Bed, Booking, Student,
+RentRecord, Complaint, User — used by both frontend and backend to avoid type drift).
+
+DELIVERY EXPECTATION FOR EACH PHASE:
+- Working code, runnable locally, with seed data so every screen has realistic content
+  (not "Lorem Ipsum" — use real-sounding Indian PG/hostel names, cities, student names, amounts
+  in INR with ₹ symbol).
+- A short README update per phase listing what was built and how to run/test it.
+- Do not regress or break previously built phases. If a shared type/schema changes, update all
+  dependent code.
+
+Confirm you understand this context, then wait for Phase 0.
+```
+
+---
+
+## PHASE 0 — Project Setup, Architecture & Design System Foundation
+
+```
+PHASE 0: PROJECT SETUP & DESIGN FOUNDATION
+
+Goal: Set up the monorepo, database schema (Prisma) for ALL entities described below, base
+backend server, base frontend app shell, and the design system primitives — so every later
+phase only adds features on top of a solid, consistent foundation.
+
+1. SCAFFOLD
+   - Create the monorepo structure: /apps/web, /apps/api, /packages/shared.
+   - Set up Tailwind + shadcn/ui in /apps/web with the custom theme described in the GLOBAL
+     CONTEXT (custom colors, font, spacing, border radius tokens in tailwind.config and
+     globals.css). Install lucide-react, recharts, react-router-dom, @tanstack/react-query,
+     react-hook-form, zod.
+   - Set up Express/NestJS + Prisma + PostgreSQL in /apps/api. Add .env.example with DATABASE_URL,
+     JWT_SECRET, JWT_REFRESH_SECRET.
+
+2. DATABASE SCHEMA (Prisma models) — create models for:
+   - User (id, name, email, phone, passwordHash, role[SUPER_ADMIN, PG_OWNER, PROPERTY_MANAGER,
+     STUDENT], status[ACTIVE/SUSPENDED], createdAt)
+   - Property (id, ownerId, name, address, city, description, amenities[], images[],
+     verificationStatus[PENDING/APPROVED/REJECTED], createdAt)
+   - Floor (id, propertyId, name/number)
+   - Room (id, propertyId, floorId, roomNumber, capacity, roomType[SINGLE/DOUBLE/TRIPLE/
+     FOUR_SHARING], status[AVAILABLE/FULL])
+   - Bed (id, roomId, bedNumber, bedType, status[AVAILABLE/OCCUPIED/RESERVED])
+   - Booking (id, studentId, propertyId, roomId, bedId, status[PENDING/CONFIRMED/CANCELLED/
+     CHECKED_IN/CHECKED_OUT], documents[], paymentId, createdAt)
+   - StudentProfile (id, userId, guardianName, guardianPhone, documents[Aadhaar, StudentID, Photo],
+     currentPropertyId, currentRoomId, currentBedId)
+   - RentRecord (id, studentId, bookingId, amount, dueDate, status[PAID/UNPAID/PARTIAL],
+     paidAmount, paidAt, receiptUrl)
+   - Expense (id, propertyId, category[ELECTRICITY/WATER/STAFF_SALARY/MAINTENANCE/MISC], amount,
+     date, notes)
+   - Complaint (id, studentId, propertyId, title, description, category[ELECTRICITY/FOOD/
+     INTERNET/WATER/CLEANING], status[OPEN/IN_PROGRESS/RESOLVED], assignedTo, createdAt)
+   - Notification (id, userId, type, title, message, channel[IN_APP/EMAIL], isRead, createdAt)
+
+   Export equivalent TypeScript interfaces/enums in /packages/shared for use across apps.
+
+3. AUTH FOUNDATION
+   - Implement signup, login, OTP verification (mock OTP — log to console / return in API
+     response for dev), forgot password, JWT issuing + refresh, and role-based middleware/guards.
+   - Seed script: create 1 super admin, 3 PG owners (each with 2 properties, floors, rooms,
+     beds — mix of available/occupied/reserved), 1 property manager, 15 students with bookings
+     in various statuses, rent records (mix of paid/unpaid/partial), a handful of complaints in
+     each status, and sample expenses. Use realistic Indian city names (Pune, Bangalore, Indore,
+     Jabalpur, Delhi) and realistic PG names (e.g. "Sunrise Boys PG", "Hostel Comfort Stay").
+
+4. FRONTEND APP SHELL
+   - Build the authentication screens (Login, Signup, OTP Verification, Forgot Password) with
+     the polished design system — these are the FIRST impression, so they must look like a real
+     SaaS product's auth pages (split-screen layout: branding/illustration on one side, form on
+     the other; proper validation states).
+   - Build THREE app shells that route based on logged-in user's role:
+     a) Owner/Manager ERP shell: collapsible left sidebar with sections (Dashboard, Properties,
+        Rooms & Beds, Tenants, Bookings, Rent, Expenses, Complaints, Reports, Settings), top bar
+        with search/notifications/profile menu.
+     b) Admin Panel shell: left sidebar (Dashboard, Owners, Students, Managers, Property
+        Verification, Owner Verification, Bookings, Payments, Reports, Settings).
+     c) Student App shell: mobile-first layout with bottom tab bar (Home, Search, Bookings,
+        Complaints, Profile) and top app bar with location + notification bell.
+   - Build a component library page (internal /dev/components route) showcasing the StatusBadge
+     variants, buttons, cards, table style, form inputs, empty/loading/error states — so design
+     consistency can be visually verified before building real screens.
+
+5. ACCEPTANCE CHECK
+   - App runs with `pnpm dev` (or documented equivalent) starting both API and web.
+   - Logging in as different seeded users routes to the correct shell.
+   - All three shells visually share the same design tokens but have layouts appropriate to
+     their context (desktop ERP vs mobile-first student app).
+
+Do not build feature screens (property list, bookings, etc.) yet — only shells, navigation,
+empty content areas, auth, schema, and seed data. Wait for Phase 1 before adding real screens.
+```
+
+---
+
+## PHASE 1 — Owner ERP: Property, Room & Bed Management
+
+```
+PHASE 1: PROPERTY, ROOM & BED MANAGEMENT (Owner/Manager ERP)
+
+Goal: Build the full Property → Floor → Room → Bed management hierarchy for PG Owners and
+Property Managers, respecting RBAC (Manager cannot delete property or access billing/subscription).
+
+1. PROPERTY MANAGEMENT
+   - Property List page: card or table view toggle, showing property name, city, total rooms,
+     total beds, occupancy %, verification status badge. Search by name/city, filter by
+     verification status.
+   - Add/Edit Property form: name, address, city, description, amenities (multi-select chips:
+     Wifi, Food, Laundry, Parking, CCTV, etc.), image upload/gallery (multiple images, drag to
+     reorder, set cover image).
+   - Property Detail page: tabs for Overview (info + amenities + gallery), Floors & Rooms,
+     Occupancy Summary (small stat cards: total/occupied/vacant beds), Verification Status.
+   - Delete property with confirmation dialog (disabled/hidden for Property Manager role).
+
+2. FLOOR MANAGEMENT
+   - Within a property, manage floors: add/edit/delete floor (e.g. "Ground Floor", "1st Floor").
+   - Visual representation: a simple floor tab/accordion list showing rooms under each floor.
+
+3. ROOM MANAGEMENT
+   - Within a floor, list rooms in a table: Room Number, Capacity, Room Type (Single/Double/
+     Triple/Four Sharing), Status (Available/Full — auto-computed from bed occupancy, not
+     manually editable), bed count summary (e.g. "3/4 occupied").
+   - Add/Edit/Delete room form with validation (capacity must match bed type rules).
+
+4. BED MANAGEMENT
+   - Within a room, list/manage beds: Bed Number, Bed Type, Status (Available/Occupied/Reserved)
+     — Occupied/Reserved status should reflect linked booking/tenant, not be freely editable to
+     "Occupied" without an actual tenant assignment.
+   - Visual bed-grid component: render beds as small visual "cards/tiles" with color-coded
+     status (green=available, red=occupied, amber=reserved) — this is a key SaaS-feel touch,
+     avoid a plain text table only.
+   - Clicking an occupied/reserved bed tile shows a popover with the assigned student's name +
+     link to their profile (placeholder link OK if Tenant module isn't built yet — build it
+     properly in Phase 2 and wire this up retroactively).
+
+5. DASHBOARD (Owner/Manager Home)
+   - Stat cards: Total Properties, Total Rooms, Total Beds, Occupied Beds, Vacant Beds, Monthly
+     Revenue, Due Rent (use seeded data for realistic numbers).
+   - Revenue chart (last 6 months, line or bar) using Recharts, styled with theme colors.
+   - Recent Bookings widget (last 5, with status badges) and Recent Complaints widget (last 5).
+   - All widgets must have empty states for owners with no data yet (e.g. a fresh owner account).
+
+6. RBAC ENFORCEMENT
+   - Property Manager: can view/edit rooms/beds, cannot see "Delete Property" or any
+     billing/subscription UI. Add a placeholder "Billing & Subscription" settings page visible
+     only to PG Owner, with a "coming soon" but professionally designed state.
+
+7. ACCEPTANCE CHECK
+   - As a seeded PG Owner: navigate Dashboard → Property → Floors → Rooms → Beds, see the
+     bed-grid with correct color coding matching seeded occupancy.
+   - As a seeded Property Manager: confirm delete/billing actions are hidden/disabled.
+   - Dashboard numbers match the underlying seeded data (no hardcoded mock numbers in the UI).
+```
+
+---
+
+## PHASE 2 — Tenant Management & Check-In/Check-Out Workflow
+
+```
+PHASE 2: TENANT (STUDENT) MANAGEMENT — OWNER/MANAGER SIDE
+
+Goal: Build the tenant lifecycle management screens for owners/managers — the operational core
+of running a hostel.
+
+1. STUDENT LIST
+   - Table with columns: Name, Mobile, Property, Room, Bed, Rent (amount), Status (Active/
+     Checked Out/Pending Verification). Search, filter by property/status, pagination.
+   - Row click → Student Detail page.
+
+2. STUDENT DETAIL PAGE
+   - Tabs: Personal Info (name, phone, email, photo), Documents (Aadhaar, Student ID, Photo —
+     show as document cards with a verified/unverified badge and a view action), Guardian
+     Details (name, phone, relation), Stay Details (current property/room/bed, check-in date,
+     rent amount, due date), Booking & Rent History (mini tables), Complaint History.
+
+3. CHECK-IN WORKFLOW (as a guided multi-step UI, mirroring: Booking → Verify Documents →
+   Assign Bed → Check In)
+   - From a Pending booking, owner/manager opens a "Process Check-In" flow:
+     Step 1: Review booking details.
+     Step 2: Verify documents — checklist with approve/reject per document, with a reason field
+        if rejected (rejection should notify the student — stub the notification, build
+        properly in the Notifications phase).
+     Step 3: Confirm/assign bed (pre-filled from booking, but allow override if bed became
+        unavailable — show only Available beds in the same room type).
+     Step 4: Confirm check-in — sets booking status to CHECKED_IN, bed status to OCCUPIED,
+        creates/links StudentProfile to the bed, generates the first RentRecord.
+   - Build this as a stepper component (visual progress indicator across steps) — a hallmark of
+     polished SaaS workflows, not a single giant form.
+
+4. CHECK-OUT WORKFLOW (mirroring: Active Tenant → Clear Dues → Check Out)
+   - From an active tenant's detail page, "Initiate Check-Out":
+     Step 1: Show outstanding dues (if any) — block proceeding until dues are cleared or an
+        override reason is provided by the owner (with audit note).
+     Step 2: Confirm checkout date.
+     Step 3: Confirm — sets booking status to CHECKED_OUT, bed status back to AVAILABLE,
+        archives the student's stay record (visible in their Booking History).
+
+5. ACCEPTANCE CHECK
+   - Create a new pending booking via seed/admin tool, run it through the full check-in stepper,
+     confirm bed grid (from Phase 1) updates to Occupied and shows the student on hover/click.
+   - Run an active seeded tenant through check-out, confirm bed frees up and dues logic works
+     (test both "dues cleared" and "dues pending → blocked" paths).
+```
+
+---
+
+## PHASE 3 — Rent & Expense Management
+
+```
+PHASE 3: RENT & EXPENSE MANAGEMENT
+
+Goal: Build the financial operations module for owners/managers.
+
+1. RENT DASHBOARD
+   - Stat cards: Total Collection (this month), Due Collection, Pending Collection — with
+     small trend indicators (e.g. "+12% vs last month") computed from seeded historical data.
+   - Rent Records table: Student, Room, Amount, Due Date, Status (Paid/Unpaid/Partial — using
+     StatusBadge). Filters: by property, status, date range. Search by student name.
+
+2. RENT RECORD ACTIONS
+   - "Record Payment" dialog: enter amount paid, payment method (UPI/Card/Net Banking/Cash),
+     date — auto-computes status (Paid if full, Partial if less, with remaining balance shown).
+   - On full/partial payment, auto-generate a receipt (simple PDF or printable HTML view) with
+     NexStay branding, student details, amount, date, property — accessible from the rent record.
+   - "Send Reminder" action for Unpaid/Partial records — stub that queues a notification (wire
+     to real Notifications module in Phase 6).
+
+3. RENT GENERATION
+   - Monthly rent generation: either a manual "Generate This Month's Rent" action (creates
+     RentRecord for every active tenant based on their room rate) or show this as an automated
+     job description with a manual trigger button for demo purposes. Show a confirmation summary
+     before generating (X students, ₹Y total).
+
+4. EXPENSE MANAGEMENT
+   - Expense list table: Category (Electricity/Water/Staff Salary/Maintenance/Miscellaneous),
+     Amount, Date, Notes, Property. Add/Edit/Delete with form validation.
+   - Expense breakdown chart (pie/donut by category) for the selected month, plus a simple
+     "Net" view: Total Collection − Total Expenses for the period.
+
+5. ACCEPTANCE CHECK
+   - Record a partial payment on a seeded Unpaid rent record, confirm status becomes Partial
+     and remaining balance is correct; record the remainder and confirm it becomes Paid and a
+     receipt is viewable.
+   - Add a few expenses across categories, confirm the breakdown chart and net collection figure
+     update correctly.
+```
+
+---
+
+## PHASE 4 — Complaint Management (Owner/Manager + Student)
+
+```
+PHASE 4: COMPLAINT MANAGEMENT
+
+Goal: Build the full complaint lifecycle for both students (raising) and owners/managers
+(resolving), per the flow: Raise → Owner/Manager → Assign → Resolve → Close.
+
+1. STUDENT SIDE (in Student App shell)
+   - "Raise Complaint" screen: Title, Description, Category (Electricity/Food/Internet/Water/
+     Cleaning) as a select with icons. Submit shows confirmation + adds to "My Complaints" list.
+   - "My Complaints" list: card list showing title, category icon, status badge
+     (Open/In Progress/Resolved), date raised, with a detail view showing status history/timeline.
+
+2. OWNER/MANAGER SIDE (in ERP shell)
+   - Complaints table: Student, Property, Title, Category, Status, Raised Date, Assigned To.
+     Filters by status/category/property.
+   - Complaint Detail: full description, student info link, status update control (Open → In
+     Progress → Resolved → Closed), "Assign to" dropdown (property managers for that property),
+     and an internal notes/timeline section (who changed what, when).
+   - Dashboard widget update: "Recent Complaints" (from Phase 1) should now be live and clickable.
+
+3. STATUS TIMELINE COMPONENT
+   - Build a reusable vertical timeline component showing status transitions with timestamps —
+     used on both student and owner complaint detail views. This is a strong "feels real SaaS"
+     element, ensure clean styling (connected dots/lines, not just a bare list).
+
+4. ACCEPTANCE CHECK
+   - As a seeded student, raise a new complaint, confirm it appears for the owner/manager of
+     that property with status Open.
+   - As owner/manager, assign it, move it to In Progress then Resolved, confirm the student sees
+     the updated status and timeline in real time (or on refresh).
+```
+
+---
+
+## PHASE 5 — Marketplace, Search & Property Discovery (Student App)
+
+```
+PHASE 5: STUDENT MARKETPLACE & SEARCH
+
+Goal: Build the student-facing discovery experience — this is the "consumer app" half of
+NexStay and must feel like a polished booking app (think Airbnb/MakeMyTrip-level listing
+quality), not a basic list of cards.
+
+1. HOME SCREEN
+   - Search bar (city/locality input) prominent at top.
+   - Sections: Nearby PGs, Featured PGs, Popular PGs, Recommended PGs — each a horizontally
+     scrollable row of property cards (image, name, city/locality, starting price "from ₹X/mo",
+     rating, key amenity icons, available beds badge).
+   - Only show properties with verificationStatus = APPROVED.
+
+2. SEARCH & FILTERS
+   - Search results as a list/grid with a filter panel (sheet/drawer on mobile): City, Budget
+     range slider, Gender (Boys PG/Girls PG/Co-ed), AC/Non-AC, Food, Wifi, Parking — each filter
+     should actually filter the seeded property data.
+   - Sort options: Price (low-high/high-low), Rating, Nearest.
+   - Empty state when no properties match filters, with a "clear filters" CTA.
+
+3. PROPERTY DETAIL PAGE
+   - Image/video gallery (carousel with thumbnails).
+   - Info section: name, description, full address, amenity icon grid (Wifi, Food, Laundry,
+     Parking, CCTV, etc.).
+   - Room Types section: tabs or cards for 2/3/4-sharing showing price per bed and availability
+     count for each.
+   - Availability summary (Available Beds vs Occupied Beds) as a small visual stat.
+   - Reviews section (seed a handful of realistic reviews with ratings — display only for now,
+     submission can be a stretch goal).
+   - Embedded map (use a static map image or placeholder map component if live Maps API isn't
+     configured — but make the placeholder look intentional, e.g. styled map preview with a pin,
+     not a broken image icon).
+   - Sticky bottom action bar (mobile): "Schedule Visit" (secondary button, opens a simple
+     date/time request form — stub) and "Book Now" (primary button → Booking flow).
+
+4. ACCEPTANCE CHECK
+   - Home screen shows only approved seeded properties across the defined sections.
+   - Search with combined filters (e.g. city + budget + Boys PG + Wifi) returns correct matching
+     seeded properties, and clears correctly.
+   - Property detail page renders all sections correctly for at least 2 different seeded
+     properties with different amenities/room types.
+```
+
+---
+
+## PHASE 6 — Booking Flow, Payments & Notifications
+
+```
+PHASE 6: BOOKING FLOW, PAYMENTS & NOTIFICATIONS
+
+Goal: Implement the end-to-end booking flow per: Select Room → Select Bed → Booking Summary →
+Upload Documents → Payment → Booking Success, plus the full notification system.
+
+1. BOOKING FLOW (multi-step, stepper UI — mobile-first)
+   Step 1 — Select Room: show available room types for the chosen property with price/capacity.
+   Step 2 — Select Bed: show the bed-grid (reuse the visual bed-tile component from Phase 1,
+      filtered to Available only) for the selected room.
+   Step 3 — Booking Summary: property, room, bed, monthly rent, advance amount due, terms
+      checkbox.
+   Step 4 — Upload Documents: Aadhaar, Student ID, Photo — file upload components with preview,
+      file type/size validation, and progress indicators.
+   Step 5 — Payment: payment method selection (UPI/Card/Net Banking) using the mock
+      PaymentService from Phase 0 — simulate processing state, then success/failure. On failure,
+      allow retry without losing entered data.
+   Step 6 — Booking Success: confirmation screen with booking reference, summary, "View
+      Booking" and "Go to Dashboard" actions.
+   - Persist partial progress (e.g. via local state/draft) so back-navigation doesn't lose data.
+   - On success: create Booking (status PENDING — pending owner/manager check-in workflow from
+     Phase 2), mark selected bed as RESERVED (not Occupied — Occupied happens at check-in), and
+     trigger notifications (below).
+
+2. NOTIFICATION SYSTEM
+   - Build the Notification data flow for events: Booking Confirmed, Payment Success, Rent
+     Reminder, Complaint Update — for V1 channels: In-App and Email (mock email — log/preview
+     instead of real send, but show what WOULD be sent in a "Sent Emails" dev view for testing).
+   - In-App: notification bell in top bar (ERP/Admin) and student app top bar — dropdown/sheet
+     showing recent notifications with read/unread state, mark-all-as-read, and deep-link to
+     the relevant entity (booking, rent record, complaint).
+   - Notification preferences in Settings (toggle channels per event type) — UI only is fine,
+     but should look complete and production-grade.
+
+3. ACCEPTANCE CHECK
+   - As a seeded student, complete a full booking on an approved property end-to-end including
+     a simulated payment failure-then-retry, ending in Booking Success.
+   - Confirm the booked bed shows as Reserved in the owner's bed-grid, and the owner/manager
+     receives an in-app + "sent email" notification.
+   - Confirm rent reminder notifications are generated for seeded Unpaid rent records (can be a
+     manual trigger button for demo purposes).
+```
+
+---
+
+## PHASE 7 — Reports & Analytics (Owner/Manager)
+
+```
+PHASE 7: REPORTS MODULE (OWNER/MANAGER ERP)
+
+Goal: Build the Reports section with three report types, each with filters and export.
+
+1. OCCUPANCY REPORT
+   - Total Beds, Occupied Beds, Vacant Beds — overall and broken down per property/room type.
+   - Visualize as a combination of stat cards + a stacked bar chart (per property) and a
+     donut chart (overall occupancy %).
+   - Filter by property and date (point-in-time occupancy).
+
+2. REVENUE REPORT
+   - Monthly Revenue and Yearly Revenue views — line chart with month-over-month and
+     year-over-year toggle, plus a breakdown table (month, collected, due, expenses, net).
+   - Filter by property, date range.
+
+3. BOOKING REPORT
+   - Total Bookings, Cancelled Bookings — funnel-style visualization (Pending → Confirmed →
+     Checked In vs Cancelled) plus a table of bookings with filters by status/property/date
+     range.
+
+4. EXPORT
+   - Each report should have an "Export" button (CSV export is sufficient — implement real CSV
+     generation from the displayed/filtered data, not a placeholder).
+
+5. ACCEPTANCE CHECK
+   - All three reports render correctly with seeded data, respond correctly to filter changes,
+     and CSV export downloads a correctly-formatted file matching the on-screen filtered data.
+```
+
+---
+
+## PHASE 8 — Admin Panel (Super Admin)
+
+```
+PHASE 8: ADMIN PANEL (SUPER ADMIN)
+
+Goal: Build the platform-level administration panel.
+
+1. ADMIN DASHBOARD
+   - Stat cards: Total Owners, Total Properties, Total Students, Total Bookings, Revenue
+     (platform-wide, computed from seeded data across all owners).
+   - Platform-wide trend chart (e.g. new signups + bookings over time).
+
+2. USER MANAGEMENT
+   - Three tabs/sections: Students, Owners, Managers — each a searchable/filterable table with
+     status (Active/Suspended) and actions (View, Suspend/Reactivate). Confirm dialogs for
+     destructive actions.
+
+3. PROPERTY VERIFICATION
+   - Table of properties with verificationStatus = PENDING, each with a "Review" action opening
+     a detail view (reuse Property Detail components from Phase 1, read-only) with Approve/
+     Reject buttons (Reject requires a reason, which should be visible to the owner — wire to
+     notifications).
+   - Once approved, property should appear in the Student Marketplace (Phase 5) — verify this
+     cross-module link.
+
+4. OWNER VERIFICATION
+   - Similar Approve/Reject flow for newly registered PG Owners, with document/business-detail
+     review (use placeholder fields like business name, GST number if not in schema — extend
+     schema minimally if needed).
+
+5. BOOKING & PAYMENT MONITORING
+   - Read-only platform-wide tables: All Bookings (with status filters) and Transactions/Revenue
+     (with date filters), plus simple platform analytics charts (revenue by city/property type).
+
+6. ACCEPTANCE CHECK
+   - As Super Admin, approve a pending property and confirm it now appears in student search
+     (Phase 5); reject another with a reason and confirm the owner sees the rejection reason.
+   - Suspend a student account and confirm that account can no longer log in (or sees a
+     "suspended" message on login attempt).
+```
+
+---
+
+## PHASE 9 — Polish, Empty States, Responsiveness & QA Pass
+
+```
+PHASE 9: FINAL POLISH & QA
+
+Goal: A dedicated pass to eliminate anything that looks unfinished, inconsistent, or
+"AI-generated default" before calling this V1-complete.
+
+1. VISUAL CONSISTENCY AUDIT
+   - Go screen-by-screen across all three shells (Student App, Owner/Manager ERP, Admin Panel)
+     and verify: consistent spacing/padding, consistent button styles and sizes, consistent
+     typography scale, consistent icon set (all lucide-react, consistent sizing/stroke), no
+     leftover default shadcn colors, no placeholder "Lorem Ipsum" text, no broken images
+     (use realistic placeholder property photos consistently).
+
+2. EMPTY / LOADING / ERROR STATES AUDIT
+   - Every list, table, and dashboard widget must have a designed empty state (icon + message +
+     relevant CTA — e.g. "No properties yet" → "Add your first property"), a loading skeleton,
+     and an error state with retry. Test by viewing as a brand-new owner with zero data, and by
+     simulating an API error (e.g. temporarily break an endpoint and confirm graceful failure).
+
+3. RESPONSIVENESS
+   - Owner/Manager ERP and Admin Panel: verify usable down to tablet width (sidebar collapses to
+     icons or a drawer).
+   - Student App: verify it looks correct on common mobile widths (360px–430px) — this is the
+     primary use case for students.
+
+4. ACCESSIBILITY & USABILITY BASICS
+   - Form fields have labels (not placeholder-only), sufficient color contrast for status
+     badges, keyboard navigation works for dialogs/forms, focus states are visible.
+
+5. FINAL README
+   - Update the README with: full setup instructions, seeded test accounts for each role
+     (email/password), a feature checklist mapped to the PRD modules confirming completeness,
+     and known limitations/next steps (e.g. real payment gateway integration, WhatsApp/SMS
+     notifications — explicitly listed in the PRD as "Future").
+
+6. ACCEPTANCE CHECK
+   - A first-time reviewer can clone, run setup steps from the README, log in as each of the 4
+     seeded roles, and navigate the entire product without encountering a broken link, console
+     error, unstyled element, or placeholder text.
+```
+
+---
+
+## NOTES & TIPS FOR USING THIS WITH ANTIGRAVITY
+
+- Paste the **GLOBAL CONTEXT** block once, get confirmation, then paste **Phase 0** as a separate
+  message. Review the output (run it locally) before moving to Phase 1.
+- If the agent's output drifts toward generic/default styling at any point, you can paste a
+  short reminder: *"This still looks like a default AI-generated template — apply the custom
+  color theme, typography scale, and component styling from the GLOBAL CONTEXT design system
+  section before continuing."*
+- If a phase is too large for one pass, you can split it further (e.g. ask for "Phase 1, Part
+  A: Property Management only" then "Phase 1, Part B: Room & Bed Management") — the structure
+  above is designed to be sub-divisible without losing coherence.
+- Keep `/packages/shared` as the single source of truth for types — if any phase needs a schema
+  change, explicitly tell the agent to update Prisma schema, shared types, AND all consumers in
+  the same pass to avoid drift.

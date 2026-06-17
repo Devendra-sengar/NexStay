@@ -9,6 +9,11 @@ export interface IUserDoc extends Document {
   role: string;
   status: string;
   isVerified: boolean;
+  ownerVerificationStatus?: string;
+  ownerRejectionReason?: string;
+  businessName?: string;
+  gstNumber?: string;
+  panNumber?: string;
   otp?: string;
   otpExpiry?: Date;
   createdAt: Date;
@@ -28,6 +33,15 @@ const UserSchema = new Schema<IUserDoc>(
     },
     status: { type: String, enum: ['ACTIVE', 'SUSPENDED'], default: 'ACTIVE' },
     isVerified: { type: Boolean, default: false },
+    ownerVerificationStatus: {
+      type: String,
+      enum: ['PENDING', 'APPROVED', 'REJECTED'],
+      default: 'APPROVED',
+    },
+    ownerRejectionReason: { type: String, default: '' },
+    businessName: { type: String, default: '' },
+    gstNumber: { type: String, default: '' },
+    panNumber: { type: String, default: '' },
     otp: { type: String },
     otpExpiry: { type: Date },
   },

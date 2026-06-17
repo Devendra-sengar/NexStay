@@ -1,4 +1,4 @@
-import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
+import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { Home, Search, BookOpen, MessageSquare, User, Bell, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn, getInitials } from '@/lib/utils';
@@ -10,6 +10,10 @@ import PropertyDetailPage from '@/pages/student/property/PropertyDetail';
 import MyComplaintsPage from '@/pages/student/complaints/MyComplaints';
 import RaiseComplaintPage from '@/pages/student/complaints/RaiseComplaint';
 import StudentComplaintDetail from '@/pages/student/complaints/ComplaintDetail';
+import BookBedFlow from '@/pages/student/bookings/BookBedFlow';
+import MyBookings from '@/pages/student/bookings/MyBookings';
+import NotificationBell from '@/components/NotificationBell';
+
 
 const TABS = [
   { label: 'Home',       icon: Home,           path: '/app/home'       },
@@ -31,12 +35,16 @@ const EmptyPage = ({ title, emoji }: { title: string; emoji: string }) => (
 );
 
 // Pages that should hide the tab bar (detail/form views)
-const HIDDEN_TAB_PATHS = ['/app/property/', '/app/complaints/raise', '/app/complaints/'];
+const HIDDEN_TAB_PATHS = ['/app/property/', '/app/complaints/raise', '/app/complaints/', '/app/book/'];
 
 export default function StudentShell() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  const showTabBar = !HIDDEN_TAB_PATHS.some(path => location.pathname.includes(path));
+
 
   return (
     <div className="min-h-screen bg-surface-dark flex justify-center">
@@ -52,10 +60,7 @@ export default function StudentShell() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="relative w-9 h-9 rounded-xl bg-surface-dark border border-surface-border flex items-center justify-center text-text-muted hover:text-text-primary transition-all">
-              <Bell className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-accent rounded-full text-white text-[10px] flex items-center justify-center font-bold">1</span>
-            </button>
+            <NotificationBell />
             <button
               onClick={handleLogout}
               className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center text-white text-xs font-bold shadow-glow"
@@ -64,6 +69,7 @@ export default function StudentShell() {
               {getInitials(user?.name || 'S')}
             </button>
           </div>
+
         </header>
 
         {/* Page content */}
@@ -76,9 +82,10 @@ export default function StudentShell() {
             <Route path="search"               element={<SearchPage />} />
             <Route path="property/:id"         element={<PropertyDetailPage />} />
 
-            {/* Bookings stub */}
-            <Route path="bookings"             element={<EmptyPage title="My Bookings" emoji="📋" />} />
-            <Route path="book/:propertyId"     element={<EmptyPage title="Book a Bed" emoji="🛏️" />} />
+            {/* Bookings */}
+            <Route path="bookings"             element={<MyBookings />} />
+            <Route path="book/:propertyId"     element={<BookBedFlow />} />
+
 
             {/* Complaints */}
             <Route path="complaints"           element={<MyComplaintsPage />} />
@@ -94,30 +101,32 @@ export default function StudentShell() {
         </main>
 
         {/* Bottom Tab Bar */}
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] flex items-center bg-surface-card/95 backdrop-blur-md border-t border-surface-border px-2 py-2 z-20">
-          {TABS.map(({ label, icon: Icon, path }) => (
-            <NavLink
-              key={path}
-              to={path}
-              className={({ isActive }) => cn(
-                'flex-1 flex flex-col items-center gap-1 py-1.5 rounded-xl transition-all duration-200',
-                isActive ? 'text-brand-primary' : 'text-text-faint hover:text-text-muted'
-              )}
-            >
-              {({ isActive }) => (
-                <>
-                  <div className={cn(
-                    'w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200',
-                    isActive && 'bg-brand-primary/15'
-                  )}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] font-medium">{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+        {showTabBar && (
+          <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] flex items-center bg-surface-card/95 backdrop-blur-md border-t border-surface-border px-2 py-2 z-20">
+            {TABS.map(({ label, icon: Icon, path }) => (
+              <NavLink
+                key={path}
+                to={path}
+                className={({ isActive }) => cn(
+                  'flex-1 flex flex-col items-center gap-1 py-1.5 rounded-xl transition-all duration-200',
+                  isActive ? 'text-brand-primary' : 'text-text-faint hover:text-text-muted'
+                )}
+              >
+                {({ isActive }) => (
+                  <>
+                    <div className={cn(
+                      'w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200',
+                      isActive && 'bg-brand-primary/15'
+                    )}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-medium">{label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+        )}
       </div>
     </div>
   );

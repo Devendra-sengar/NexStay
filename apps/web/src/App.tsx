@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Role } from '@nexstay/shared';
+import { Toaster } from 'react-hot-toast';
 
 // Auth pages
 import LoginPage from '@/pages/auth/Login';
@@ -40,31 +41,34 @@ function App() {
   if (isLoading) return <LoadingScreen />;
 
   return (
-    <Routes>
-      {/* ── Auth routes ── */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/verify-otp" element={<OtpVerificationPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <>
+      <Toaster position="top-right" toastOptions={{ style: { background: '#171717', color: '#f5f5f5', border: '1px solid #262626' } }} />
+      <Routes>
+        {/* ── Auth routes ── */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/verify-otp" element={<OtpVerificationPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-      {/* ── Role-based redirect ── */}
-      <Route path="/" element={<RoleRouter />} />
+        {/* ── Role-based redirect ── */}
+        <Route path="/" element={<RoleRouter />} />
 
-      {/* ── Owner / Manager ERP ── */}
-      <Route path="/erp/*" element={<OwnerShell />} />
+        {/* ── Owner / Manager ERP ── */}
+        <Route path="/erp/*" element={<OwnerShell />} />
 
-      {/* ── Admin Panel ── */}
-      <Route path="/admin/*" element={<AdminShell />} />
+        {/* ── Admin Panel ── */}
+        <Route path="/admin/*" element={<AdminShell />} />
 
-      {/* ── Student App ── */}
-      <Route path="/app/*" element={<StudentShell />} />
+        {/* ── Student App ── */}
+        <Route path="/app/*" element={<StudentShell />} />
 
-      {/* ── Dev ── */}
-      <Route path="/dev/components" element={<ComponentsPage />} />
+        {/* ── Dev ── */}
+        <Route path="/dev/components" element={<ComponentsPage />} />
 
-      {/* ── 404 ── */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* ── 404 ── */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

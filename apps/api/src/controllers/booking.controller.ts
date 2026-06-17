@@ -8,6 +8,23 @@ import { StudentProfile } from '../models/StudentProfile.model';
 import { RentRecord } from '../models/RentRecord.model';
 import { Notification } from '../models/Notification.model';
 import { User } from '../models/User.model';
+import { Property } from '../models/Property.model';
+
+// ─── DB Session Helper ───────────────────────────────────────────────────────
+const startDbSession = async () => {
+  try {
+    if (!mongoose.connection.db) return null;
+    const hello = await mongoose.connection.db.admin().command({ hello: 1 });
+    if (hello && hello.setName) {
+      const session = await mongoose.startSession();
+      session.startTransaction();
+      return session;
+    }
+  } catch (error: any) {
+    console.warn('MongoDB transaction initialization skipped (standalone/no replica set):', error.message);
+  }
+  return null;
+};
 
 // ─── Get Booking Detail ───────────────────────────────────────────────────────
 export const getBookingById = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -53,16 +70,19 @@ export const getAvailableBedsForProperty = async (req: AuthRequest, res: Respons
 
 // ─── Process Check-In ─────────────────────────────────────────────────────────
 export const processCheckIn = async (req: AuthRequest, res: Response): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const session = await startDbSession();
   try {
     const { id } = req.params; // bookingId
     const { bedId, rentAmount, rentDueDate, documentVerification } = req.body;
 
     const booking = await Booking.findById(id).session(session);
-    if (!booking) { await session.abortTransaction(); res.status(404).json({ success: false, message: 'Booking not found' }); return; }
+    if (!booking) {
+      if (session) await session.abortTransaction();
+      res.status(404).json({ success: false, message: 'Booking not found' });
+      return;
+    }
     if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') {
-      await session.abortTransaction();
+      if (session) await session.abortTransaction();
       res.status(400).json({ success: false, message: `Cannot check-in a booking with status ${booking.status}` });
       return;
     }
@@ -71,9 +91,13 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     // Validate bed is available
     const bed = await Bed.findById(finalBedId).session(session);
-    if (!bed) { await session.abortTransaction(); res.status(404).json({ success: false, message: 'Bed not found' }); return; }
+    if (!bed) {
+      if (session) await session.abortTransaction();
+      res.status(404).json({ success: false, message: 'Bed not found' });
+      return;
+    }
     if (bed.status !== 'AVAILABLE' && String(bed._id) !== String(booking.bedId)) {
-      await session.abortTransaction();
+      if (session) await session.abortTransaction();
       res.status(400).json({ success: false, message: 'Selected bed is not available' });
       return;
     }
@@ -124,30 +148,33 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       isRead: false,
     }], { session });
 
-    await session.commitTransaction();
+    if (session) await session.commitTransaction();
 
     res.json({ success: true, message: 'Check-in processed successfully', bookingId: booking._id });
   } catch (error) {
-    await session.abortTransaction();
+    if (session) await session.abortTransaction();
     console.error('Check-in error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   } finally {
-    session.endSession();
+    if (session) session.endSession();
   }
 };
 
 // ─── Process Check-Out ────────────────────────────────────────────────────────
 export const processCheckOut = async (req: AuthRequest, res: Response): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const session = await startDbSession();
   try {
     const { id } = req.params; // bookingId
     const { checkoutDate, overrideReason } = req.body;
 
     const booking = await Booking.findById(id).session(session);
-    if (!booking) { await session.abortTransaction(); res.status(404).json({ success: false, message: 'Booking not found' }); return; }
+    if (!booking) {
+      if (session) await session.abortTransaction();
+      res.status(404).json({ success: false, message: 'Booking not found' });
+      return;
+    }
     if (booking.status !== 'CHECKED_IN') {
-      await session.abortTransaction();
+      if (session) await session.abortTransaction();
       res.status(400).json({ success: false, message: 'Only CHECKED_IN bookings can be checked out' });
       return;
     }
@@ -161,7 +188,7 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
     const totalDues = unpaidRent.reduce((sum, r) => sum + (r.amount - r.paidAmount), 0);
 
     if (totalDues > 0 && !overrideReason) {
-      await session.abortTransaction();
+      if (session) await session.abortTransaction();
       res.status(400).json({
         success: false,
         message: `Outstanding dues of ₹${totalDues}. Provide an override reason to proceed.`,
@@ -195,7 +222,7 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
       isRead: false,
     }], { session });
 
-    await session.commitTransaction();
+    if (session) await session.commitTransaction();
 
     res.json({
       success: true,
@@ -204,11 +231,11 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
       overrideReason: overrideReason || null,
     });
   } catch (error) {
-    await session.abortTransaction();
+    if (session) await session.abortTransaction();
     console.error('Check-out error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   } finally {
-    session.endSession();
+    if (session) session.endSession();
   }
 };
 
@@ -249,3 +276,118 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// ─── Create Booking (Student Flow) ──────────────────────────────────────────
+export const createStudentBooking = async (req: AuthRequest, res: Response): Promise<void> => {
+  const session = await startDbSession();
+  try {
+    const { propertyId, roomId, bedId, guardianName, guardianPhone, documents } = req.body;
+    const studentId = req.user!._id;
+
+    if (!propertyId || !roomId || !bedId) {
+      if (session) await session.abortTransaction();
+      res.status(400).json({ success: false, message: 'propertyId, roomId, bedId are required' });
+      return;
+    }
+
+    // Check if bed is available
+    const bed = await Bed.findById(bedId).session(session);
+    if (!bed) {
+      if (session) await session.abortTransaction();
+      res.status(404).json({ success: false, message: 'Bed not found' });
+      return;
+    }
+    if (bed.status !== 'AVAILABLE') {
+      if (session) await session.abortTransaction();
+      res.status(400).json({ success: false, message: 'Selected bed is not available' });
+      return;
+    }
+
+    // Mark bed as RESERVED
+    bed.status = 'RESERVED';
+    await bed.save({ session });
+
+    // Upsert student profile with documents and guardian details
+    await StudentProfile.findOneAndUpdate(
+      { userId: studentId },
+      {
+        guardianName: guardianName || '',
+        guardianPhone: guardianPhone || '',
+        documents: {
+          aadhaar: documents?.aadhaar || '',
+          studentId: documents?.studentId || '',
+          photo: documents?.photo || '',
+        }
+      },
+      { session, upsert: true }
+    );
+
+    // Create booking
+    const booking = await Booking.create([{
+      studentId,
+      propertyId,
+      roomId,
+      bedId,
+      status: 'PENDING',
+      documents: [
+        documents?.aadhaar || '',
+        documents?.studentId || '',
+        documents?.photo || '',
+      ].filter(Boolean),
+      paymentId: 'MOCK_PAY_' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+    }], { session });
+
+    // Notify the student
+    await Notification.create([{
+      userId: studentId,
+      type: 'BOOKING',
+      title: 'Booking Placed 📋',
+      message: 'Your booking has been placed and is pending approval/check-in.',
+      channel: 'IN_APP',
+      isRead: false,
+    }], { session });
+
+    // Notify the property owner/manager
+    const property = await Property.findById(propertyId).session(session);
+    if (property) {
+      const studentUser = await User.findById(studentId).session(session);
+      const studentName = studentUser ? studentUser.name : req.user!.email;
+      await Notification.create([{
+        userId: property.ownerId,
+        type: 'BOOKING',
+        title: 'New Booking Request 🔔',
+        message: `A new booking request has been placed for ${property.name} by ${studentName}.`,
+        channel: 'IN_APP',
+        isRead: false,
+      }], { session });
+    }
+
+    if (session) await session.commitTransaction();
+    res.status(201).json({ success: true, data: booking[0] });
+  } catch (error) {
+    if (session) await session.abortTransaction();
+    console.error('Create student booking error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  } finally {
+    if (session) session.endSession();
+  }
+};
+
+// ─── Get Student Bookings ───────────────────────────────────────────────────
+export const getStudentBookings = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const studentId = req.user!._id;
+    const bookings = await Booking.find({ studentId })
+      .populate('propertyId', 'name city address images')
+      .populate('roomId', 'roomNumber roomType rentPerBed')
+      .populate('bedId', 'bedNumber bedType')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    console.error('Get student bookings error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+

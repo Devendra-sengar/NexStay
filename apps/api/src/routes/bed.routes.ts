@@ -6,8 +6,10 @@ const router = Router({ mergeParams: true });
 router.use(protect);
 
 router.get('/', getBeds);
+router.get('/room/:roomId', getBeds);
 router.post('/', requireRoles('SUPER_ADMIN', 'PG_OWNER', 'PROPERTY_MANAGER'), createBed);
 router.put('/:id', requireRoles('SUPER_ADMIN', 'PG_OWNER', 'PROPERTY_MANAGER'), updateBed);
 router.delete('/:id', requireRoles('SUPER_ADMIN', 'PG_OWNER'), deleteBed);
+
 
 export default router;

@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn, getInitials } from '@/lib/utils';
+import NotificationBell from '@/components/NotificationBell';
+
 
 // Pages
 import DashboardPage from '@/pages/erp/Dashboard';
@@ -23,6 +25,7 @@ import RentReceiptPage from '@/pages/erp/rent/RentReceipt';
 import ExpensesPage from '@/pages/erp/expenses/ExpensesPage';
 import ComplaintsListPage from '@/pages/erp/complaints/ComplaintsList';
 import OwnerComplaintDetail from '@/pages/erp/complaints/ComplaintDetail';
+import ReportsPage from '@/pages/erp/reports/ReportsPage';
 
 const EmptyPage = ({ title }: { title: string }) => (
   <div className="page-container">
@@ -175,11 +178,9 @@ export default function OwnerShell() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <button className="relative w-9 h-9 rounded-lg bg-surface-dark border border-surface-border flex items-center justify-center text-text-muted hover:text-text-primary hover:border-brand-primary/30 transition-all">
-              <Bell className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-accent rounded-full text-white text-[10px] flex items-center justify-center font-bold">3</span>
-            </button>
+            <NotificationBell />
             <div className="flex items-center gap-2 bg-surface-dark border border-surface-border rounded-lg px-2.5 py-1.5 cursor-pointer hover:border-brand-primary/30 transition-colors">
+
               <div className="w-6 h-6 rounded-full bg-brand-gradient flex items-center justify-center text-white text-xs font-bold">
                 {getInitials(user?.name || 'U')}
               </div>
@@ -221,7 +222,7 @@ export default function OwnerShell() {
             
             {/* Phase 2+ stubs */}
             <Route path="rooms" element={<EmptyPage title="Rooms & Beds Overview" />} />
-            <Route path="reports" element={<EmptyPage title="Reports" />} />
+            <Route path="reports" element={<ReportsPage />} />
             <Route path="settings" element={<EmptyPage title="Settings" />} />
             <Route path="*" element={<DashboardPage />} />
           </Routes>

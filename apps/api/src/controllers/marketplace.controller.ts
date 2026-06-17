@@ -18,9 +18,11 @@ const DEMO_REVIEWS = [
 async function enrichProperties(props: any[]) {
   return Promise.all(
     props.map(async (p) => {
+      const rooms = await Room.find({ propertyId: p._id }).select('_id');
+      const roomIds = rooms.map(r => r._id);
       const [availBeds, totalBeds] = await Promise.all([
-        Bed.countDocuments({ propertyId: p._id, status: 'AVAILABLE' }),
-        Bed.countDocuments({ propertyId: p._id }),
+        Bed.countDocuments({ roomId: { $in: roomIds }, status: 'AVAILABLE' }),
+        Bed.countDocuments({ roomId: { $in: roomIds } }),
       ]);
       return { ...p, availableBeds: availBeds, totalBeds };
     })
@@ -145,9 +147,10 @@ export const getPropertyPublicDetail = async (req: AuthRequest, res: Response): 
     }, {});
 
     // Total bed summary
+    const roomIds = rooms.map(r => r._id);
     const [totalAvailable, totalBeds] = await Promise.all([
-      Bed.countDocuments({ propertyId: id, status: 'AVAILABLE' }),
-      Bed.countDocuments({ propertyId: id }),
+      Bed.countDocuments({ roomId: { $in: roomIds }, status: 'AVAILABLE' }),
+      Bed.countDocuments({ roomId: { $in: roomIds } }),
     ]);
 
     // Reviews (DB first, then demo fallback)

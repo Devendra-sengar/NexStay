@@ -9,6 +9,7 @@ export interface IPropertyDoc extends Document {
   amenities: string[];
   images: string[];
   verificationStatus: string;
+  rejectionReason?: string;
   gender: string;
   rentStartingFrom: number;
   rating: number;
@@ -30,6 +31,7 @@ const PropertySchema = new Schema<IPropertyDoc>(
       enum: ['PENDING', 'APPROVED', 'REJECTED'],
       default: 'PENDING',
     },
+    rejectionReason: { type: String, default: '' },
     gender: { type: String, enum: ['BOYS', 'GIRLS', 'CO_ED'], default: 'CO_ED' },
     rentStartingFrom: { type: Number, default: 5000 },
     rating: { type: Number, default: 0 },
