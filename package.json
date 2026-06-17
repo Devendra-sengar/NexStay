@@ -1,0 +1,14 @@
+{
+  "name": "nexstay",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
+    "build": "pnpm --filter web build && pnpm --filter api build",
+    "db:seed": "pnpm --filter api db:seed",
+    "lint": "pnpm --filter web lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

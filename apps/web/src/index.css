@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variables ─────────────────────────────────────────────────────────── */
+:root {
+  --brand-primary: #6C63FF;
+  --brand-secondary: #22D3EE;
+  --brand-accent: #F97316;
+  --surface-dark: #0F0F1A;
+  --surface-card: #1A1A2E;
+  --surface-border: #2D2D4A;
+  --text-primary: #F8FAFC;
+  --text-muted: #94A3B8;
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--surface-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface-card);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-primary);
+}
+
+/* ─── Selection ──────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(108, 99, 255, 0.3);
+  color: var(--text-primary);
+}
+
+/* ─── Component Layer ────────────────────────────────────────────────────────── */
+@layer components {
+  /* Glassmorphism card */
+  .glass-card {
+    @apply bg-surface-card border border-surface-border rounded-lg backdrop-blur-sm;
+    background: rgba(26, 26, 46, 0.8);
+  }
+
+  /* Brand gradient text */
+  .gradient-text {
+    @apply bg-brand-gradient bg-clip-text text-transparent;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply bg-brand-primary hover:bg-brand-primary-hover text-white font-semibold px-6 py-2.5 rounded-md
+           transition-all duration-200 hover:shadow-glow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply bg-surface-card hover:bg-surface-card-hover text-text-primary font-medium px-6 py-2.5 rounded-md
+           border border-surface-border transition-all duration-200 active:scale-95;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply text-text-muted hover:text-text-primary hover:bg-surface-card font-medium px-4 py-2 rounded-md
+           transition-all duration-200;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full bg-surface-input border border-surface-border text-text-primary placeholder-text-faint
+           rounded-md px-4 py-2.5 text-sm transition-all duration-200
+           focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/30;
+  }
+
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-md text-text-muted hover:text-text-primary
+           hover:bg-surface-card-hover transition-all duration-200 cursor-pointer text-sm font-medium;
+  }
+
+  .nav-item.active {
+    @apply text-brand-primary bg-brand-primary/10 border-l-2 border-brand-primary;
+  }
+
+  /* Status badge base */
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  /* Page container */
+  .page-container {
+    @apply p-6 max-w-7xl mx-auto animate-fade-in;
+  }
+
+  /* Section header */
+  .section-header {
+    @apply text-xl font-bold text-text-primary mb-1;
+  }
+
+  /* Table styles */
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table th {
+    @apply text-left text-text-muted font-medium py-3 px-4 border-b border-surface-border bg-surface-card/50;
+  }
+  .data-table td {
+    @apply py-3 px-4 border-b border-surface-border/50 text-text-primary;
+  }
+  .data-table tr:hover td {
+    @apply bg-surface-card-hover/30;
+  }
+}
+
+/* ─── Utility Layer ──────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Hide scrollbar but keep scrolling */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Bounce-in for success states */
+  @keyframes bounce-in {
+    0%   { transform: scale(0.5); opacity: 0; }
+    70%  { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .animate-bounce-in {
+    animation: bounce-in 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+  }
+
+  /* pb-safe for sticky bars above home indicator */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
+
