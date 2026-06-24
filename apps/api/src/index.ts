@@ -5,19 +5,15 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db';
 import authRoutes from './routes/auth.routes';
-import dashboardRoutes from './routes/dashboard.routes';
-import propertyRoutes from './routes/property.routes';
-import bedRoutes from './routes/bed.routes';
-import tenantRoutes from './routes/tenant.routes';
-import bookingRoutes from './routes/booking.routes';
-import rentRoutes from './routes/rent.routes';
-import expenseRoutes from './routes/expense.routes';
-import complaintRoutes from './routes/complaint.routes';
 import marketplaceRoutes from './routes/marketplace.routes';
 import notificationRoutes from './routes/notification.routes';
-import reportRoutes from './routes/report.routes';
-import adminRoutes from './routes/admin.routes';
-
+import publicRoutes from './routes/public.routes';
+import guestRoutes from './routes/guest.routes';
+import hostelAdminRoutes from './routes/hostelAdmin.routes';
+import erpRoutes from './routes/erp.routes';
+import reportsRoutes from './routes/reports.routes';
+import superAdminRoutes from './routes/superAdmin.routes';
+import { getDevEmails } from './controllers/notification.controller';
 
 dotenv.config();
 
@@ -26,31 +22,43 @@ const PORT = process.env.PORT || 5000;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:5174'], credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean) as string[];
+    // Allow requests with no origin (e.g. mobile apps, curl, Render health checks)
+    if (!origin || allowed.some(o => origin.startsWith(o))) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
+  credentials: true,
+}));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/properties', propertyRoutes);
-app.use('/api/beds', bedRoutes);
-app.use('/api/tenants', tenantRoutes);
-app.use('/api/bookings', bookingRoutes);
-app.use('/api/rent', rentRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/complaints', complaintRoutes);
+app.use('/api/public', publicRoutes);
+app.use('/api/guest', guestRoutes);
+app.use('/api/hostel-admin', hostelAdminRoutes);
+app.use('/api/hostel-admin/erp', erpRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin/reports', reportsRoutes);
+app.use('/api/superadmin', superAdminRoutes);
+app.get('/api/dev/emails', getDevEmails);
 
-
+// ─── Health ──────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', message: 'NexStay API is running 🚀', version: '1.0.0' });
+  res.json({ status: 'ok', message: 'NexStay API running 🚀', version: '2.0.0' });
 });
 
-// ─── 404 Handler ─────────────────────────────────────────────────────────────
+// ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
@@ -58,7 +66,7 @@ app.use((_req, res) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 connectDB().then(() => {
   app.listen(PORT, () => {
-    console.log(`✅ NexStay API running on http://localhost:${PORT}`);
+    console.log(`✅ NexStay API v2 running on http://localhost:${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health`);
   });
 });

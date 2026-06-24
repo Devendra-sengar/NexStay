@@ -8,15 +8,16 @@ export interface IUserDoc extends Document {
   passwordHash: string;
   role: string;
   status: string;
-  isVerified: boolean;
-  ownerVerificationStatus?: string;
-  ownerRejectionReason?: string;
+  avatar?: string;
   businessName?: string;
   gstNumber?: string;
-  panNumber?: string;
+  identityProofUrl?: string;
+  ownerVerificationStatus?: string;
+  ownerRejectionReason?: string;
   otp?: string;
   otpExpiry?: Date;
   createdAt: Date;
+  updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
 }
 
@@ -28,20 +29,20 @@ const UserSchema = new Schema<IUserDoc>(
     passwordHash: { type: String, required: true },
     role: {
       type: String,
-      enum: ['SUPER_ADMIN', 'PG_OWNER', 'PROPERTY_MANAGER', 'STUDENT'],
-      default: 'STUDENT',
+      enum: ['SUPER_ADMIN', 'HOSTEL_ADMIN', 'GUEST'],
+      default: 'GUEST',
     },
     status: { type: String, enum: ['ACTIVE', 'SUSPENDED'], default: 'ACTIVE' },
-    isVerified: { type: Boolean, default: false },
+    avatar: { type: String, default: '' },
+    businessName: { type: String, default: '' },
+    gstNumber: { type: String, default: '' },
+    identityProofUrl: { type: String, default: '' },
     ownerVerificationStatus: {
       type: String,
       enum: ['PENDING', 'APPROVED', 'REJECTED'],
-      default: 'APPROVED',
+      default: 'PENDING',
     },
     ownerRejectionReason: { type: String, default: '' },
-    businessName: { type: String, default: '' },
-    gstNumber: { type: String, default: '' },
-    panNumber: { type: String, default: '' },
     otp: { type: String },
     otpExpiry: { type: Date },
   },
@@ -51,5 +52,8 @@ const UserSchema = new Schema<IUserDoc>(
 UserSchema.methods.comparePassword = async function (password: string): Promise<boolean> {
   return bcrypt.compare(password, this.passwordHash);
 };
+
+UserSchema.index({ role: 1 });
+UserSchema.index({ status: 1 });
 
 export const User = mongoose.model<IUserDoc>('User', UserSchema);

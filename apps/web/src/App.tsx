@@ -1,39 +1,77 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Role } from '@nexstay/shared';
 import { Toaster } from 'react-hot-toast';
 
+// Shells
+import MarketplaceLayout from '@/layouts/MarketplaceLayout';
+import GuestPortalLayout from '@/layouts/GuestPortalLayout';
+import HostelAdminShell from '@/layouts/HostelAdminShell';
+import SuperAdminShell from '@/layouts/SuperAdminShell';
+
 // Auth pages
 import LoginPage from '@/pages/auth/Login';
 import SignupPage from '@/pages/auth/Signup';
-import OtpVerificationPage from '@/pages/auth/OtpVerification';
 import ForgotPasswordPage from '@/pages/auth/ForgotPassword';
+import OtpVerificationPage from '@/pages/auth/OtpVerification';
 
-// App shells
-import OwnerShell from '@/layouts/OwnerShell';
-import AdminShell from '@/layouts/AdminShell';
-import StudentShell from '@/layouts/StudentShell';
-
-// Dev
-import ComponentsPage from '@/pages/dev/Components';
-
-// Loading spinner
-const LoadingScreen = () => (
-  <div className="min-h-screen bg-surface-dark flex items-center justify-center">
-    <div className="flex flex-col items-center gap-4">
-      <div className="w-12 h-12 rounded-full border-2 border-surface-border border-t-brand-primary animate-spin" />
-      <p className="text-text-muted text-sm">Loading NexStay...</p>
+// 403 page
+const ForbiddenPage = () => (
+  <div className="min-h-screen bg-surface flex items-center justify-center">
+    <div className="text-center">
+      <div className="text-6xl font-bold text-danger mb-4">403</div>
+      <h1 className="text-2xl font-bold text-text-primary mb-2">Access Denied</h1>
+      <p className="text-text-secondary mb-6">You don't have permission to access this page.</p>
+      <a href="/" className="btn-primary inline-block">Go Home</a>
     </div>
   </div>
 );
 
-// Role-based redirect
-const RoleRouter = () => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role === Role.SUPER_ADMIN) return <Navigate to="/admin/dashboard" replace />;
-  if (user.role === Role.PG_OWNER || user.role === Role.PROPERTY_MANAGER) return <Navigate to="/erp/dashboard" replace />;
-  return <Navigate to="/app/home" replace />;
+// Loading spinner
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-surface flex items-center justify-center">
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-10 h-10 rounded-full border-2 border-surface-border border-t-primary animate-spin" />
+      <p className="text-text-secondary text-sm font-medium">Loading NexStay...</p>
+    </div>
+  </div>
+);
+
+// Guard for HOSTEL_ADMIN routes
+const AdminGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Navigate to={`/login?returnUrl=${location.pathname}`} replace />;
+  if (user.role !== Role.HOSTEL_ADMIN) return <ForbiddenPage />;
+  return <>{children}</>;
+};
+
+// Guard for SUPER_ADMIN routes
+const SuperAdminGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (!user || user.role !== Role.SUPER_ADMIN) return <ForbiddenPage />;
+  return <>{children}</>;
+};
+
+// Guard for GUEST account portal
+const GuestGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
+  if (isLoading) return <LoadingScreen />;
+  if (!user) return <Navigate to={`/login?returnUrl=${location.pathname}`} replace />;
+  return <>{children}</>;
+};
+
+// Redirect authenticated users to their dashboard on login/signup
+const AuthRedirect = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingScreen />;
+  if (user?.role === Role.HOSTEL_ADMIN) return <Navigate to="/admin/dashboard" replace />;
+  if (user?.role === Role.SUPER_ADMIN) return <Navigate to="/superadmin/dashboard" replace />;
+  if (user?.role === Role.GUEST) return <Navigate to="/account/bookings" replace />;
+  return <>{children}</>;
 };
 
 function App() {
@@ -42,31 +80,35 @@ function App() {
 
   return (
     <>
-      <Toaster position="top-right" toastOptions={{ style: { background: '#171717', color: '#f5f5f5', border: '1px solid #262626' } }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: { background: '#fff', color: '#0F172A', border: '1px solid #E2E8F0', borderRadius: '10px', fontSize: '14px' },
+          success: { iconTheme: { primary: '#16A34A', secondary: '#fff' } },
+          error: { iconTheme: { primary: '#DC2626', secondary: '#fff' } },
+        }}
+      />
       <Routes>
-        {/* ── Auth routes ── */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/verify-otp" element={<OtpVerificationPage />} />
+        {/* ── Auth pages ─────────────────────────── */}
+        <Route path="/login" element={<AuthRedirect><LoginPage /></AuthRedirect>} />
+        <Route path="/signup" element={<AuthRedirect><SignupPage /></AuthRedirect>} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/verify-otp" element={<OtpVerificationPage />} />
 
-        {/* ── Role-based redirect ── */}
-        <Route path="/" element={<RoleRouter />} />
+        {/* ── Shell A: Public Marketplace (no auth) */}
+        <Route path="/*" element={<MarketplaceLayout />} />
 
-        {/* ── Owner / Manager ERP ── */}
-        <Route path="/erp/*" element={<OwnerShell />} />
+        {/* ── Shell B: Guest Account Portal ───────── */}
+        <Route path="/account/*" element={<GuestGuard><GuestPortalLayout /></GuestGuard>} />
 
-        {/* ── Admin Panel ── */}
-        <Route path="/admin/*" element={<AdminShell />} />
+        {/* ── Shell C: Hostel Admin ERP ───────────── */}
+        <Route path="/admin/*" element={<AdminGuard><HostelAdminShell /></AdminGuard>} />
 
-        {/* ── Student App ── */}
-        <Route path="/app/*" element={<StudentShell />} />
+        {/* ── Shell D: Super Admin Panel ──────────── */}
+        <Route path="/superadmin/*" element={<SuperAdminGuard><SuperAdminShell /></SuperAdminGuard>} />
 
-        {/* ── Dev ── */}
-        <Route path="/dev/components" element={<ComponentsPage />} />
-
-        {/* ── 404 ── */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* ── 403 ────────────────────────────────── */}
+        <Route path="/403" element={<ForbiddenPage />} />
       </Routes>
     </>
   );

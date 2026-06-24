@@ -1,57 +1,45 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Notification } from '../models/Notification.model';
+import { getMockEmails } from '../services/mockEmail.service';
 
-// ─── Get User Notifications ──────────────────────────────────────────────────
 export const getNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user!._id;
-    const notifications = await Notification.find({ userId })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
-
-    res.json({ success: true, data: notifications });
-  } catch (error) {
-    console.error('Get notifications error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
+    const userId = req.user!.id;
+    const page = Math.max(1, parseInt((req.query.page as string) || '1'));
+    const limit = Math.min(20, parseInt((req.query.limit as string) || '10'));
+    const [notifications, unreadCount, total] = await Promise.all([
+      Notification.find({ userId }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Notification.countDocuments({ userId, isRead: false }),
+      Notification.countDocuments({ userId }),
+    ]);
+    res.json({ success: true, data: notifications, unreadCount, total, hasNextPage: page * limit < total });
+  } catch { res.status(500).json({ success: false, message: 'Internal server error' }); }
 };
 
-// ─── Mark Notification as Read ───────────────────────────────────────────────
 export const markRead = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const userId = req.user!._id;
-
-    const notification = await Notification.findOneAndUpdate(
-      { _id: id, userId },
-      { isRead: true },
-      { new: true }
-    );
-
-    if (!notification) {
-      res.status(404).json({ success: false, message: 'Notification not found' });
-      return;
-    }
-
+    const userId = req.user!.id;
+    const notification = await Notification.findOneAndUpdate({ _id: id, userId }, { isRead: true }, { new: true });
+    if (!notification) { res.status(404).json({ success: false, message: 'Notification not found' }); return; }
     res.json({ success: true, data: notification });
-  } catch (error) {
-    console.error('Mark notification read error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
+  } catch { res.status(500).json({ success: false, message: 'Internal server error' }); }
 };
 
-// ─── Mark All Notifications as Read ──────────────────────────────────────────
 export const markAllRead = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user!._id;
-
+    const userId = req.user!.id;
     await Notification.updateMany({ userId, isRead: false }, { isRead: true });
-
     res.json({ success: true, message: 'All notifications marked as read' });
-  } catch (error) {
-    console.error('Mark all notifications read error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
+  } catch { res.status(500).json({ success: false, message: 'Internal server error' }); }
 };
+
+// Dev-only: return mock email log
+export const getDevEmails = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    if (process.env.NODE_ENV === 'production') { res.status(403).json({ message: 'Disabled in production' }); return; }
+    res.json({ success: true, data: getMockEmails() });
+  } catch { res.status(500).json({ success: false, message: 'Internal server error' }); }
+};
+

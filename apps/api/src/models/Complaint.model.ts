@@ -1,44 +1,33 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export interface ITimelineEntry {
-  status: string;
-  note?: string;
-  changedBy: mongoose.Types.ObjectId;
-  changedAt: Date;
-}
-
 export interface IComplaintDoc extends Document {
-  studentId: mongoose.Types.ObjectId;
+  tenantId: mongoose.Types.ObjectId;
   propertyId: mongoose.Types.ObjectId;
+  guestId?: mongoose.Types.ObjectId;
+  hostelStudentId?: mongoose.Types.ObjectId;
   title: string;
   description: string;
   category: string;
   status: string;
-  assignedTo?: mongoose.Types.ObjectId;
-  timeline: ITimelineEntry[];
+  assignedToStaffId?: mongoose.Types.ObjectId;
+  statusHistory: Array<{ status: string; note?: string; changedBy?: string; changedAt: Date }>;
+  internalNotes: Array<{ note: string; addedBy: string; addedAt: Date }>;
+  resolvedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const TimelineEntrySchema = new Schema<ITimelineEntry>(
-  {
-    status: { type: String, required: true },
-    note: { type: String },
-    changedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    changedAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
-
 const ComplaintSchema = new Schema<IComplaintDoc>(
   {
-    studentId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    tenantId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     propertyId: { type: Schema.Types.ObjectId, ref: 'Property', required: true },
-    title: { type: String, required: true },
+    guestId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    hostelStudentId: { type: Schema.Types.ObjectId, ref: 'HostelStudent', default: null },
+    title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     category: {
       type: String,
-      enum: ['ELECTRICITY', 'FOOD', 'INTERNET', 'WATER', 'CLEANING'],
+      enum: ['ELECTRICITY', 'FOOD', 'INTERNET', 'WATER', 'CLEANING', 'OTHER'],
       required: true,
     },
     status: {
@@ -46,10 +35,29 @@ const ComplaintSchema = new Schema<IComplaintDoc>(
       enum: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'],
       default: 'OPEN',
     },
-    assignedTo: { type: Schema.Types.ObjectId, ref: 'User' },
-    timeline: { type: [TimelineEntrySchema], default: [] },
+    assignedToStaffId: { type: Schema.Types.ObjectId, ref: 'Staff', default: null },
+    statusHistory: [
+      {
+        status: { type: String, required: true },
+        note: { type: String, default: '' },
+        changedBy: { type: String, default: 'Admin' },
+        changedAt: { type: Date, default: Date.now },
+      },
+    ],
+    internalNotes: [
+      {
+        note: { type: String, required: true },
+        addedBy: { type: String, default: 'Admin' },
+        addedAt: { type: Date, default: Date.now },
+      },
+    ],
+    resolvedAt: { type: Date },
   },
   { timestamps: true }
 );
+
+ComplaintSchema.index({ tenantId: 1, status: 1 });
+ComplaintSchema.index({ propertyId: 1, status: 1 });
+ComplaintSchema.index({ guestId: 1 });
 
 export const Complaint = mongoose.model<IComplaintDoc>('Complaint', ComplaintSchema);

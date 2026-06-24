@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IReviewDoc extends Document {
   propertyId: mongoose.Types.ObjectId;
-  studentId: mongoose.Types.ObjectId;
+  guestId: mongoose.Types.ObjectId;
   rating: number;
   comment: string;
   createdAt: Date;
@@ -11,11 +11,14 @@ export interface IReviewDoc extends Document {
 const ReviewSchema = new Schema<IReviewDoc>(
   {
     propertyId: { type: Schema.Types.ObjectId, ref: 'Property', required: true },
-    studentId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    rating: { type: Number, min: 1, max: 5, required: true },
-    comment: { type: String, required: true },
+    guestId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, required: true, trim: true },
   },
   { timestamps: true }
 );
+
+ReviewSchema.index({ propertyId: 1 });
+ReviewSchema.index({ guestId: 1 });
 
 export const Review = mongoose.model<IReviewDoc>('Review', ReviewSchema);

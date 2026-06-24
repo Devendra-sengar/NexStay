@@ -1,175 +1,107 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, Loader2, MessageSquare, BookOpen, CreditCard, Inbox } from 'lucide-react';
-import { useUserNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks/useNotifications';
-import { useAuth } from '@/contexts/AuthContext';
+import { Bell, X, CheckCheck, ExternalLink, Inbox, Loader2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { useNotifications, useMarkNotificationRead, useMarkAllRead } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
+const TYPE_ICON: Record<string, string> = {
+  BOOKING_CONFIRMED: '✅', BOOKING_CANCELLED: '❌', CHECKIN_CONFIRMED: '🏠',
+  CHECKOUT_CONFIRMED: '👋', RENT_DUE: '📅', RENT_REMINDER: '⚠️',
+  RENT_OVERDUE: '🔴', COMPLAINT_UPDATE: '💬', NEW_BOOKING: '📥',
+  NEW_COMPLAINT: '📢', BOOKING: '📖', default: '🔔',
+};
+
 export default function NotificationBell() {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const { data: notifications = [], isLoading } = useUserNotifications();
-  const markReadMutation = useMarkNotificationRead();
-  const markAllReadMutation = useMarkAllNotificationsRead();
+  const { data, isLoading } = useNotifications(page);
+  const markRead = useMarkNotificationRead();
+  const markAll = useMarkAllRead();
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const notifications = data?.data ?? [];
+  const unread = data?.unreadCount ?? 0;
 
-  // Close when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleNotificationClick = async (notification: any) => {
-    if (!notification.isRead) {
-      await markReadMutation.mutateAsync(notification._id);
-    }
-    setIsOpen(false);
-
-    // Route based on notification type and user role
-    const isStudent = user?.role === 'STUDENT';
-    const type = notification.type?.toUpperCase();
-
-    if (type === 'COMPLAINT') {
-      navigate(isStudent ? '/app/complaints' : '/erp/complaints');
-    } else if (type === 'BOOKING') {
-      navigate(isStudent ? '/app/bookings' : '/erp/tenants');
-    } else if (type === 'RENT') {
-      navigate(isStudent ? '/app/home' : '/erp/rent');
-    }
-  };
-
-  const getIcon = (type: string) => {
-    switch (type?.toUpperCase()) {
-      case 'COMPLAINT':
-        return <MessageSquare className="w-4 h-4 text-brand-accent" />;
-      case 'BOOKING':
-        return <BookOpen className="w-4 h-4 text-brand-primary" />;
-      case 'RENT':
-        return <CreditCard className="w-4 h-4 text-status-success" />;
-      default:
-        return <Bell className="w-4 h-4 text-text-muted" />;
-    }
-  };
-
-  const formatTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const handleClick = (n: any) => {
+    if (!n.isRead) markRead.mutate(n._id);
+    setOpen(false);
+    if (n.linkUrl) navigate(n.linkUrl);
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          'relative w-9 h-9 rounded-xl flex items-center justify-center text-text-muted hover:text-text-primary border transition-all duration-200',
-          isOpen ? 'bg-brand-primary/10 border-brand-primary/30 text-brand-primary' : 'bg-surface-dark border-surface-border hover:border-surface-border/80'
-        )}
-      >
-        <Bell className="w-4 h-4" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-brand-accent rounded-full text-white text-[10px] flex items-center justify-center font-bold animate-pulse">
-            {unreadCount}
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen(o => !o)}
+        className="relative p-2 rounded-xl hover:bg-surface-input transition-colors text-text-secondary hover:text-primary">
+        <Bell className="w-5 h-5" />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+            {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
-      {/* Dropdown Overlay */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-[280px] sm:w-[320px] bg-surface-card border border-surface-border/80 rounded-2xl shadow-card z-50 overflow-hidden animate-slide-up">
-          {/* Header */}
-          <div className="p-3.5 bg-surface-card/50 border-b border-surface-border/50 flex justify-between items-center">
-            <span className="text-text-primary font-bold text-xs">Notifications</span>
-            {unreadCount > 0 && (
-              <button
-                onClick={() => markAllReadMutation.mutate()}
-                className="text-[10px] text-brand-primary hover:text-brand-primary-hover font-semibold flex items-center gap-1 transition-colors"
-                disabled={markAllReadMutation.isPending}
-              >
-                {markAllReadMutation.isPending ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    Mark all read
-                  </>
-                )}
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-surface-border z-50 flex flex-col max-h-[520px] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-surface-border flex-shrink-0">
+            <h3 className="font-semibold text-text-primary text-sm">Notifications</h3>
+            <div className="flex items-center gap-1">
+              {unread > 0 && (
+                <button onClick={() => markAll.mutate()} disabled={markAll.isPending}
+                  className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 px-2 py-1 rounded-lg hover:bg-primary/5 transition-colors">
+                  {markAll.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />}
+                  Mark all read
+                </button>
+              )}
+              <button onClick={() => setOpen(false)} className="p-1 hover:bg-surface-input rounded-lg text-text-muted">
+                <X className="w-4 h-4" />
               </button>
-            )}
+            </div>
           </div>
 
-          {/* List of items */}
-          <div className="max-h-[300px] overflow-y-auto divide-y divide-surface-border/30">
+          <div className="overflow-y-auto flex-1 divide-y divide-surface-border">
             {isLoading ? (
-              <div className="p-8 flex justify-center">
-                <Loader2 className="w-5 h-5 text-brand-primary animate-spin" />
-              </div>
+              <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 text-primary animate-spin" /></div>
             ) : notifications.length === 0 ? (
-              <div className="p-8 text-center flex flex-col items-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-surface-dark flex items-center justify-center border border-surface-border/50">
-                  <Inbox className="w-5 h-5 text-text-faint" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-text-muted">All Caught Up! 🔔</p>
-                  <p className="text-[10px] text-text-faint">You have no new notifications.</p>
-                </div>
+              <div className="py-10 text-center text-text-muted">
+                <Inbox className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">All caught up! 🎉</p>
               </div>
             ) : (
-              notifications.map(n => (
-                <div
-                  key={n._id}
-                  onClick={() => handleNotificationClick(n)}
-                  className={cn(
-                    'p-3 flex gap-3 cursor-pointer hover:bg-surface-dark transition-colors relative',
-                    !n.isRead && 'bg-brand-primary/5'
-                  )}
-                >
-                  {/* Left Icon */}
-                  <div className="w-8 h-8 rounded-lg bg-surface-dark border border-surface-border/50 flex items-center justify-center flex-shrink-0">
-                    {getIcon(n.type)}
+              notifications.map((n: any) => (
+                <button key={n._id} onClick={() => handleClick(n)}
+                  className={cn('w-full text-left px-4 py-3 flex gap-3 transition-colors hover:bg-surface-input/60 group',
+                    !n.isRead && 'bg-blue-50/50 border-l-2 border-l-primary')}>
+                  <span className="text-xl flex-shrink-0 mt-0.5">{TYPE_ICON[n.type] ?? TYPE_ICON.default}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={cn('text-sm leading-snug', !n.isRead ? 'font-semibold text-text-primary' : 'font-medium text-text-secondary')}>{n.title}</p>
+                      {!n.isRead && <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />}
+                    </div>
+                    <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{n.message}</p>
+                    <p className="text-[10px] text-text-muted mt-1">{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}</p>
                   </div>
-
-                  {/* Text Details */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <p className={cn(
-                      'text-xs text-text-primary truncate',
-                      !n.isRead ? 'font-semibold' : 'font-medium text-text-muted'
-                    )}>
-                      {n.title}
-                    </p>
-                    <p className="text-[10px] text-text-faint mt-0.5 line-clamp-2 leading-relaxed">
-                      {n.message}
-                    </p>
-                    <span className="text-[9px] text-text-faint/80 block mt-1">
-                      {formatTime(n.createdAt)}
-                    </span>
-                  </div>
-
-                  {/* Unread dot */}
-                  {!n.isRead && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-brand-primary absolute right-3 top-3.5" />
-                  )}
-                </div>
+                  {n.linkUrl && <ExternalLink className="w-3 h-3 text-text-muted flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />}
+                </button>
               ))
             )}
           </div>
+
+          {data?.hasNextPage && (
+            <div className="px-4 py-2 border-t border-surface-border flex-shrink-0">
+              <button onClick={() => setPage(p => p + 1)} className="w-full text-xs text-primary py-1.5 hover:bg-primary/5 rounded-lg transition-colors">
+                Load more
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -7,6 +7,7 @@ export interface INotificationDoc extends Document {
   message: string;
   channel: string;
   isRead: boolean;
+  linkUrl?: string;
   createdAt: Date;
 }
 
@@ -16,10 +17,18 @@ const NotificationSchema = new Schema<INotificationDoc>(
     type: { type: String, required: true },
     title: { type: String, required: true },
     message: { type: String, required: true },
-    channel: { type: String, enum: ['IN_APP', 'EMAIL'], default: 'IN_APP' },
+    channel: {
+      type: String,
+      enum: ['IN_APP', 'EMAIL'],
+      default: 'IN_APP',
+    },
     isRead: { type: Boolean, default: false },
+    linkUrl: { type: String, default: '' },
   },
   { timestamps: true }
 );
+
+NotificationSchema.index({ userId: 1, isRead: 1 });
+NotificationSchema.index({ userId: 1, createdAt: -1 });
 
 export const Notification = mongoose.model<INotificationDoc>('Notification', NotificationSchema);

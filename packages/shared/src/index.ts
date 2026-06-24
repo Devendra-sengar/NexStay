@@ -1,10 +1,9 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export enum Role {
+  GUEST = 'GUEST',
+  HOSTEL_ADMIN = 'HOSTEL_ADMIN',
   SUPER_ADMIN = 'SUPER_ADMIN',
-  PG_OWNER = 'PG_OWNER',
-  PROPERTY_MANAGER = 'PROPERTY_MANAGER',
-  STUDENT = 'STUDENT',
 }
 
 export enum UserStatus {
@@ -16,6 +15,12 @@ export enum VerificationStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
+}
+
+export enum PropertyGender {
+  BOYS = 'BOYS',
+  GIRLS = 'GIRLS',
+  CO_ED = 'CO_ED',
 }
 
 export enum RoomType {
@@ -50,12 +55,11 @@ export enum RentStatus {
   PARTIAL = 'PARTIAL',
 }
 
-export enum ExpenseCategory {
-  ELECTRICITY = 'ELECTRICITY',
-  WATER = 'WATER',
-  STAFF_SALARY = 'STAFF_SALARY',
-  MAINTENANCE = 'MAINTENANCE',
-  MISC = 'MISC',
+export enum ComplaintStatus {
+  OPEN = 'OPEN',
+  IN_PROGRESS = 'IN_PROGRESS',
+  RESOLVED = 'RESOLVED',
+  CLOSED = 'CLOSED',
 }
 
 export enum ComplaintCategory {
@@ -64,17 +68,36 @@ export enum ComplaintCategory {
   INTERNET = 'INTERNET',
   WATER = 'WATER',
   CLEANING = 'CLEANING',
+  OTHER = 'OTHER',
 }
 
-export enum ComplaintStatus {
-  OPEN = 'OPEN',
-  IN_PROGRESS = 'IN_PROGRESS',
-  RESOLVED = 'RESOLVED',
+export enum StaffRole {
+  WARDEN = 'WARDEN',
+  COOK = 'COOK',
+  CLEANER = 'CLEANER',
+  SECURITY = 'SECURITY',
+  MANAGER = 'MANAGER',
+  OTHER = 'OTHER',
+}
+
+export enum ExpenseCategory {
+  ELECTRICITY = 'ELECTRICITY',
+  WATER = 'WATER',
+  STAFF_SALARY = 'STAFF_SALARY',
+  MAINTENANCE = 'MAINTENANCE',
+  INTERNET = 'INTERNET',
+  FOOD = 'FOOD',
+  MISCELLANEOUS = 'MISCELLANEOUS',
 }
 
 export enum NotificationChannel {
   IN_APP = 'IN_APP',
   EMAIL = 'EMAIL',
+}
+
+export enum HostelStudentStatus {
+  ACTIVE = 'ACTIVE',
+  CHECKED_OUT = 'CHECKED_OUT',
 }
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -86,104 +109,219 @@ export interface IUser {
   phone: string;
   role: Role;
   status: UserStatus;
-  isVerified: boolean;
+  avatar?: string;
+  businessName?: string;
+  gstNumber?: string;
+  identityProofUrl?: string;
+  ownerVerificationStatus?: VerificationStatus;
+  ownerRejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IGuestProfile {
+  _id: string;
+  userId: string;
+  college?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  aadhaarUrl?: string;
+  studentIdUrl?: string;
+  photoUrl?: string;
+  currentBookingId?: string;
   createdAt: string;
 }
 
 export interface IProperty {
   _id: string;
-  ownerId: string;
+  tenantId: string;
   name: string;
+  description: string;
   address: string;
   city: string;
-  description: string;
+  locality?: string;
+  state: string;
+  pincode: string;
+  latitude?: number;
+  longitude?: number;
+  gender: PropertyGender;
   amenities: string[];
+  rules?: string;
+  foodIncluded: boolean;
   images: string[];
+  videoUrl?: string;
   verificationStatus: VerificationStatus;
+  rejectionReason?: string;
+  isActive: boolean;
+  isPaused: boolean;
+  rating: number;
+  reviewCount: number;
   createdAt: string;
 }
 
 export interface IFloor {
   _id: string;
+  tenantId: string;
   propertyId: string;
   name: string;
+  order: number;
 }
 
 export interface IRoom {
   _id: string;
+  tenantId: string;
   propertyId: string;
   floorId: string;
   roomNumber: string;
   capacity: number;
   roomType: RoomType;
   status: RoomStatus;
+  pricePerBed: number;
 }
 
 export interface IBed {
   _id: string;
+  tenantId: string;
+  propertyId: string;
   roomId: string;
   bedNumber: string;
-  bedType: string;
   status: BedStatus;
+  currentBookingId?: string;
 }
 
 export interface IBooking {
   _id: string;
-  studentId: string;
+  guestId: string;
+  tenantId: string;
   propertyId: string;
   roomId: string;
   bedId: string;
   status: BookingStatus;
-  documents: string[];
+  checkInDate?: string;
+  checkOutDate?: string;
+  advancePaid: number;
+  monthlyRent: number;
+  aadhaarUrl?: string;
+  studentIdUrl?: string;
+  photoUrl?: string;
+  documentsVerified: boolean;
   paymentId?: string;
+  paymentMethod?: string;
+  notes?: string;
   createdAt: string;
 }
 
-export interface IStudentProfile {
+export interface IHostelStudent {
   _id: string;
-  userId: string;
-  guardianName: string;
-  guardianPhone: string;
-  documents: {
-    aadhaar?: string;
-    studentId?: string;
-    photo?: string;
-  };
-  currentPropertyId?: string;
-  currentRoomId?: string;
-  currentBedId?: string;
+  tenantId: string;
+  propertyId: string;
+  bookingId: string;
+  guestId: string;
+  bedId: string;
+  name: string;
+  phone: string;
+  email: string;
+  college?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  aadhaarUrl?: string;
+  studentIdUrl?: string;
+  photoUrl?: string;
+  admissionDate: string;
+  exitDate?: string;
+  noticePeriodDate?: string;
+  monthlyRent: number;
+  securityDeposit: number;
+  status: HostelStudentStatus;
 }
 
 export interface IRentRecord {
   _id: string;
-  studentId: string;
+  tenantId: string;
+  propertyId: string;
+  roomId: string;
+  hostelStudentId: string;
   bookingId: string;
+  month: string; // YYYY-MM
   amount: number;
+  paidAmount: number;
+  fine: number;
   dueDate: string;
   status: RentStatus;
-  paidAmount: number;
   paidAt?: string;
+  paymentMethod?: string;
   receiptUrl?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface IStaff {
+  _id: string;
+  tenantId: string;
+  propertyId: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role: StaffRole;
+  salary: number;
+  joiningDate: string;
+  photoUrl?: string;
+  isActive: boolean;
+  address?: string;
+  notes?: string;
+  createdAt: string;
 }
 
 export interface IExpense {
   _id: string;
+  tenantId: string;
   propertyId: string;
   category: ExpenseCategory;
   amount: number;
   date: string;
+  description?: string;
+  receiptUrl?: string;
+  createdAt: string;
+}
+
+export interface IInventory {
+  _id: string;
+  tenantId: string;
+  propertyId: string;
+  itemName: string;
+  totalCount: number;
+  workingCount: number;
+  damagedCount: number;
   notes?: string;
+  updatedAt: string;
 }
 
 export interface IComplaint {
   _id: string;
-  studentId: string;
+  tenantId: string;
   propertyId: string;
+  guestId?: string;
+  hostelStudentId?: string;
   title: string;
   description: string;
   category: ComplaintCategory;
   status: ComplaintStatus;
-  assignedTo?: string;
+  assignedToStaffId?: string;
+  statusHistory: Array<{
+    status: ComplaintStatus;
+    note?: string;
+    changedAt: string;
+  }>;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+export interface IReview {
+  _id: string;
+  propertyId: string;
+  guestId: string;
+  rating: number; // 1-5
+  comment: string;
   createdAt: string;
 }
 
@@ -195,6 +333,7 @@ export interface INotification {
   message: string;
   channel: NotificationChannel;
   isRead: boolean;
+  linkUrl?: string;
   createdAt: string;
 }
 
@@ -207,11 +346,31 @@ export interface AuthUser {
   phone: string;
   role: Role;
   status: UserStatus;
-  isVerified: boolean;
+  avatar?: string;
+  businessName?: string;
+  ownerVerificationStatus?: VerificationStatus;
 }
 
 export interface LoginResponse {
   user: AuthUser;
   accessToken: string;
   refreshToken: string;
+}
+
+// ─── API Response Types ───────────────────────────────────────────────────────
+
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

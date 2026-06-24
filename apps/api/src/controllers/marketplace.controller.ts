@@ -155,7 +155,7 @@ export const getPropertyPublicDetail = async (req: AuthRequest, res: Response): 
 
     // Reviews (DB first, then demo fallback)
     let reviews = await Review.find({ propertyId: id })
-      .populate('studentId', 'name')
+      .populate('guestId', 'name')
       .sort({ createdAt: -1 })
       .lean();
 
@@ -165,7 +165,7 @@ export const getPropertyPublicDetail = async (req: AuthRequest, res: Response): 
       propertyId: id,
       rating: r.rating,
       comment: r.comment,
-      studentId: { name: r.name },
+      guestId: { name: r.name },
       createdAt: new Date(Date.now() - r.daysAgo * 86400000),
     }));
 

@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
-import { AuthUser } from '@nexstay/shared';
+import { AuthUser, Role } from '@nexstay/shared';
 
 interface AuthContextType {
   user: AuthUser | null;
+  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  isGuest: boolean;
+  isHostelAdmin: boolean;
+  isSuperAdmin: boolean;
+  login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
   setUser: (user: AuthUser | null) => void;
 }
@@ -21,9 +25,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     setUser(null);
+    api.post('/auth/logout').catch(() => {}); // best-effort
   }, []);
 
-  // Load current user on mount
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (!token) { setIsLoading(false); return; }
@@ -34,15 +38,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .finally(() => setIsLoading(false));
   }, [logout]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<AuthUser> => {
     const { data } = await api.post('/auth/login', { email, password });
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
     setUser(data.user);
+    return data.user;
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, logout, setUser }}>
+    <AuthContext.Provider value={{
+      user,
+      token: localStorage.getItem('accessToken'),
+      isLoading,
+      isAuthenticated: !!user,
+      isGuest: user?.role === Role.GUEST,
+      isHostelAdmin: user?.role === Role.HOSTEL_ADMIN,
+      isSuperAdmin: user?.role === Role.SUPER_ADMIN,
+      login,
+      logout,
+      setUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );
