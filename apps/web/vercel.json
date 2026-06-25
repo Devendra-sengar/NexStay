@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://nexstay-api.onrender.com/api/:path*"
+      "destination": "https://nexstay-6mqq.onrender.com/api/:path*"
     },
     {
       "source": "/((?!api/).*)",
