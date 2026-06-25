@@ -54,17 +54,23 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       await GuestProfile.create({ userId: user._id });
     }
 
-    console.log(`[DEV] OTP for ${email}: 123456 (hardcoded in dev)`);
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) {
+      console.log(`[DEV] OTP for ${email}: 123456 (hardcoded in dev)`);
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Account created. Verify with OTP 123456 (dev mode).',
-      otp: '123456', // hardcoded in dev
+      message: isDev
+        ? 'Account created. Verify with OTP 123456 (dev mode).'
+        : 'Account created. Please check your email for the OTP.',
+      ...(isDev && { otp: '123456' }), // only expose OTP in dev
       userId: user._id,
     });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('Register error:', msg, error);
+    res.status(500).json({ success: false, message: 'Internal server error', ...(process.env.NODE_ENV !== 'production' && { detail: msg }) });
   }
 };
 
@@ -74,7 +80,7 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
     const { email, otp } = req.body;
 
     // Dev mode: always accept "123456"
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = process.env.NODE_ENV !== 'production';
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -196,17 +202,21 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Dev mode: hardcode OTP
-    user.otp = '123456';
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    // Dev mode: hardcode OTP; prod: use real random OTP already generated via generateOTP()
+    user.otp = isDev ? '123456' : generateOTP();
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    console.log(`[DEV] Password reset OTP for ${email}: 123456`);
+    if (isDev) {
+      console.log(`[DEV] Password reset OTP for ${email}: ${user.otp}`);
+    }
 
     res.json({
       success: true,
-      message: 'OTP sent. Use 123456 in dev mode.',
-      otp: '123456', // returned in dev
+      message: isDev ? 'OTP sent. Use 123456 in dev mode.' : 'If that email exists, an OTP has been sent.',
+      ...(isDev && { otp: user.otp }),
     });
   } catch {
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -219,7 +229,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     const { email, otp, newPassword } = req.body;
     const user = await User.findOne({ email });
 
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = process.env.NODE_ENV !== 'production';
     const isDevOtp = isDev && otp === '123456';
     const isRealOtp = user?.otp === otp && user?.otpExpiry && user.otpExpiry > new Date();
 

@@ -27,6 +27,7 @@ app.use(cors({
     const allowed = [
       'http://localhost:5173',
       'http://localhost:5174',
+      'https://nex-stay-web-1imj.vercel.app', // hardcoded fallback
       process.env.FRONTEND_URL,
     ].filter(Boolean) as string[];
     // Allow requests with no origin (e.g. mobile apps, curl, Render health checks)
@@ -61,6 +62,18 @@ app.get('/api/health', (_req, res) => {
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+// ─── Global Error Handler ─────────────────────────────────────────────────────
+// Must have 4 args to be an Express error handler
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err.message && err.message.startsWith('CORS:')) {
+    res.status(403).json({ success: false, message: 'CORS: Origin not allowed' });
+    return;
+  }
+  console.error('[Unhandled Error]', err.message, err);
+  res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
