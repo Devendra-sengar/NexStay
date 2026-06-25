@@ -4,6 +4,8 @@ export enum Role {
   GUEST = 'GUEST',
   HOSTEL_ADMIN = 'HOSTEL_ADMIN',
   SUPER_ADMIN = 'SUPER_ADMIN',
+  PG_OWNER = 'PG_OWNER',
+  STUDENT = 'STUDENT',
 }
 
 export enum UserStatus {
