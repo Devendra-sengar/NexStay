@@ -11,11 +11,11 @@ import { Complaint } from '../models/Complaint.model';
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 export const getDashboardStats = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user!._id;
+    const userId = req.user!.id;
     const role = req.user!.role;
 
     const propertyFilter = role === 'PG_OWNER'
-      ? { ownerId: new mongoose.Types.ObjectId(userId) }
+      ? { tenantId: new mongoose.Types.ObjectId(userId) }
       : {};
 
     const properties = await Property.find(propertyFilter).select('_id');

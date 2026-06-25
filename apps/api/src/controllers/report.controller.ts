@@ -11,13 +11,13 @@ import { Expense } from '../models/Expense.model';
 // ─── Occupancy Report ──────────────────────────────────────────────────────────
 export const getOccupancyReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user!._id;
+    const userId = req.user!.id;
     const role = req.user!.role;
     const { propertyId, date } = req.query;
 
     const propertyFilter: any = {};
     if (role === 'PG_OWNER') {
-      propertyFilter.ownerId = new mongoose.Types.ObjectId(userId);
+      propertyFilter.tenantId = new mongoose.Types.ObjectId(userId);
     }
 
     const properties = await Property.find(propertyFilter).select('_id name').lean();
@@ -176,13 +176,13 @@ export const getOccupancyReport = async (req: AuthRequest, res: Response): Promi
 // ─── Revenue Report ───────────────────────────────────────────────────────────
 export const getRevenueReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user!._id;
+    const userId = req.user!.id;
     const role = req.user!.role;
     const { propertyId, startDate, endDate } = req.query;
 
     const propertyFilter: any = {};
     if (role === 'PG_OWNER') {
-      propertyFilter.ownerId = new mongoose.Types.ObjectId(userId);
+      propertyFilter.tenantId = new mongoose.Types.ObjectId(userId);
     }
 
     const properties = await Property.find(propertyFilter).select('_id').lean();
@@ -312,13 +312,13 @@ export const getRevenueReport = async (req: AuthRequest, res: Response): Promise
 // ─── Booking Report ───────────────────────────────────────────────────────────
 export const getBookingReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user!._id;
+    const userId = req.user!.id;
     const role = req.user!.role;
     const { propertyId, startDate, endDate, status } = req.query;
 
     const propertyFilter: any = {};
     if (role === 'PG_OWNER') {
-      propertyFilter.ownerId = new mongoose.Types.ObjectId(userId);
+      propertyFilter.tenantId = new mongoose.Types.ObjectId(userId);
     }
 
     const properties = await Property.find(propertyFilter).select('_id').lean();

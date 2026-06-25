@@ -35,14 +35,12 @@ export const getComplaints = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
-// ─── Get My Complaints (Student) ─────────────────────────────────────────────
+// ─── Get My Complaints (Student/Guest) ──────────────────────────────────────
 export const getMyComplaints = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const complaints = await Complaint.find({ studentId: req.user!._id })
+    const complaints = await Complaint.find({ guestId: req.user!.id })
       .sort({ createdAt: -1 })
       .populate('propertyId', 'name city')
-      .populate('assignedTo', 'name')
-      .populate('timeline.changedBy', 'name role')
       .lean();
 
     res.json({ success: true, data: complaints });
@@ -55,10 +53,7 @@ export const getMyComplaints = async (req: AuthRequest, res: Response): Promise<
 export const getComplaintById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const complaint = await Complaint.findById(req.params.id)
-      .populate('studentId', 'name email phone')
       .populate('propertyId', 'name city address')
-      .populate('assignedTo', 'name role email')
-      .populate('timeline.changedBy', 'name role')
       .lean();
 
     if (!complaint) { res.status(404).json({ success: false, message: 'Complaint not found' }); return; }
@@ -68,41 +63,31 @@ export const getComplaintById = async (req: AuthRequest, res: Response): Promise
   }
 };
 
-// ─── Create Complaint (Student) ───────────────────────────────────────────────
+// ─── Create Complaint (Guest/Student) ────────────────────────────────────────
 export const createComplaint = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { title, description, category } = req.body;
-    if (!title || !description || !category) {
-      res.status(400).json({ success: false, message: 'title, description and category are required' }); return;
-    }
-
-    // Find student's current property
-    const profile = await StudentProfile.findOne({ userId: req.user!._id }).lean();
-    if (!profile?.currentPropertyId) {
-      res.status(400).json({ success: false, message: 'No active stay found. Please check in before raising a complaint.' }); return;
+    const { title, description, category, propertyId } = req.body;
+    if (!title || !description || !category || !propertyId) {
+      res.status(400).json({ success: false, message: 'title, description, category and propertyId are required' }); return;
     }
 
     const complaint = await Complaint.create({
-      studentId: req.user!._id,
-      propertyId: profile.currentPropertyId,
+      tenantId: req.user!.id,
+      guestId: req.user!.id,
+      propertyId,
       title,
       description,
       category,
       status: 'OPEN',
-      timeline: [{
+      statusHistory: [{
         status: 'OPEN',
         note: 'Complaint raised',
-        changedBy: req.user!._id,
+        changedBy: req.user!.id,
         changedAt: new Date(),
       }],
     });
 
-    const populated = await complaint.populate([
-      { path: 'propertyId', select: 'name city' },
-      { path: 'timeline.changedBy', select: 'name role' },
-    ]);
-
-    res.status(201).json({ success: true, data: populated });
+    res.status(201).json({ success: true, data: complaint });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -129,17 +114,17 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response): Pr
     }
 
     complaint.status = status;
-    complaint.timeline.push({
+    complaint.statusHistory.push({
       status,
       note: note || `Status changed to ${status}`,
-      changedBy: new mongoose.Types.ObjectId(String(req.user!._id)),
+      changedBy: req.user!.id,
       changedAt: new Date(),
     });
     await complaint.save();
 
-    // Notify the student
+    // Notify the guest
     await Notification.create({
-      userId: complaint.studentId,
+      userId: complaint.guestId,
       type: 'COMPLAINT',
       title: `Complaint Update: ${status.replace('_', ' ')}`,
       message: note || `Your complaint "${complaint.title}" has been updated to ${status.replace('_', ' ')}.`,
@@ -148,10 +133,7 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response): Pr
     });
 
     const updated = await Complaint.findById(id)
-      .populate('studentId', 'name email')
       .populate('propertyId', 'name city')
-      .populate('assignedTo', 'name role')
-      .populate('timeline.changedBy', 'name role')
       .lean();
 
     res.json({ success: true, data: updated });
@@ -170,20 +152,17 @@ export const assignComplaint = async (req: AuthRequest, res: Response): Promise<
     const existing = await Complaint.findById(id);
     if (!existing) { res.status(404).json({ success: false, message: 'Complaint not found' }); return; }
 
-    existing.assignedTo = assignedTo ? new mongoose.Types.ObjectId(assignedTo) : undefined;
-    existing.timeline.push({
+    existing.assignedToStaffId = assignedTo ? new mongoose.Types.ObjectId(assignedTo) : undefined;
+    existing.statusHistory.push({
       status: existing.status,
-      note: assignedTo ? 'Assigned to manager' : 'Unassigned',
-      changedBy: new mongoose.Types.ObjectId(String(req.user!._id)),
+      note: assignedTo ? 'Assigned to staff' : 'Unassigned',
+      changedBy: req.user!.id,
       changedAt: new Date(),
     });
     await existing.save();
 
     const updated = await Complaint.findById(id)
-      .populate('studentId', 'name email phone')
-      .populate('propertyId', 'name city')
-      .populate('assignedTo', 'name role email')
-      .populate('timeline.changedBy', 'name role');
+      .populate('propertyId', 'name city');
 
     res.json({ success: true, data: updated });
   } catch (err) {

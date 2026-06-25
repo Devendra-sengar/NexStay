@@ -10,10 +10,10 @@ export const getProperties = async (req: AuthRequest, res: Response): Promise<vo
   try {
     const { search, verificationStatus, page = 1, limit = 20 } = req.query;
     const role = req.user!.role;
-    const userId = req.user!._id;
+    const userId = req.user!.id;
 
     const filter: any = {};
-    if (role === 'PG_OWNER') filter.ownerId = new mongoose.Types.ObjectId(userId);
+    if (role === 'PG_OWNER') filter.tenantId = new mongoose.Types.ObjectId(userId);
     if (verificationStatus) filter.verificationStatus = verificationStatus;
     if (search) {
       filter.$or = [
@@ -26,7 +26,7 @@ export const getProperties = async (req: AuthRequest, res: Response): Promise<vo
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
-      .populate('ownerId', 'name email')
+      .populate('tenantId', 'name email')
       .lean();
 
     // Enrich with room/bed stats
@@ -58,7 +58,7 @@ export const getProperties = async (req: AuthRequest, res: Response): Promise<vo
 export const getPropertyById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const property = await Property.findById(id).populate('ownerId', 'name email phone').lean();
+    const property = await Property.findById(id).populate('tenantId', 'name email phone').lean();
     if (!property) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
 
     const rooms = await Room.find({ propertyId: id }).lean();
@@ -96,7 +96,7 @@ export const createProperty = async (req: AuthRequest, res: Response): Promise<v
       description: description || '',
       amenities: amenities || [],
       images: images || [],
-      ownerId: req.user!._id,
+      tenantId: req.user!.id,
       verificationStatus: 'PENDING',
     });
 
@@ -114,7 +114,7 @@ export const updateProperty = async (req: AuthRequest, res: Response): Promise<v
     if (!property) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
 
     const role = req.user!.role;
-    if (role === 'PG_OWNER' && String(property.ownerId) !== req.user!._id) {
+    if (role === 'PG_OWNER' && String(property.tenantId) !== req.user!.id) {
       res.status(403).json({ success: false, message: 'Forbidden' }); return;
     }
 
@@ -139,7 +139,7 @@ export const deleteProperty = async (req: AuthRequest, res: Response): Promise<v
     if (req.user!.role === 'PROPERTY_MANAGER') {
       res.status(403).json({ success: false, message: 'Managers cannot delete properties' }); return;
     }
-    if (req.user!.role === 'PG_OWNER' && String(property.ownerId) !== req.user!._id) {
+    if (req.user!.role === 'PG_OWNER' && String(property.tenantId) !== req.user!.id) {
       res.status(403).json({ success: false, message: 'Forbidden' }); return;
     }
 

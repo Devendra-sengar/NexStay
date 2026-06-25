@@ -16,8 +16,8 @@ export const getBeds = async (req: AuthRequest, res: Response): Promise<void> =>
       beds.map(async (bed) => {
         if (bed.status === 'AVAILABLE') return bed;
         const booking = await Booking.findOne({ bedId: bed._id, status: { $in: ['CONFIRMED', 'CHECKED_IN'] } })
-          .populate('studentId', 'name email phone').lean();
-        return { ...bed, tenant: booking ? booking.studentId : null, bookingId: booking?._id };
+          .populate('guestId', 'name email phone').lean();
+        return { ...bed, tenant: booking ? booking.guestId : null, bookingId: booking?._id };
       })
     );
 

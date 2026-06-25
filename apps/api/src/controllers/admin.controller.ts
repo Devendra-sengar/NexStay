@@ -211,7 +211,7 @@ export const verifyOwner = async (req: AuthRequest, res: Response): Promise<void
 export const getPendingProperties = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const list = await Property.find({ verificationStatus: 'PENDING' })
-      .populate('ownerId', 'name email phone')
+      .populate('tenantId', 'name email phone')
       .sort({ createdAt: -1 })
       .lean();
     res.json({ success: true, data: list });
@@ -239,10 +239,10 @@ export const verifyProperty = async (req: AuthRequest, res: Response): Promise<v
     prop.verificationStatus = status;
     if (status === 'APPROVED') {
       prop.rejectionReason = '';
-      await createNotification(prop.ownerId, 'Property Approved', `Your property "${prop.name}" has been approved and is now live in the marketplace.`);
+      await createNotification(prop.tenantId, 'Property Approved', `Your property "${prop.name}" has been approved and is now live in the marketplace.`);
     } else {
       prop.rejectionReason = reason || '';
-      await createNotification(prop.ownerId, 'Property Verification Rejected', `Your property "${prop.name}" was rejected. Reason: ${reason}`);
+      await createNotification(prop.tenantId, 'Property Verification Rejected', `Your property "${prop.name}" was rejected. Reason: ${reason}`);
     }
 
     await prop.save();

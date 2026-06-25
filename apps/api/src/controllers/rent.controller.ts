@@ -76,7 +76,7 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
     // If searching by student name, resolve studentIds first
     if (search) {
       const users = await User.find({ name: { $regex: search, $options: 'i' }, role: 'STUDENT' }).select('_id');
-      filter.studentId = { $in: users.map(u => u._id) };
+      filter.hostelStudentId = { $in: users.map(u => u._id) };
     }
 
     // If filtering by property, resolve bookingIds
@@ -90,7 +90,7 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
         .sort({ dueDate: -1 })
         .skip((Number(page) - 1) * Number(limit))
         .limit(Number(limit))
-        .populate('studentId', 'name email phone')
+        .populate('hostelStudentId', 'name email phone')
         .populate({
           path: 'bookingId',
           populate: [
@@ -114,7 +114,7 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
 export const getRentRecordById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const record = await RentRecord.findById(req.params.id)
-      .populate('studentId', 'name email phone')
+      .populate('hostelStudentId', 'name email phone')
       .populate({
         path: 'bookingId',
         populate: [
@@ -187,10 +187,10 @@ export const previewRentGeneration = async (req: AuthRequest, res: Response): Pr
         $gte: startOfMonth(dueDateNext),
         $lte: endOfMonth(dueDateNext),
       },
-    }).distinct('studentId');
+    }).distinct('hostelStudentId');
 
     const pendingBookings = activeBookings.filter(
-      b => !existing.some(id => String(id) === String(b.studentId))
+      b => !existing.some(id => String(id) === String(b.guestId))
     );
 
     const estimatedTotal = pendingBookings.length * 7500; // default rent
@@ -220,10 +220,10 @@ export const generateMonthlyRent = async (req: AuthRequest, res: Response): Prom
 
     const existing = await RentRecord.find({
       dueDate: { $gte: startOfMonth(dueDate), $lte: endOfMonth(dueDate) },
-    }).distinct('studentId');
+    }).distinct('hostelStudentId');
 
     const toCreate = activeBookings.filter(
-      b => !existing.some(id => String(id) === String(b.studentId))
+      b => !existing.some(id => String(id) === String(b.guestId))
     );
 
     if (toCreate.length === 0) {
@@ -231,13 +231,19 @@ export const generateMonthlyRent = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    const now2 = new Date();
+    const monthStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`;
     const records = toCreate.map(b => ({
-      studentId: b.studentId,
+      tenantId: b.tenantId,
+      propertyId: b.propertyId,
+      hostelStudentId: b.guestId,
       bookingId: b._id,
+      month: monthStr,
       amount: Number(rentAmount),
       dueDate,
       status: 'UNPAID',
       paidAmount: 0,
+      fine: 0,
     }));
 
     await RentRecord.insertMany(records);
@@ -258,11 +264,11 @@ export const generateMonthlyRent = async (req: AuthRequest, res: Response): Prom
 export const sendReminder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const record = await RentRecord.findById(id).populate('studentId', 'name').lean();
+    const record = await RentRecord.findById(id).populate('hostelStudentId', 'name').lean();
     if (!record) { res.status(404).json({ success: false, message: 'Record not found' }); return; }
 
     await Notification.create({
-      userId: record.studentId,
+      userId: record.hostelStudentId,
       type: 'PAYMENT',
       title: '🔔 Rent Payment Reminder',
       message: `Your rent of ₹${(record.amount - record.paidAmount).toLocaleString('en-IN')} is due. Please pay at the earliest.`,
@@ -270,7 +276,7 @@ export const sendReminder = async (req: AuthRequest, res: Response): Promise<voi
       isRead: false,
     });
 
-    res.json({ success: true, message: `Reminder sent to ${(record.studentId as any)?.name}` });
+    res.json({ success: true, message: `Reminder sent to ${(record.hostelStudentId as any)?.name}` });
   } catch {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }

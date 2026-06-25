@@ -31,7 +31,7 @@ export const getBookingById = async (req: AuthRequest, res: Response): Promise<v
   try {
     const { id } = req.params;
     const booking = await Booking.findById(id)
-      .populate('studentId', 'name email phone')
+      .populate('guestId', 'name email phone')
       .populate('propertyId', 'name city address')
       .populate('roomId', 'roomNumber roomType capacity')
       .populate('bedId', 'bedNumber bedType status')
@@ -39,7 +39,7 @@ export const getBookingById = async (req: AuthRequest, res: Response): Promise<v
 
     if (!booking) { res.status(404).json({ success: false, message: 'Booking not found' }); return; }
 
-    const profile = await StudentProfile.findOne({ userId: booking.studentId }).lean();
+    const profile = await StudentProfile.findOne({ userId: booking.guestId }).lean();
 
     res.json({ success: true, data: { ...booking, profile } });
   } catch {
@@ -112,7 +112,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     // 3. Update StudentProfile
     await StudentProfile.findOneAndUpdate(
-      { userId: booking.studentId },
+      { userId: booking.guestId },
       {
         currentPropertyId: booking.propertyId,
         currentRoomId: booking.roomId,
@@ -129,18 +129,23 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       return d;
     })();
 
+    const monthStr2 = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`;
     await RentRecord.create([{
-      studentId: booking.studentId,
+      tenantId: booking.tenantId,
+      propertyId: booking.propertyId,
+      hostelStudentId: booking.guestId,
       bookingId: booking._id,
+      month: monthStr2,
       amount: rentAmount || 7000,
       dueDate,
       status: 'UNPAID',
       paidAmount: 0,
+      fine: 0,
     }], { session });
 
-    // 5. Stub notification to student
+    // 5. Stub notification to guest
     await Notification.create([{
-      userId: booking.studentId,
+      userId: booking.guestId,
       type: 'BOOKING',
       title: 'Check-In Confirmed ✅',
       message: `Your check-in has been processed. Welcome to your new home!`,
@@ -207,14 +212,14 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
 
     // 3. Clear StudentProfile current stay
     await StudentProfile.findOneAndUpdate(
-      { userId: booking.studentId },
+      { userId: booking.guestId },
       { currentPropertyId: null, currentRoomId: null, currentBedId: null },
       { session }
     );
 
-    // 4. Notification to student
+    // 4. Notification to guest
     await Notification.create([{
-      userId: booking.studentId,
+      userId: booking.guestId,
       type: 'BOOKING',
       title: 'Check-Out Confirmed',
       message: `Your check-out on ${checkoutDate || new Date().toLocaleDateString()} has been recorded. Thank you for staying with us!`,
@@ -268,7 +273,8 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
     await Bed.findByIdAndUpdate(bedId, { status: 'RESERVED' });
 
     const booking = await Booking.create({
-      studentId, propertyId, roomId, bedId, status: 'PENDING', documents: [],
+      guestId: studentId, tenantId: studentId, propertyId, roomId, bedId, status: 'PENDING',
+      monthlyRent: 0,
     });
 
     res.status(201).json({ success: true, data: booking });
@@ -282,7 +288,7 @@ export const createStudentBooking = async (req: AuthRequest, res: Response): Pro
   const session = await startDbSession();
   try {
     const { propertyId, roomId, bedId, guardianName, guardianPhone, documents } = req.body;
-    const studentId = req.user!._id;
+    const guestId = req.user!.id;
 
     if (!propertyId || !roomId || !bedId) {
       if (session) await session.abortTransaction();
@@ -309,7 +315,7 @@ export const createStudentBooking = async (req: AuthRequest, res: Response): Pro
 
     // Upsert student profile with documents and guardian details
     await StudentProfile.findOneAndUpdate(
-      { userId: studentId },
+      { userId: guestId },
       {
         guardianName: guardianName || '',
         guardianPhone: guardianPhone || '',
@@ -322,24 +328,22 @@ export const createStudentBooking = async (req: AuthRequest, res: Response): Pro
       { session, upsert: true }
     );
 
+    const property = await Property.findById(propertyId).session(session);
     // Create booking
     const booking = await Booking.create([{
-      studentId,
+      guestId,
+      tenantId: property?.tenantId || guestId,
       propertyId,
       roomId,
       bedId,
       status: 'PENDING',
-      documents: [
-        documents?.aadhaar || '',
-        documents?.studentId || '',
-        documents?.photo || '',
-      ].filter(Boolean),
+      monthlyRent: 0,
       paymentId: 'MOCK_PAY_' + Math.random().toString(36).substring(2, 9).toUpperCase(),
     }], { session });
 
-    // Notify the student
+    // Notify the guest
     await Notification.create([{
-      userId: studentId,
+      userId: guestId,
       type: 'BOOKING',
       title: 'Booking Placed 📋',
       message: 'Your booking has been placed and is pending approval/check-in.',
@@ -348,15 +352,14 @@ export const createStudentBooking = async (req: AuthRequest, res: Response): Pro
     }], { session });
 
     // Notify the property owner/manager
-    const property = await Property.findById(propertyId).session(session);
     if (property) {
-      const studentUser = await User.findById(studentId).session(session);
-      const studentName = studentUser ? studentUser.name : req.user!.email;
+      const guestUser = await User.findById(guestId).session(session);
+      const guestName = guestUser ? guestUser.name : req.user!.email;
       await Notification.create([{
-        userId: property.ownerId,
+        userId: property.tenantId,
         type: 'BOOKING',
         title: 'New Booking Request 🔔',
-        message: `A new booking request has been placed for ${property.name} by ${studentName}.`,
+        message: `A new booking request has been placed for ${property.name} by ${guestName}.`,
         channel: 'IN_APP',
         isRead: false,
       }], { session });
@@ -376,8 +379,8 @@ export const createStudentBooking = async (req: AuthRequest, res: Response): Pro
 // ─── Get Student Bookings ───────────────────────────────────────────────────
 export const getStudentBookings = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const studentId = req.user!._id;
-    const bookings = await Booking.find({ studentId })
+    const guestId2 = req.user!.id;
+    const bookings = await Booking.find({ guestId: guestId2 })
       .populate('propertyId', 'name city address images')
       .populate('roomId', 'roomNumber roomType rentPerBed')
       .populate('bedId', 'bedNumber bedType')
