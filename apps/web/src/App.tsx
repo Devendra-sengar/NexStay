@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Role } from '@nexstay/shared';
+import { Role } from '@/types/shared';
 import { Toaster } from 'react-hot-toast';
 
 // Shells

@@ -2,7 +2,7 @@ import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { Search, Menu, X, Building2, LogIn, LogOut, LayoutDashboard, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Role } from '@nexstay/shared';
+import { Role } from '@/types/shared';
 
 // Pages
 import HomePage from '@/pages/public/HomePage';

@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Building2, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Role } from '@nexstay/shared';
+import { Role } from '@/types/shared';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 

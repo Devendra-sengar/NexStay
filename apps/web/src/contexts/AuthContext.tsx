@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
-import { AuthUser, Role } from '@nexstay/shared';
+import { AuthUser, Role } from '@/types/shared';
 
 interface AuthContextType {
   user: AuthUser | null;
