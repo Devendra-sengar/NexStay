@@ -341,6 +341,17 @@ export function useCreateFee() {
   });
 }
 
+export function useSecurityDeposits(propertyId?: string) {
+  return useQuery({
+    queryKey: ['security-deposits', propertyId],
+    queryFn: async () => {
+      const { data } = await erp('/rent/security-deposits', { params: propertyId ? { propertyId } : {} });
+      return data as { data: any[]; summary: { totalDeposit: number; totalReturned: number; totalHolding: number; count: number } };
+    },
+    staleTime: 30000,
+  });
+}
+
 export function useExpenses(params?: { propertyId?: string; month?: string; page?: number }) {
   return useQuery({
     queryKey: ['expenses', params],

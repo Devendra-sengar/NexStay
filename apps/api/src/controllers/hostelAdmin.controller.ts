@@ -164,11 +164,20 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
     const enriched = await Promise.all(properties.map(async p => {
       const rooms = await Room.find({ propertyId: p._id }).lean();
       const roomIds = rooms.map(r => r._id);
+      const { start: mStart } = currentMonthRange();
+
       const [totalBeds, occupiedBeds, monthRent] = await Promise.all([
         Bed.countDocuments({ roomId: { $in: roomIds } }),
         Bed.countDocuments({ roomId: { $in: roomIds }, status: { $in: ['OCCUPIED','RESERVED'] } }),
         RentRecord.aggregate([
-          { $match: { tenantId: new mongoose.Types.ObjectId(tenantId), status: { $in: ['PAID','PARTIAL'] }, paidAt: { $gte: currentMonthRange().start } } },
+          {
+            $match: {
+              tenantId: new mongoose.Types.ObjectId(tenantId),
+              propertyId: new mongoose.Types.ObjectId(String(p._id)), // ✅ per-property filter
+              status: { $in: ['PAID', 'PARTIAL'] },
+              paidAt: { $gte: mStart },
+            },
+          },
           { $group: { _id: null, total: { $sum: '$paidAmount' } } },
         ]),
       ]);

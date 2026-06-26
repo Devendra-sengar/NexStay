@@ -14,6 +14,7 @@ import erpRoutes from './routes/erp.routes';
 import reportsRoutes from './routes/reports.routes';
 import superAdminRoutes from './routes/superAdmin.routes';
 import { getDevEmails } from './controllers/notification.controller';
+import uploadRoutes from './routes/upload.routes';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin/reports', reportsRoutes);
 app.use('/api/superadmin', superAdminRoutes);
+app.use('/api/upload', uploadRoutes);
 app.get('/api/dev/emails', getDevEmails);
 
 // ─── Health ──────────────────────────────────────────────────────────────────

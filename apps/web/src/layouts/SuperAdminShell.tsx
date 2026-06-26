@@ -32,9 +32,9 @@ export default function SuperAdminShell() {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
-    <div className="min-h-screen bg-surface flex">
+    <div className="h-screen overflow-hidden bg-surface flex">
       {/* Sidebar */}
-      <aside className="hidden lg:flex flex-col w-[220px] bg-white border-r border-surface-border flex-shrink-0">
+      <aside className="hidden lg:flex flex-col w-[220px] bg-white border-r border-surface-border flex-shrink-0 h-full">
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-surface-border">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center flex-shrink-0">
@@ -47,7 +47,7 @@ export default function SuperAdminShell() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5">
+        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
           {NAV.map(({ label, icon: Icon, path }) => (
             <NavLink key={path} to={path}
               className={({ isActive }) => cn(

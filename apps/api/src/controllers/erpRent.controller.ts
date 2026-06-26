@@ -45,7 +45,60 @@ export const getRentDashboard = async (req: AuthRequest, res: Response): Promise
       trend.push({ month: months[d.getMonth()], due, collected });
     }
 
-    res.json({ success: true, data: { totalDue, totalCollected, partialCount, overdueAmt, trend } });
+    // ── Security Deposit summary ──────────────────────────────────────────────
+    const studFilter: any = { tenantId };
+    if (propertyId) studFilter.propertyId = new mongoose.Types.ObjectId(propertyId);
+
+    const allStudents = await HostelStudent.find(studFilter).lean();
+    const studentsWithDeposit = allStudents.filter(s => (s.securityDeposit ?? 0) > 0);
+    const totalSecurityDeposit = studentsWithDeposit.reduce((s, st) => s + (st.securityDeposit ?? 0), 0);
+    const securityDepositCount = studentsWithDeposit.length;
+
+    res.json({ success: true, data: { totalDue, totalCollected, partialCount, overdueAmt, trend, totalSecurityDeposit, securityDepositCount } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── GET /api/hostel-admin/erp/rent/security-deposits ─────────────────────────
+export const getSecurityDeposits = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.id;
+    const { propertyId } = req.query as Record<string, string>;
+
+    const filter: any = { tenantId, securityDeposit: { $gt: 0 } };
+    if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+
+    const students = await HostelStudent
+      .find(filter)
+      .populate('propertyId', 'name')
+      .populate('bedId', 'bedNumber')
+      .sort({ admissionDate: -1 })
+      .lean();
+
+    const result = students.map(s => ({
+      _id: s._id,
+      name: s.name,
+      phone: s.phone,
+      email: s.email,
+      status: s.status,
+      securityDeposit: s.securityDeposit ?? 0,
+      // For now remaining = full deposit (we don't track partial refunds separately).
+      // When a student checks out you can extend this with a depositReturned field.
+      depositReturned: s.status === 'CHECKED_OUT' ? (s.securityDeposit ?? 0) : 0,
+      remainingDeposit: s.status === 'CHECKED_OUT' ? 0 : (s.securityDeposit ?? 0),
+      propertyId: s.propertyId,
+      bedId: s.bedId,
+      admissionDate: s.admissionDate,
+      exitDate: s.exitDate ?? null,
+      monthlyRent: s.monthlyRent,
+    }));
+
+    const totalDeposit = result.reduce((s, r) => s + r.securityDeposit, 0);
+    const totalReturned = result.reduce((s, r) => s + r.depositReturned, 0);
+    const totalHolding = result.reduce((s, r) => s + r.remainingDeposit, 0);
+
+    res.json({ success: true, data: result, summary: { totalDeposit, totalReturned, totalHolding, count: result.length } });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }

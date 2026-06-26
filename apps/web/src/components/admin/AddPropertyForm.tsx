@@ -2,9 +2,10 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Check, Loader2, MapPin, Plus, Trash2,
-  Wifi, Utensils, Car, Shield, Shirt, Camera, Wind, Flame, X
+  Wifi, Utensils, Car, Shield, Shirt, Camera, Wind, Flame
 } from 'lucide-react';
 import { useCreateProperty } from '@/lib/adminApi';
+import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface RoomSetup { roomType: string; count: number; pricePerBed: number }
@@ -76,24 +77,12 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-// ─── Image URL input row ─────────────────────────────────────────────────────
-function ImageRow({ url, onRemove }: { url: string; onRemove: () => void }) {
-  return (
-    <div className="flex items-center gap-2 bg-surface rounded-lg px-3 py-2 border border-surface-border">
-      <img src={url} alt="" className="w-12 h-10 object-cover rounded" onError={e => { (e.target as any).src = 'https://placehold.co/48x40?text=?'; }} />
-      <span className="flex-1 text-xs text-text-secondary truncate">{url}</span>
-      <button onClick={onRemove} className="text-danger hover:text-red-700 flex-shrink-0"><X className="w-4 h-4" /></button>
-    </div>
-  );
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [imgInput, setImgInput] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const createMutation = useCreateProperty();
 
@@ -109,7 +98,7 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
       if (!form.state.trim()) e.state = 'State is required';
       if (!form.gender) e.gender = 'Gender type is required';
     }
-    if (s === 3 && form.images.length < 1) e.images = 'Add at least 1 image URL';
+    if (s === 3 && form.images.length < 1) e.images = 'Please upload at least 1 image';
     if (s === 4 && form.roomSetups.length === 0) e.roomSetups = 'Add at least 1 room type';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -130,12 +119,6 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
       });
       setSubmitted(true);
     } catch {}
-  };
-
-  const addImage = () => {
-    const url = imgInput.trim();
-    if (url && !form.images.includes(url)) set({ images: [...form.images, url] });
-    setImgInput('');
   };
 
   const addRoomSetup = () => set({ roomSetups: [...form.roomSetups, { roomType:'SINGLE', count:1, pricePerBed:5000 }] });
@@ -290,31 +273,26 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
         </div>
       )}
 
-      {/* ── Step 3: Images ─────────────────────────────────────────────────── */}
+      {/* ── Step 3: Images — Cloudinary Drag & Drop ────────────────────────── */}
       {step === 3 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-text-primary mb-1">Images & Media</h2>
-          <p className="text-text-muted text-sm">Add image URLs for your property. Minimum 3 images recommended. The first image will be the cover.</p>
-          <div className="flex gap-2">
-            <input className="input-field flex-1" value={imgInput} onChange={e => setImgInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addImage()}
-              placeholder="https://images.example.com/pg-photo.jpg" />
-            <button type="button" onClick={addImage} className="btn-primary px-4 flex items-center gap-1 flex-shrink-0">
-              <Plus className="w-4 h-4" /> Add
-            </button>
+          <div>
+            <h2 className="text-lg font-bold text-text-primary mb-1">Images & Media</h2>
+            <p className="text-text-muted text-sm">Upload property photos. Minimum 3 images recommended. The first image will be the cover.</p>
           </div>
-          {errors.images && <p className="text-red-500 text-xs">{errors.images}</p>}
-          <div className="space-y-2">
-            {form.images.map((url, i) => (
-              <ImageRow key={i} url={url} onRemove={() => set({ images: form.images.filter((_, j) => j !== i) })} />
-            ))}
-          </div>
-          {form.images.length === 0 && (
-            <div className="border-2 border-dashed border-surface-border rounded-2xl p-8 text-center text-text-muted">
-              <Camera className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No images added yet</p>
-            </div>
+
+          <CloudinaryUpload
+            value={form.images}
+            onChange={(urls) => set({ images: urls })}
+            maxImages={10}
+          />
+
+          {errors.images && (
+            <p className="text-red-500 text-xs flex items-center gap-1">
+              ⚠ {errors.images}
+            </p>
           )}
+
           <div>
             <label className="form-label">Video URL (optional)</label>
             <input className="input-field" value={form.videoUrl} onChange={e => set({ videoUrl: e.target.value })}
@@ -405,7 +383,7 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
               ['Longitude', form.longitude !== '' ? String(form.longitude) : 'Not set'],
             ], step: 1 },
             { label: 'Amenities', items: [['Selected', form.amenities.join(', ') || 'None']], step: 2 },
-            { label: 'Images', items: [['Count', String(form.images.length)]], step: 3 },
+            { label: 'Images', items: [['Uploaded', `${form.images.length} photo${form.images.length !== 1 ? 's' : ''}`]], step: 3 },
             { label: 'Rooms', items: [
               ['Configuration', form.roomSetups.map(r => `${r.count}× ${ROOM_LABELS[r.roomType]} @₹${r.pricePerBed}`).join(', ')],
               ['Total Beds', String(totalBeds)],
@@ -426,6 +404,27 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
               </div>
             </div>
           ))}
+
+          {/* Image preview on review */}
+          {form.images.length > 0 && (
+            <div className="card p-4">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Image Preview</h3>
+              <div className="grid grid-cols-4 gap-2">
+                {form.images.slice(0, 4).map((url, i) => (
+                  <div key={i} className="relative aspect-video rounded-lg overflow-hidden bg-surface-border">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 text-[10px] bg-primary text-white px-1.5 py-0.5 rounded">Cover</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {form.images.length > 4 && (
+                <p className="text-xs text-text-muted mt-2">+{form.images.length - 4} more images</p>
+              )}
+            </div>
+          )}
+
           {createMutation.error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">
               {(createMutation.error as any)?.response?.data?.message ?? 'Submission failed. Please try again.'}

@@ -13,7 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 
 // ─── BedGrid ─────────────────────────────────────────────────────────────────
-function BedTile({ bed, onClick }: { bed: any; onClick: () => void }) {
+function BedTile({ bed, onClick }: { bed: any; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void }) {
   const color =
     bed.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100' :
     bed.status === 'OCCUPIED'  ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100' :
@@ -30,7 +30,7 @@ function BedTile({ bed, onClick }: { bed: any; onClick: () => void }) {
   );
 }
 
-function BedPopover({ bed, onClose }: { bed: any; onClose: () => void }) {
+function BedPopover({ bed, onClose, anchorRect }: { bed: any; onClose: () => void; anchorRect: DOMRect }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
@@ -38,8 +38,26 @@ function BedPopover({ bed, onClose }: { bed: any; onClose: () => void }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
+  // Smart positioning: prefer below, but flip above if not enough space
+  const POPOVER_W = 256; // w-64
+  const POPOVER_H = 160;
+  const GAP = 8;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let top = anchorRect.bottom + GAP;
+  if (top + POPOVER_H > vh - 8) top = anchorRect.top - POPOVER_H - GAP;
+
+  let left = anchorRect.left + anchorRect.width / 2 - POPOVER_W / 2;
+  if (left < 8) left = 8;
+  if (left + POPOVER_W > vw - 8) left = vw - POPOVER_W - 8;
+
   return (
-    <div ref={ref} className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 w-64 bg-white rounded-xl shadow-xl border border-surface-border p-4 text-left">
+    <div
+      ref={ref}
+      style={{ position: 'fixed', top, left, width: POPOVER_W, zIndex: 9999 }}
+      className="bg-white rounded-xl shadow-xl border border-surface-border p-4 text-left"
+    >
       <div className="flex items-center justify-between mb-2">
         <span className={cn('badge text-xs', bed.status === 'OCCUPIED' ? 'badge-danger' : 'badge-warning')}>
           {bed.status}
@@ -80,8 +98,9 @@ function BedPopover({ bed, onClose }: { bed: any; onClose: () => void }) {
 }
 
 function BedGrid({ roomId }: { roomId: string }) {
-  const { data: beds, isLoading, refetch } = useRoomBeds(roomId);
+  const { data: beds, isLoading } = useRoomBeds(roomId);
   const [activeBed, setActiveBed] = useState<any>(null);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
   if (isLoading) return <div className="flex gap-2 flex-wrap py-4"><div className="skeleton w-20 h-20 rounded-xl" /><div className="skeleton w-20 h-20 rounded-xl" /></div>;
   if (!beds?.length) return <p className="text-sm text-text-muted py-3">No beds found.</p>;
@@ -91,16 +110,32 @@ function BedGrid({ roomId }: { roomId: string }) {
       <div className="flex flex-wrap gap-3 py-3">
         {beds.map((bed: any) => (
           <div key={bed._id} className="relative">
-            <BedTile bed={bed} onClick={() => setActiveBed(activeBed?._id === bed._id ? null : bed)} />
-            {activeBed?._id === bed._id && (
-              <BedPopover bed={bed} onClose={() => setActiveBed(null)} />
-            )}
+            <BedTile
+              bed={bed}
+              onClick={(e) => {
+                if (activeBed?._id === bed._id) {
+                  setActiveBed(null);
+                  setAnchorRect(null);
+                } else {
+                  setActiveBed(bed);
+                  setAnchorRect((e.currentTarget as HTMLButtonElement).getBoundingClientRect());
+                }
+              }}
+            />
           </div>
         ))}
       </div>
+      {activeBed && anchorRect && (
+        <BedPopover
+          bed={activeBed}
+          anchorRect={anchorRect}
+          onClose={() => { setActiveBed(null); setAnchorRect(null); }}
+        />
+      )}
     </div>
   );
 }
+
 
 // ─── Modals ──────────────────────────────────────────────────────────────────
 function FloorModal({ propertyId, floor, onClose }: { propertyId: string; floor?: any; onClose: () => void }) {

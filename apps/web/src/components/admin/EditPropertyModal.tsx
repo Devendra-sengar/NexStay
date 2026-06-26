@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Check, AlertCircle, Plus, Trash2, Camera, Wifi, Utensils, Car, Shield, Shirt, Wind, Flame } from 'lucide-react';
+import { X, Loader2, Check, AlertCircle, Wifi, Utensils, Car, Shield, Shirt, Camera, Wind, Flame } from 'lucide-react';
 import { useAdminPropertyById, useUpdateProperty } from '@/lib/adminApi';
+import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
 
 // ─── Reuse same amenity config ─────────────────────────────────────────────
 const AMENITY_OPTIONS = [
@@ -30,7 +31,6 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
   const updateMutation = useUpdateProperty(propertyId);
 
   const [form, setForm] = useState<any>(null);
-  const [imgInput, setImgInput] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
 
@@ -68,7 +68,6 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
       const result = await updateMutation.mutateAsync(form);
       setSaveSuccess(true);
       if (result.pendingReview) {
-        // Minor delay to show success then notify about re-review
         setTimeout(() => setSaveSuccess(false), 2000);
       }
     } catch (err: any) {
@@ -76,13 +75,6 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
     }
   };
 
-  const addImage = () => {
-    const url = imgInput.trim();
-    if (url && !form.images.includes(url)) set({ images: [...form.images, url] });
-    setImgInput('');
-  };
-
-  // ── Loading ──────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -199,35 +191,15 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
                   placeholder="Enter house rules, one per line..." />
               </section>
 
-              {/* Images */}
+              {/* Images — Cloudinary Drag & Drop */}
               <section>
                 <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-3">Images</h3>
-                <div className="flex gap-2 mb-3">
-                  <input className="input-field flex-1 text-sm" value={imgInput} onChange={e => setImgInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && addImage()}
-                    placeholder="https://image-url.com/photo.jpg" />
-                  <button type="button" onClick={addImage} className="btn-secondary flex items-center gap-1 flex-shrink-0 text-sm py-2 px-3">
-                    <Plus className="w-4 h-4" /> Add
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {form.images.map((url: string, i: number) => (
-                    <div key={i} className="relative group">
-                      <img src={url} alt="" className="w-full h-20 object-cover rounded-xl"
-                        onError={e => { (e.target as any).style.display = 'none'; }} />
-                      <button onClick={() => set({ images: form.images.filter((_: any, j: number) => j !== i) })}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                  {form.images.length === 0 && (
-                    <div className="col-span-3 h-20 bg-surface border border-dashed border-surface-border rounded-xl flex items-center justify-center text-text-muted text-sm">
-                      No images added
-                    </div>
-                  )}
-                </div>
-                <div className="mt-3">
+                <CloudinaryUpload
+                  value={form.images}
+                  onChange={(urls) => set({ images: urls })}
+                  maxImages={10}
+                />
+                <div className="mt-4">
                   <label className="form-label">Video URL (optional)</label>
                   <input className="input-field" value={form.videoUrl} onChange={e => set({ videoUrl: e.target.value })}
                     placeholder="https://youtube.com/watch?v=..." />

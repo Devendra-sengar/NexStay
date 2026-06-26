@@ -307,14 +307,44 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
         res.status(400).json({ success: false, message: 'name, phone, email, propertyId, bedId required for walk-in' });
         return;
       }
-      guestUser = await User.findOne({ $or: [{ email: email.toLowerCase() }, { phone }] }).lean();
-      if (!guestUser) {
-        guestUser = await User.create([{
-          name, phone, email: email.toLowerCase(),
-          passwordHash: Math.random().toString(36),
-          role: 'GUEST', status: 'ACTIVE', isVerified: false,
-        }], { session });
-        guestUser = guestUser[0];
+
+      // ── Duplicate check: one phone → one active student per property (this hostel owner) ──
+      const existingStudent = await HostelStudent.findOne({
+        tenantId,
+        phone,
+        propertyId: new mongoose.Types.ObjectId(finalPropertyId),
+        status: 'ACTIVE',
+      }).lean();
+      if (existingStudent) {
+        await session.abortTransaction();
+        res.status(409).json({
+          success: false,
+          message: `Phone number ${phone} is already registered as an active student in this property. Each phone number can only be registered once per property.`,
+        });
+        return;
+      }
+
+      // ── Lookup or create a User account for the walk-in student ──
+      // IMPORTANT: We always trust the FORM-SUBMITTED name/phone/email for HostelStudent.
+      // The User record is only used for authentication linkage (guestId).
+      const existingUser = await User.findOne({ phone }).lean();
+      if (!existingUser) {
+        // Also check by email to avoid duplicate email accounts
+        const existingByEmail = await User.findOne({ email: email.toLowerCase() }).lean();
+        if (existingByEmail) {
+          // Email already taken by a different phone — use that user account
+          guestUser = existingByEmail;
+        } else {
+          // Brand new user — create fresh account
+          const created = await User.create([{
+            name, phone, email: email.toLowerCase(),
+            passwordHash: Math.random().toString(36),
+            role: 'GUEST', status: 'ACTIVE', isVerified: false,
+          }], { session });
+          guestUser = created[0];
+        }
+      } else {
+        guestUser = existingUser;
       }
     }
 
@@ -350,11 +380,18 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     }
 
     // Create HostelStudent
+    // CRITICAL: For walk-in, always use form-submitted name/phone/email — never the stored guestUser values.
+    // guestUser is only used for the guestId (auth linkage). The student record must reflect what was entered.
+    const studentName  = bookingId ? (guestUser.name  ?? name)  : name;
+    const studentPhone = bookingId ? (guestUser.phone ?? phone) : phone;
+    const studentEmail = bookingId ? (guestUser.email ?? email) : email;
+
     const student = await HostelStudent.create([{
       tenantId, propertyId: finalPropertyId,
       bookingId: booking._id, guestId: guestUser._id, bedId: finalBedId,
-      name: guestUser.name ?? name, phone: guestUser.phone ?? phone,
-      email: guestUser.email ?? email,
+      name: studentName,
+      phone: studentPhone,
+      email: studentEmail,
       college: college ?? booking?.college ?? '',
       guardianName: guardianName ?? '', guardianPhone: guardianPhone ?? '',
       aadhaarUrl: aadhaarUrl ?? booking?.aadhaarUrl ?? '',

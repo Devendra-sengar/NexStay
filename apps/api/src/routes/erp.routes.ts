@@ -9,7 +9,7 @@ import {
 } from '../controllers/erpAdmin.controller';
 import {
   getRentDashboard, getRentRecords, generateMonthlyRent, previewGenerateRent,
-  addFine, sendReminders, createFee,
+  addFine, sendReminders, createFee, getSecurityDeposits,
   getExpenses, createExpense, updateExpense, deleteExpense,
 } from '../controllers/erpRent.controller';
 import {
@@ -50,6 +50,7 @@ router.post('/rent/:id/pay', recordRentPayment);
 router.get('/rent/dashboard', getRentDashboard);
 router.get('/rent/records', getRentRecords);
 router.get('/rent/preview-generate', previewGenerateRent);
+router.get('/rent/security-deposits', getSecurityDeposits);
 router.post('/rent/generate', generateMonthlyRent);
 router.patch('/rent/:id/fine', addFine);
 router.post('/rent/send-reminders', sendReminders);

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { CreditCard, Plus, Bell, RefreshCw, X, Check, Printer } from 'lucide-react';
+import { CreditCard, Plus, Bell, RefreshCw, X, Check, Printer, ShieldCheck, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   useRentDashboard, useRentRecords, usePreviewGenerateRent, useGenerateRent,
   useAddFine, useSendReminders, useRecordRentPayment, useAdminProperties, useErpStudents,
-  useCreateFee,
+  useCreateFee, useSecurityDeposits,
 } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
@@ -37,11 +37,115 @@ function printReceipt(r: any) {
 }
 
 // ── StatCard ───────────────────────────────────────────────────────────────────
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+function StatCard({ label, value, color, onClick }: { label: string; value: string; color: string; onClick?: () => void }) {
   return (
-    <div className="card p-4">
-      <p className="text-xs text-text-muted font-medium mb-1">{label}</p>
+    <div className={cn('card p-4', onClick && 'cursor-pointer hover:shadow-md hover:border-primary/30 transition-all group')} onClick={onClick}>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs text-text-muted font-medium">{label}</p>
+        {onClick && <ChevronRight className="w-3.5 h-3.5 text-text-muted group-hover:text-primary transition-colors" />}
+      </div>
       <p className={cn('text-2xl font-bold', color)}>{value}</p>
+      {onClick && <p className="text-[10px] text-text-muted mt-1">Click to view details</p>}
+    </div>
+  );
+}
+
+// ── Security Deposit Modal ─────────────────────────────────────────────────────
+function SecurityDepositModal({ propertyId, onClose }: { propertyId?: string; onClose: () => void }) {
+  const { data, isLoading } = useSecurityDeposits(propertyId || undefined);
+  const rows = data?.data ?? [];
+  const summary = data?.summary;
+  const [filter, setFilter] = useState<'ALL'|'ACTIVE'|'CHECKED_OUT'>('ALL');
+  const filtered = filter === 'ALL' ? rows : rows.filter((r: any) => r.status === filter);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-surface-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-violet-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-text-primary">Security Deposits</h3>
+              <p className="text-xs text-text-muted">Advance / Security collected from students</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-surface-input flex items-center justify-center"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Summary Row */}
+        {summary && (
+          <div className="grid grid-cols-3 gap-3 p-4 border-b border-surface-border bg-surface-input/40">
+            <div className="text-center">
+              <p className="text-xs text-text-muted mb-0.5">Total Collected</p>
+              <p className="text-lg font-bold text-violet-700">{FMT(summary.totalDeposit)}</p>
+            </div>
+            <div className="text-center border-x border-surface-border">
+              <p className="text-xs text-text-muted mb-0.5">Currently Holding</p>
+              <p className="text-lg font-bold text-emerald-600">{FMT(summary.totalHolding)}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-text-muted mb-0.5">Returned</p>
+              <p className="text-lg font-bold text-text-secondary">{FMT(summary.totalReturned)}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Filter tabs */}
+        <div className="flex gap-1 p-3 border-b border-surface-border">
+          {(['ALL','ACTIVE','CHECKED_OUT'] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                filter === f ? 'bg-primary text-white' : 'bg-surface-input text-text-secondary hover:bg-surface-border')}>
+              {f === 'CHECKED_OUT' ? 'Checked Out' : f === 'ACTIVE' ? 'Active' : 'All'}
+            </button>
+          ))}
+          <span className="ml-auto text-xs text-text-muted self-center">{filtered.length} student{filtered.length !== 1 ? 's' : ''}</span>
+        </div>
+
+        {/* List */}
+        <div className="overflow-y-auto flex-1">
+          {isLoading ? (
+            <div className="p-6 space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-14 rounded-xl" />)}</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-10 text-center">
+              <ShieldCheck className="w-10 h-10 text-text-muted mx-auto mb-3" />
+              <p className="text-text-muted text-sm">No security deposits found.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-surface-border">
+              {filtered.map((s: any) => {
+                const prop = s.propertyId as any;
+                const bed  = s.bedId as any;
+                const isOut = s.status === 'CHECKED_OUT';
+                return (
+                  <div key={String(s._id)} className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-input/40 transition-colors">
+                    <div className={cn('w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0',
+                      isOut ? 'bg-slate-100 text-slate-500' : 'bg-violet-100 text-violet-700')}>
+                      {s.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-text-primary truncate">{s.name}</p>
+                      <p className="text-xs text-text-muted">{s.phone} • {prop?.name || '—'}{bed?.bedNumber ? ` • Bed ${bed.bedNumber}` : ''}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-violet-700">{FMT(s.securityDeposit)}</p>
+                      <p className={cn('text-xs font-medium', isOut ? 'text-slate-400' : 'text-emerald-600')}>
+                        {isOut ? 'Returned' : 'Holding'}
+                      </p>
+                    </div>
+                    <span className={cn('badge text-[10px] flex-shrink-0', isOut ? 'badge-secondary' : 'badge-success')}>
+                      {isOut ? 'Out' : 'Active'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -234,6 +338,7 @@ export default function RentFeesPage() {
   const [tab, setTab] = useState<'RENT'|'FEE'>('RENT');
   const [selected, setSelected] = useState<string[]>([]);
   const [modal, setModal] = useState<{type:string;record?:any}|null>(null);
+  const [showDepositModal, setShowDepositModal] = useState(false);
   const sendReminders = useSendReminders();
 
   const { data: dash } = useRentDashboard(propId||undefined);
@@ -264,11 +369,17 @@ export default function RentFeesPage() {
 
       {/* Stats */}
       {dash && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
           <StatCard label="Total Due This Month" value={FMT(dash.totalDue)} color="text-danger" />
           <StatCard label="Collected This Month" value={FMT(dash.totalCollected)} color="text-emerald-600" />
           <StatCard label="Partially Paid" value={String(dash.partialCount)} color="text-amber-600" />
           <StatCard label="Overdue Amount" value={FMT(dash.overdueAmt)} color="text-red-700" />
+          <StatCard
+            label={`Security Deposit (${dash.securityDepositCount ?? 0} students)`}
+            value={FMT(dash.totalSecurityDeposit ?? 0)}
+            color="text-violet-700"
+            onClick={() => setShowDepositModal(true)}
+          />
           {dash.trend?.length > 0 && <TrendChart trend={dash.trend} />}
         </div>
       )}
@@ -362,6 +473,7 @@ export default function RentFeesPage() {
       {modal?.type==='fine'   && <FineModal     record={modal.record} onClose={()=>setModal(null)} />}
       {modal?.type==='generate' && <GenerateModal onClose={()=>setModal(null)} />}
       {modal?.type==='fee'    && <AddFeeModal   onClose={()=>setModal(null)} />}
+      {showDepositModal && <SecurityDepositModal propertyId={propId||undefined} onClose={()=>setShowDepositModal(false)} />}
     </div>
   );
 }

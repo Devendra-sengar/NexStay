@@ -1,14 +1,107 @@
-import { useState } from 'react';
+import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronRight, BedDouble, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, BedDouble, Upload, Loader2, CheckCircle2, AlertCircle, X, FileImage } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import api from '@/lib/api';
 import { useProcessCheckIn, useAdminProperties, useErpRooms, useRoomBeds } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
 const getToken = () => localStorage.getItem('accessToken');
 const authH = () => ({ Authorization: `Bearer ${getToken()}` });
+
+// ─── Single Document Upload Component ────────────────────────────────────────
+function DocUpload({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      setError('Only images and PDF accepted'); return;
+    }
+    if (file.size > 5 * 1024 * 1024) { setError('Max file size is 5MB'); return; }
+    setError(''); setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await api.post('/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onChange(res.data.url);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault(); setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="form-label">{label}</label>
+      {value ? (
+        /* ── Uploaded Preview ── */
+        <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+          <img src={value} alt={label} className="w-14 h-10 object-cover rounded-lg border border-emerald-200 flex-shrink-0"
+            onError={e => { (e.target as any).style.display = 'none'; }} />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Uploaded
+            </p>
+            <a href={value} target="_blank" rel="noopener noreferrer"
+              className="text-xs text-emerald-600 hover:underline truncate block">View document ↗</a>
+          </div>
+          <button type="button" onClick={() => onChange('')}
+            className="w-6 h-6 rounded-full bg-red-100 text-red-500 hover:bg-red-200 flex items-center justify-center flex-shrink-0 transition-colors">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        /* ── Upload Zone ── */
+        <div
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={onDrop}
+          className={cn(
+            'flex items-center gap-3 p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200',
+            isDragging ? 'border-primary bg-primary/5' : 'border-surface-border hover:border-primary/50 hover:bg-surface-input',
+            uploading && 'pointer-events-none opacity-70'
+          )}
+        >
+          <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={onFileChange} />
+          <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', isDragging ? 'bg-primary text-white' : 'bg-surface-border text-text-muted')}>
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-text-primary">
+              {uploading ? 'Uploading…' : isDragging ? 'Drop here!' : 'Drag & drop or click to upload'}
+            </p>
+            <p className="text-xs text-text-muted">Image or PDF · Max 5MB</p>
+          </div>
+          {!uploading && <FileImage className="w-4 h-4 text-text-muted ml-auto" />}
+        </div>
+      )}
+      {error && (
+        <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>
+      )}
+    </div>
+  );
+}
 
 function useSingleBooking(id?: string) {
   return useQuery({
@@ -121,6 +214,7 @@ export default function CheckInPage() {
   const [walkinDocs, setWalkinDocs] = useState({ aadhaarUrl: '', studentIdUrl: '', photoUrl: '' });
   const [selectedBedId, setSelectedBedId] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   // Common stay fields
   const [stayDetails, setStayDetails] = useState({ moveInDate: new Date().toISOString().split('T')[0], monthlyRent: booking?.monthlyRent ?? 6000, securityDeposit: 0, noticePeriodDays: 30 });
@@ -129,13 +223,15 @@ export default function CheckInPage() {
   const totalSteps = isBookingFlow ? 4 : 5;
   const guest = booking?.guestId as any;
 
+  const isPhoneValid = walkin.phone.replace(/\D/g, '').length === 10;
+
   const canProceed = () => {
     if (isBookingFlow) {
       if (step === 0) return docVerified.aadhaar && docVerified.studentId && docVerified.photo;
       if (step === 1) return true;
       return true;
     } else {
-      if (step === 0) return walkin.name && walkin.phone && walkin.email;
+      if (step === 0) return walkin.name.trim() && isPhoneValid && walkin.email.trim();
       if (step === 2) return !!selectedBedId;
       return true;
     }
@@ -253,24 +349,78 @@ export default function CheckInPage() {
         {!isBookingFlow && step === 0 && (
           <div className="space-y-3">
             <h2 className="font-semibold text-text-primary mb-3">Student Information</h2>
-            {[['name','Name *'],['phone','Phone *'],['email','Email *'],['college','College'],['guardianName','Guardian Name'],['guardianPhone','Guardian Phone']].map(([field, lbl]) => (
+            {([
+              ['name', 'Name *', 'text'],
+              ['email', 'Email *', 'email'],
+              ['college', 'College', 'text'],
+              ['guardianName', 'Guardian Name', 'text'],
+              ['guardianPhone', 'Guardian Phone', 'tel'],
+            ] as [string, string, string][]).map(([field, lbl, type]) => (
               <div key={field}>
                 <label className="form-label">{lbl}</label>
-                <input className="input-field" value={(walkin as any)[field]} onChange={e => setWalkin(w => ({ ...w, [field]: e.target.value }))} />
+                <input
+                  type={type}
+                  className="input-field"
+                  value={(walkin as any)[field]}
+                  onChange={e => setWalkin(w => ({ ...w, [field]: e.target.value }))}
+                />
               </div>
             ))}
+            {/* Phone — special field with validation */}
+            <div>
+              <label className="form-label">Phone * <span className="text-text-muted font-normal">(10 digits)</span></label>
+              <input
+                type="tel"
+                className={cn('input-field', phoneError && 'border-red-400 focus:border-red-500')}
+                value={walkin.phone}
+                maxLength={10}
+                inputMode="numeric"
+                placeholder="e.g. 9876543210"
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setWalkin(w => ({ ...w, phone: val }));
+                  if (val.length > 0 && val.length !== 10) {
+                    setPhoneError('Phone number must be exactly 10 digits');
+                  } else {
+                    setPhoneError('');
+                  }
+                }}
+              />
+              {phoneError && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {phoneError}
+                </p>
+              )}
+              {walkin.phone.length === 10 && !phoneError && (
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Valid phone number
+                </p>
+              )}
+            </div>
           </div>
         )}
 
         {!isBookingFlow && step === 1 && (
-          <div className="space-y-3">
-            <h2 className="font-semibold text-text-primary mb-3">Upload Documents (URLs)</h2>
-            {[['aadhaarUrl','Aadhaar Card URL'],['studentIdUrl','Student ID URL'],['photoUrl','Photo URL']].map(([field, lbl]) => (
-              <div key={field}>
-                <label className="form-label">{lbl}</label>
-                <input className="input-field" placeholder="https://…" value={(walkinDocs as any)[field]} onChange={e => setWalkinDocs(d => ({ ...d, [field]: e.target.value }))} />
-              </div>
-            ))}
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-semibold text-text-primary mb-1">Upload Documents</h2>
+              <p className="text-xs text-text-muted mb-4">Drag & drop or click each box to upload. Image or PDF · Max 5MB each.</p>
+            </div>
+            <DocUpload
+              label="Aadhaar Card"
+              value={walkinDocs.aadhaarUrl}
+              onChange={url => setWalkinDocs(d => ({ ...d, aadhaarUrl: url }))}
+            />
+            <DocUpload
+              label="Student ID"
+              value={walkinDocs.studentIdUrl}
+              onChange={url => setWalkinDocs(d => ({ ...d, studentIdUrl: url }))}
+            />
+            <DocUpload
+              label="Photo"
+              value={walkinDocs.photoUrl}
+              onChange={url => setWalkinDocs(d => ({ ...d, photoUrl: url }))}
+            />
           </div>
         )}
 

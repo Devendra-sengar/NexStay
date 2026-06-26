@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, BedDouble, Users, BookOpen,
   CreditCard, Receipt, MessageSquare, BarChart3, Settings,
-  ChevronLeft, ChevronRight, Bell, LogOut, Menu, X,
+  Bell, LogOut, Menu, X,
   Package, UserCheck, Database
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -140,7 +140,7 @@ export default function HostelAdminShell() {
   );
 
   return (
-    <div className="min-h-screen bg-surface flex">
+    <div className="h-screen overflow-hidden bg-surface flex">
       {/* Mobile overlay (only below md=768px) */}
       {mobileOpen && <div className="md:hidden fixed inset-0 bg-black/40 z-40" onClick={() => setMobileOpen(false)} />}
       <div className={cn('md:hidden fixed left-0 top-0 h-full z-50 transition-transform duration-300', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>
@@ -148,21 +148,20 @@ export default function HostelAdminShell() {
       </div>
 
       {/* Desktop sidebar (visible from md=768px) */}
-      <div className="hidden md:flex flex-col flex-shrink-0 relative">
+      <div className="hidden md:flex flex-col flex-shrink-0">
         <Sidebar />
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-11 w-6 h-6 rounded-full bg-white border border-surface-border hover:border-primary hover:text-primary shadow-card flex items-center justify-center transition-all z-10"
-        >
-          {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-        </button>
       </div>
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header className="h-14 bg-white border-b border-surface-border flex items-center gap-3 px-4 flex-shrink-0 sticky top-0 z-30">
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden text-text-muted hover:text-text-primary">
+          {/* Hamburger — mobile opens drawer, desktop toggles collapse */}
+          <button
+            onClick={() => window.innerWidth < 768 ? setMobileOpen(!mobileOpen) : setCollapsed(!collapsed)}
+            className="flex items-center justify-center w-9 h-9 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-all"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex-1" />

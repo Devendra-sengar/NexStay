@@ -58,5 +58,8 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
 HostelStudentSchema.index({ tenantId: 1, status: 1 });
 HostelStudentSchema.index({ propertyId: 1, status: 1 });
 HostelStudentSchema.index({ guestId: 1 });
+HostelStudentSchema.index({ phone: 1 });
+// Enforce: same phone cannot be ACTIVE twice in the same property under same hostel owner
+HostelStudentSchema.index({ tenantId: 1, propertyId: 1, phone: 1, status: 1 });
 
 export const HostelStudent = mongoose.model<IHostelStudentDoc>('HostelStudent', HostelStudentSchema);
