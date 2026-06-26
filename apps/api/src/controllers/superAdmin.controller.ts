@@ -9,7 +9,7 @@ import { notify } from '../services/notification.service';
 
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 function lastNMonths(n: number) {
-  const list = [];
+  const list: string[] = [];
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
     list.push(ym(d));

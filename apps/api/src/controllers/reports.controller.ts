@@ -22,7 +22,7 @@ function sendCsv(res: Response, filename: string, rows: string[]): void {
 
 // ── Helper: build month list ──────────────────────────────────────────────────
 function lastNMonths(n: number): string[] {
-  const list = [];
+  const list: string[] = [];
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
     list.push(ym(d));
@@ -41,13 +41,13 @@ export const getOccupancyReport = async (req: AuthRequest, res: Response): Promi
     if (propertyId) filter._id = new mongoose.Types.ObjectId(propertyId);
 
     const properties = await Property.find(filter).lean();
-    const result = [];
+    const result: any[] = [];
     let totalBeds = 0, occupiedTotal = 0;
 
     for (const prop of properties) {
       const rooms = await Room.find({ propertyId: prop._id }).lean();
       let propBeds = 0, propOccupied = 0;
-      const roomRows = [];
+      const roomRows: any[] = [];
       for (const room of rooms) {
         const beds = await Bed.find({ roomId: room._id }).lean();
         const occ = beds.filter((b: any) => b.status === 'OCCUPIED').length;
@@ -96,7 +96,7 @@ export const getRevenueReport = async (req: AuthRequest, res: Response): Promise
     if (propertyId) propFilter.propertyId = new mongoose.Types.ObjectId(propertyId);
 
     const monthList = lastNMonths(12);
-    const table = [];
+    const table: any[] = [];
     for (const m of monthList) {
       const recs = await RentRecord.find({ tenantId, ...(propertyId && { propertyId: new mongoose.Types.ObjectId(propertyId) }), month: m, isFee: { $ne: true } }).lean();
       const due = recs.reduce((s, r) => s + r.amount + (r.fine || 0), 0);
@@ -239,7 +239,7 @@ export const getProfitReport = async (req: AuthRequest, res: Response): Promise<
     const tenantId = req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const monthList = lastNMonths(12);
-    const table = [];
+    const table: any[] = [];
 
     for (const m of monthList) {
       const recs = await RentRecord.find({ tenantId, ...(propertyId && { propertyId: new mongoose.Types.ObjectId(propertyId) }), month: m }).lean();

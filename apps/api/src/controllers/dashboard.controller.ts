@@ -98,7 +98,7 @@ export const getRevenueChart = async (req: AuthRequest, res: Response): Promise<
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const now = new Date();
-    const chart = [];
+    const chart: { month: string; revenue: number }[] = [];
 
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);

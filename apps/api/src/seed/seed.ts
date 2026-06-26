@@ -300,7 +300,7 @@ async function seed() {
     { guestIdx: 0, bedIdx: 0 },
     { guestIdx: 1, bedIdx: 1 },
   ];
-  const confirmedBookings = [];
+  const confirmedBookings: any[] = [];
   for (const { guestIdx, bedIdx } of confirmedBookingData) {
     if (!p4AvailBeds[bedIdx]) continue;
     const bed = p4AvailBeds[bedIdx] as any;

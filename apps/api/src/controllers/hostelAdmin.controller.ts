@@ -84,7 +84,7 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
 
     // Occupancy trend: last 6 months (approximate — count OCCUPIED beds via bookings)
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const occupancyTrend = [];
+    const occupancyTrend: { month: string; occupancy: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
@@ -102,7 +102,7 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
     }
 
     // Revenue trend: last 6 months
-    const revenueTrend = [];
+    const revenueTrend: { month: string; revenue: number; expenses: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);

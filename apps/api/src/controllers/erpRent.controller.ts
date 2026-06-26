@@ -35,7 +35,7 @@ export const getRentDashboard = async (req: AuthRequest, res: Response): Promise
 
     // 6-month trend
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const trend = [];
+    const trend: { month: string; due: number; collected: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(); d.setMonth(d.getMonth() - i);
       const mStr = ym(d);
@@ -109,7 +109,7 @@ export const generateMonthlyRent = async (req: AuthRequest, res: Response): Prom
 
     const due = dueDate ? new Date(dueDate) : new Date(`${month}-05`);
     let totalAmt = 0;
-    const created = [];
+    const created: any[] = [];
 
     for (const s of students) {
       const exists = await RentRecord.findOne({ hostelStudentId: s._id, month });
