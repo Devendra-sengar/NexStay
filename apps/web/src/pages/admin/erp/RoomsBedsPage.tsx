@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   BedDouble, Plus, Edit2, Trash2, ChevronDown, ChevronRight,
-  User, Phone, Calendar, Building2, AlertTriangle, X, Check
+  User, Phone, Calendar, Building2, AlertTriangle, X, Check, Copy
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAdminProperties } from '@/lib/adminApi';
@@ -16,8 +16,8 @@ import { cn } from '@/lib/utils';
 function BedTile({ bed, onClick }: { bed: any; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void }) {
   const color =
     bed.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100' :
-    bed.status === 'OCCUPIED'  ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100' :
-                                  'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100';
+      bed.status === 'OCCUPIED' ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100' :
+        'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100';
   return (
     <button
       onClick={onClick}
@@ -249,7 +249,7 @@ function ConfirmDialog({ title, message, onConfirm, onCancel, isPending }: any) 
 }
 
 // ─── Room Row ─────────────────────────────────────────────────────────────────
-function RoomRow({ room, floors, onEdit, onDelete }: { room: any; floors: any[]; onEdit: () => void; onDelete: () => void }) {
+function RoomRow({ room, floors, onEdit, onDelete, onDuplicate }: { room: any; floors: any[]; onEdit: () => void; onDelete: () => void; onDuplicate: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const avail = room.availableBeds ?? 0;
   const total = room.totalBeds ?? room.capacity;
@@ -276,8 +276,9 @@ function RoomRow({ room, floors, onEdit, onDelete }: { room: any; floors: any[];
         </td>
         <td className="py-3 px-4 border-b border-surface-border">
           <div className="flex items-center gap-2">
-            <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-danger/10 hover:text-danger transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
+            <button onClick={onDuplicate} className="p-1.5 rounded-lg hover:bg-amber-50 hover:text-amber-600 transition-colors" title="Duplicate room"><Copy className="w-3.5 h-3.5" /></button>
+            <button onClick={onDelete} className="p-1.5 rounded-lg hover:bg-danger/10 hover:text-danger transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         </td>
       </tr>
@@ -308,7 +309,7 @@ export default function RoomsBedsPage() {
 
   const { data: floors, isLoading } = useErpRooms(selectedProp);
   const deleteFloor = useDeleteFloor();
-  const deleteRoom  = useDeleteRoom();
+  const deleteRoom = useDeleteRoom();
 
   const [floorModal, setFloorModal] = useState<{ open: boolean; floor?: any }>({ open: false });
   const [roomModal, setRoomModal] = useState<{ open: boolean; room?: any }>({ open: false });
@@ -379,7 +380,7 @@ export default function RoomsBedsPage() {
 
       {/* Floor Tabs */}
       {isLoading ? (
-        <div className="space-y-3">{[1,2].map(i => <div key={i} className="skeleton h-12 rounded-xl" />)}</div>
+        <div className="space-y-3">{[1, 2].map(i => <div key={i} className="skeleton h-12 rounded-xl" />)}</div>
       ) : !selectedProp ? (
         <div className="card p-10 text-center text-text-muted">Select a property to view rooms.</div>
       ) : currentFloors.length === 0 ? (
@@ -438,6 +439,7 @@ export default function RoomsBedsPage() {
                       floors={currentFloors}
                       onEdit={() => setRoomModal({ open: true, room })}
                       onDelete={() => setDeleteRoomConfirm(room)}
+                      onDuplicate={() => setRoomModal({ open: true, room: { ...room, _id: undefined, roomNumber: '' } })}
                     />
                   ))}
                 </tbody>

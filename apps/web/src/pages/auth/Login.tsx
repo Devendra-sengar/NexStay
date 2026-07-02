@@ -146,10 +146,10 @@ export default function Login() {
 
           <div className="mt-10 space-y-4">
             {[
-              { icon: '🏠', text: 'Multi-hostel management' },
-              { icon: '👨‍🎓', text: 'Student & room tracking' },
-              { icon: '🍽️', text: 'Mess menu & attendance' },
-              { icon: '💰', text: 'Rent & payments' },
+              { icon: '■', text: 'Multi-hostel management' },
+              { icon: '◆', text: 'Student & room tracking' },
+              { icon: '◈', text: 'Mess menu & attendance' },
+              { icon: '₹', text: 'Rent & payments' },
             ].map(f => (
               <div key={f.text} className="flex items-center gap-3">
                 <span className="text-lg">{f.icon}</span>
@@ -281,7 +281,7 @@ export default function Login() {
           {/* Dev Credentials */}
           {import.meta.env.DEV && (
             <div className="mt-6 bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-              <p className="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-3">🛠 Dev Credentials</p>
+              <p className="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-3">Dev Credentials</p>
               <div className="space-y-1">
                 {[
                   { role: Role.SUPER_ADMIN,  id: 'admin@nexstay.in',    pw: 'admin123',  label: 'Super Admin',  code: '' },

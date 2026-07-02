@@ -55,7 +55,7 @@ function PropertyReviewDrawer({ id, onClose }: { id: string; onClose: () => void
               {/* Re-review warning */}
               {wasRejected && prop.verificationStatus === 'PENDING' && (
                 <div className="card p-4 border-l-4 border-amber-400 bg-amber-50">
-                  <p className="text-sm font-semibold text-amber-800">⚠️ Previously Rejected — Re-submitted</p>
+                  <p className="text-sm font-semibold text-amber-800">[!] Previously Rejected — Re-submitted</p>
                   <p className="text-sm text-amber-700 mt-1">Previous rejection reason: "{prop.rejectionReason}"</p>
                 </div>
               )}
@@ -194,7 +194,7 @@ export default function SuperPropertiesPage() {
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-4 py-2 rounded-lg text-sm font-medium transition-all',
               tab === t ? 'bg-white shadow text-primary' : 'text-text-secondary hover:text-text-primary')}>
-            {t === 'PENDING' ? '⏳' : t === 'APPROVED' ? '✅' : '❌'} {t}
+            {t === 'PENDING' ? <Clock className="w-3.5 h-3.5 inline mr-1" /> : t === 'APPROVED' ? <CheckCircle className="w-3.5 h-3.5 inline mr-1" /> : <XCircle className="w-3.5 h-3.5 inline mr-1" />} {t}
           </button>
         ))}
       </div>

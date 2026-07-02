@@ -132,6 +132,11 @@ export const createRoom = async (req: AuthRequest, res: Response): Promise<void>
     if (!propertyId || !floorId || !roomNumber || !roomType || !capacity) {
       res.status(400).json({ success: false, message: 'propertyId, floorId, roomNumber, roomType, capacity required' }); return;
     }
+    // ── Duplicate room number check within the same property ──────────────────
+    const existing = await Room.findOne({ tenantId, propertyId, roomNumber: roomNumber.trim() }).lean();
+    if (existing) {
+      res.status(409).json({ success: false, message: `Room number "${roomNumber}" already exists in this property. Please use a different number.` }); return;
+    }
     const room = await Room.create({ tenantId, propertyId, floorId, roomNumber, roomType, capacity, pricePerBed: pricePerBed ?? 6000, status: 'AVAILABLE' });
     // Auto-generate beds
     for (let i = 1; i <= capacity; i++) {

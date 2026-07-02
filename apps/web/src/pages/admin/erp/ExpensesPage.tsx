@@ -3,6 +3,7 @@ import { Receipt, Plus, Edit2, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense, useAdminProperties } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
+import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
 
 const ym = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 const FMT = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -12,9 +13,9 @@ const CAT_COLORS: Record<string,string> = {
   ELECTRICITY:'#f59e0b', WATER:'#3b82f6', STAFF_SALARY:'#8b5cf6',
   MAINTENANCE:'#ef4444', INTERNET:'#06b6d4', FOOD:'#10b981', MISCELLANEOUS:'#6b7280',
 };
-const CAT_ICONS: Record<string,string> = {
-  ELECTRICITY:'⚡', WATER:'💧', STAFF_SALARY:'👥', MAINTENANCE:'🔧',
-  INTERNET:'📶', FOOD:'🍽️', MISCELLANEOUS:'📦',
+const CAT_LABEL: Record<string,string> = {
+  ELECTRICITY:'Electricity', WATER:'Water', STAFF_SALARY:'Staff Salary',
+  MAINTENANCE:'Maintenance', INTERNET:'Internet', FOOD:'Food', MISCELLANEOUS:'Miscellaneous',
 };
 
 // ── Donut chart (pure SVG) ─────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ function DonutChart({ byCategory, total }: { byCategory: Record<string,number>; 
         {slices.map(({ cat, amt, pct }) => (
           <div key={cat} className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: CAT_COLORS[cat] || '#6b7280' }} />
-            <span className="text-xs text-text-secondary flex-1 truncate">{CAT_ICONS[cat]} {cat.replace('_',' ')}</span>
+            <span className="text-xs text-text-secondary flex-1 truncate">{CAT_LABEL[cat] || cat.replace(/_/g,' ')}</span>
             <span className="text-xs font-medium text-text-primary">{FMT(amt)}</span>
             <span className="text-[10px] text-text-muted">({(pct*100).toFixed(0)}%)</span>
           </div>
@@ -91,12 +92,19 @@ function ExpenseModal({ expense, properties, onClose }: { expense?: any; propert
             </select></div>
           <div><label className="form-label">Category *</label>
             <select className="input-field" value={form.category} onChange={set('category')}>
-              {CATEGORIES.map(c=><option key={c} value={c}>{CAT_ICONS[c]} {c.replace('_',' ')}</option>)}
+              {CATEGORIES.map(c=><option key={c} value={c}>{CAT_LABEL[c]||c.replace(/_/g,' ')}</option>)}
             </select></div>
           <div><label className="form-label">Amount (₹) *</label><input type="number" className="input-field" value={form.amount} onChange={set('amount')} /></div>
           <div><label className="form-label">Date *</label><input type="date" className="input-field" value={form.date} onChange={set('date')} /></div>
           <div><label className="form-label">Description</label><input className="input-field" value={form.description} onChange={set('description')} /></div>
-          <div><label className="form-label">Receipt URL</label><input className="input-field" value={form.receiptUrl} onChange={set('receiptUrl')} placeholder="https://…" /></div>
+          <div>
+            <label className="form-label">Receipt <span className="text-text-muted font-normal">(optional)</span></label>
+            <CloudinaryUpload
+              value={form.receiptUrl ? [form.receiptUrl] : []}
+              onChange={urls => setForm(f => ({ ...f, receiptUrl: urls[0] || '' }))}
+              maxImages={1}
+            />
+          </div>
         </div>
         <div className="flex gap-3 mt-5">
           <button className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
@@ -161,8 +169,8 @@ export default function ExpensesPage() {
                     <tr key={e._id} className="hover:bg-surface-input/40">
                       <td className="py-3 px-4 border-b border-surface-border">
                         <span className="inline-flex items-center gap-1.5 text-sm font-medium">
-                          <span>{CAT_ICONS[e.category]}</span>
-                          <span style={{color:CAT_COLORS[e.category]}}>{e.category.replace('_',' ')}</span>
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{background: CAT_COLORS[e.category] || '#6b7280'}} />
+                          <span style={{color:CAT_COLORS[e.category]}}>{CAT_LABEL[e.category]||e.category.replace(/_/g,' ')}</span>
                         </span>
                       </td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm text-text-secondary">{e.description||'—'}</td>

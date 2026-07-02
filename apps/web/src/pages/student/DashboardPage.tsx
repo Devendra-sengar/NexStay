@@ -40,11 +40,11 @@ export default function StudentDashboardPage() {
       {/* Greeting */}
       <div style={{ background: 'linear-gradient(135deg, #1e40af, #3b82f6)', borderRadius: 16, padding: '20px 24px', marginBottom: 20, color: 'white' }}>
         <p style={{ margin: '0 0 4px', opacity: 0.75, fontSize: 14 }}>{d?.greeting || 'Hello'},</p>
-        <h1 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 700 }}>{user?.name} 👋</h1>
+        <h1 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 700 }}>{user?.name}</h1>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-          {d?.student?.hostelName && <span style={{ fontSize: 13, opacity: 0.8 }}>🏠 {d.student.hostelName}</span>}
-          {d?.student?.roomNumber && <span style={{ fontSize: 13, opacity: 0.8 }}>🚪 Room {d.student.roomNumber} · Bed {d.student.bedNumber}</span>}
-          {d?.student?.stayDays > 0 && <span style={{ fontSize: 13, opacity: 0.8 }}>📅 {d.student.stayDays} days stay</span>}
+          {d?.student?.hostelName && <span style={{ fontSize: 13, opacity: 0.8 }}>■ {d.student.hostelName}</span>}
+          {d?.student?.roomNumber && <span style={{ fontSize: 13, opacity: 0.8 }}>◈ Room {d.student.roomNumber} · Bed {d.student.bedNumber}</span>}
+          {d?.student?.stayDays > 0 && <span style={{ fontSize: 13, opacity: 0.8 }}>◆ {d.student.stayDays} days stay</span>}
         </div>
       </div>
 
@@ -71,7 +71,7 @@ export default function StudentDashboardPage() {
           </div>
           {rentStatus !== 'PAID' && (
             <p style={{ color: '#b45309', fontSize: 13, margin: '8px 0 0', background: '#fef3c7', padding: '6px 10px', borderRadius: 6 }}>
-              ⚠️ Due by {currentRent.dueDate ? new Date(currentRent.dueDate).toLocaleDateString('en-IN') : 'N/A'} — Contact warden to pay
+              [!] Due by {currentRent.dueDate ? new Date(currentRent.dueDate).toLocaleDateString('en-IN') : 'N/A'} — Contact warden to pay
             </p>
           )}
         </div>

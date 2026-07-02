@@ -33,6 +33,18 @@ export interface StaffPermissions {
   canViewAttendance:   boolean;
 }
 
+// ─── Owner Permissions (SuperAdmin-controlled) ────────────────────────────────
+export interface OwnerPermissions {
+  canManageERP:          boolean;
+  canViewReports:        boolean;
+  canManageMarketplace:  boolean;
+  canManageRooms:        boolean;
+  canManageMess:         boolean;
+  canManageExpenses:     boolean;
+  canManageComplaints:   boolean;
+  canManageStaff:        boolean;
+}
+
 // ─── Hostel ───────────────────────────────────────────────────────────────────
 export interface IHostel {
   _id: string;
@@ -281,6 +293,7 @@ export interface AuthUser {
   hostelId?: string | null;
   studentId?: string | null;
   staffPermissions?: StaffPermissions | null;
+  ownerPermissions?: OwnerPermissions | null;  // SuperAdmin-controlled module access
 }
 
 export interface LoginResponse {

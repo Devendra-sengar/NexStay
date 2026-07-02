@@ -75,7 +75,7 @@ export default function OtpVerificationPage() {
         <div className="glass-card rounded-xl p-8 shadow-card">
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-full bg-brand-primary/10 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">📱</span>
+              <Building2 className="w-8 h-8 text-brand-primary" />
             </div>
             <h2 className="text-2xl font-bold text-text-primary mb-2">Verify your account</h2>
             <p className="text-text-muted text-sm">
@@ -84,7 +84,7 @@ export default function OtpVerificationPage() {
             </p>
             {devOtp && (
               <div className="mt-3 bg-brand-primary/10 border border-brand-primary/20 rounded-md px-3 py-2 text-xs text-brand-primary">
-                🧪 Dev OTP: <span className="font-bold tracking-widest">{devOtp}</span>
+                [DEV] OTP: <span className="font-bold tracking-widest">{devOtp}</span>
               </div>
             )}
           </div>

@@ -10,7 +10,7 @@ export default function WardenMenuPage() {
 
   const menu = data;
   const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
-  const LABELS = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner' };
+  const LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 
   return (
     <div>
@@ -40,7 +40,7 @@ export default function WardenMenuPage() {
           </div>
           {menu.specialNote && (
             <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12, padding: '14px 16px' }}>
-              <p style={{ color: '#b45309', fontSize: 14, margin: 0 }}>✨ Special: {menu.specialNote}</p>
+              <p style={{ color: '#b45309', fontSize: 14, margin: 0 }}>Special: {menu.specialNote}</p>
             </div>
           )}
           {menu.uploadedBy?.name && (

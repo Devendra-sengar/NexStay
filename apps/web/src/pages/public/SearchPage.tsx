@@ -357,7 +357,9 @@ export default function SearchPage() {
                 ) : properties.length === 0 ? (
                   /* Empty state */
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="text-6xl mb-4">🏠</div>
+                    <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl text-slate-400 font-bold">□</span>
+                    </div>
                     <h3 className="text-xl font-bold text-slate-800 mb-2">No hostels found</h3>
                     <p className="text-slate-500 mb-6">Try adjusting your filters or searching a different city.</p>
                     <button onClick={handleClear}

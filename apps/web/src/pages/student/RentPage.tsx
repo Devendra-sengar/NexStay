@@ -35,7 +35,7 @@ export default function StudentRentPage() {
           </div>
           {cur.status !== 'PAID' && (
             <p style={{ margin: '12px 0 0', fontSize: 13, opacity: 0.8, background: 'rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: 8 }}>
-              💡 Contact your warden or admin to pay rent. Payment will be recorded in the system.
+              Contact your warden or admin to pay rent. Payment will be recorded in the system.
             </p>
           )}
         </div>

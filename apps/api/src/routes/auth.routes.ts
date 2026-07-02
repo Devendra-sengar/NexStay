@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import {
+  register,
   verifyOtp,
   login,
   refreshToken,
@@ -26,6 +27,7 @@ const loginLimiter = rateLimit({
 const router = Router();
 
 // Public routes (with rate limiting only on mutation endpoints)
+router.post('/register',       register);          // Only GUEST self-signup allowed
 router.post('/login',          loginLimiter, login);
 router.post('/forgot-password', loginLimiter, forgotPassword);
 router.post('/verify-otp',     verifyOtp);

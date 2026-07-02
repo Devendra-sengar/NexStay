@@ -15,8 +15,8 @@ const GENDER_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const AMENITY_ICONS: Record<string, string> = {
-  WIFI: '📶', FOOD: '🍽️', AC: '❄️', PARKING: '🅿️',
-  LAUNDRY: '🧺', CCTV: '📷', SECURITY: '🔐', POWER_BACKUP: '🔋',
+  WIFI: '◈', FOOD: '◆', AC: '❄️', PARKING: 'P',
+  LAUNDRY: '▪', CCTV: '●', SECURITY: '■', POWER_BACKUP: '◊',
 };
 
 function StarRating({ rating }: { rating: number }) {

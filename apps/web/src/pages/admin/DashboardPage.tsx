@@ -24,7 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const COMPLAINT_ICONS: Record<string, string> = {
-  ELECTRICITY: '⚡', FOOD: '🍽️', INTERNET: '📶', WATER: '💧', CLEANING: '🧹', OTHER: '📌',
+  ELECTRICITY: '⚡', FOOD: '◆', INTERNET: '◈', WATER: '●', CLEANING: '✦', OTHER: '◎',
 };
 
 function StatCard({ label, value, icon: Icon, color, sub }: any) {
@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
           <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-2">
             <Building2 className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">Welcome to NexStay! 🏠</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Welcome to NexStay!</h1>
           <p className="text-text-secondary text-sm leading-relaxed">
             You haven't added any properties yet. List your PG on the marketplace to start receiving bookings.
           </p>
@@ -81,9 +81,9 @@ export default function AdminDashboardPage() {
           </div>
           <div className="grid grid-cols-3 gap-4 mt-6 w-full text-center">
             {[
-              { icon: '📋', label: 'List Property', desc: 'Submit for review' },
-              { icon: '✅', label: 'Get Approved', desc: 'Go live in 24h' },
-              { icon: '💰', label: 'Earn Revenue', desc: 'Collect rent online' },
+              { icon: '①', label: 'List Property', desc: 'Submit for review' },
+              { icon: '②', label: 'Get Approved', desc: 'Go live in 24h' },
+              { icon: '③', label: 'Earn Revenue', desc: 'Collect rent online' },
             ].map(({ icon, label, desc }) => (
               <div key={label} className="card p-4">
                 <div className="text-2xl mb-2">{icon}</div>
@@ -228,7 +228,7 @@ export default function AdminDashboardPage() {
             <div className="space-y-2.5">
               {recentComplaints.map((c: any) => (
                 <div key={c._id} className="flex items-start gap-2.5">
-                  <span className="text-lg mt-0.5">{COMPLAINT_ICONS[c.category] ?? '📌'}</span>
+                  <span className="text-lg mt-0.5">{COMPLAINT_ICONS[c.category] ?? '◎'}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-text-primary truncate">{c.title}</p>
                     <p className="text-[11px] text-text-muted">{c.guestId?.name ?? 'Guest'} · {c.propertyId?.name ?? ''}</p>

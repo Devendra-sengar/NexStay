@@ -11,6 +11,18 @@ export interface StaffPermissions {
   canViewAttendance: boolean;
 }
 
+// SuperAdmin controls which modules a HOSTEL_ADMIN can access
+export interface OwnerPermissions {
+  canManageERP: boolean;          // Students, check-in, check-out
+  canViewReports: boolean;        // Reports & analytics
+  canManageMarketplace: boolean;  // Property listings
+  canManageRooms: boolean;        // Room/bed management
+  canManageMess: boolean;         // Mess menu & timings
+  canManageExpenses: boolean;     // Expenses module
+  canManageComplaints: boolean;   // Complaints module
+  canManageStaff: boolean;        // Staff management
+}
+
 export interface IUserDoc extends Document {
   name: string;
   email: string;
@@ -29,7 +41,8 @@ export interface IUserDoc extends Document {
   // New fields
   hostelId?: mongoose.Types.ObjectId | null;
   staffPermissions?: StaffPermissions;
-  studentId?: string; // = mobile number for STUDENT role
+  ownerPermissions?: OwnerPermissions;  // SuperAdmin-controlled
+  studentId?: string;
   refreshToken?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +58,20 @@ const StaffPermissionsSchema = new Schema<StaffPermissions>(
     canViewSalary:       { type: Boolean, default: false },
     canManageRooms:      { type: Boolean, default: false },
     canViewAttendance:   { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const OwnerPermissionsSchema = new Schema<OwnerPermissions>(
+  {
+    canManageERP:          { type: Boolean, default: true },
+    canViewReports:        { type: Boolean, default: true },
+    canManageMarketplace:  { type: Boolean, default: true },
+    canManageRooms:        { type: Boolean, default: true },
+    canManageMess:         { type: Boolean, default: true },
+    canManageExpenses:     { type: Boolean, default: true },
+    canManageComplaints:   { type: Boolean, default: true },
+    canManageStaff:        { type: Boolean, default: true },
   },
   { _id: false }
 );
@@ -88,6 +115,10 @@ const UserSchema = new Schema<IUserDoc>(
     staffPermissions: {
       type: StaffPermissionsSchema,
       default: null,
+    },
+    ownerPermissions: {
+      type: OwnerPermissionsSchema,
+      default: null,   // null = full access (backward-compat)
     },
     studentId: {
       // Mobile number used as login username for STUDENT role

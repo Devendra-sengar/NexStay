@@ -1,11 +1,25 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Check, Loader2, MapPin, Plus, Trash2,
-  Wifi, Utensils, Car, Shield, Shirt, Camera, Wind, Flame
+  Wifi, Utensils, Car, Shield, Shirt, Camera, Wind, Flame, X as XIcon
 } from 'lucide-react';
 import { useCreateProperty } from '@/lib/adminApi';
 import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
+
+// Google Maps Places Autocomplete loader
+const GMAP_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_KEY || '';
+function loadGoogleMaps(): Promise<void> {
+  return new Promise((resolve) => {
+    if ((window as any).google?.maps?.places) { resolve(); return; }
+    if (!GMAP_KEY) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${GMAP_KEY}&libraries=places`;
+    s.async = true; s.defer = true;
+    s.onload = () => resolve();
+    document.head.appendChild(s);
+  });
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface RoomSetup { roomType: string; count: number; pricePerBed: number }
@@ -17,7 +31,7 @@ interface FormState {
   // Step 2
   latitude: number | ''; longitude: number | '';
   // Step 3
-  amenities: string[]; rules: string; foodIncluded: boolean;
+  amenities: string[]; customFacilities: string[]; rules: string; foodIncluded: boolean;
   // Step 4
   images: string[]; videoUrl: string;
   // Step 5
@@ -49,7 +63,7 @@ const ROOM_LABELS: Record<string, string> = { SINGLE:'Single', DOUBLE:'Double', 
 
 const INITIAL: FormState = {
   name:'', description:'', city:'', locality:'', address:'', state:'', pincode:'', gender:'BOYS',
-  latitude:'', longitude:'', amenities:[], rules:'', foodIncluded:false,
+  latitude:'', longitude:'', amenities:[], customFacilities:[], rules:'', foodIncluded:false,
   images:[], videoUrl:'', roomSetups:[{ roomType:'DOUBLE', count:1, pricePerBed:6000 }],
 };
 
@@ -85,8 +99,43 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const createMutation = useCreateProperty();
+  const [customFacilityInput, setCustomFacilityInput] = useState('');
+  const addressInputRef = useRef<HTMLInputElement>(null);
 
   const set = useCallback((patch: Partial<FormState>) => setForm(f => ({ ...f, ...patch })), []);
+
+  // Google Maps Places Autocomplete — wires up on step 0 mount
+  useEffect(() => {
+    if (step !== 0 || !addressInputRef.current) return;
+    loadGoogleMaps().then(() => {
+      const g = (window as any).google;
+      if (!g?.maps?.places || !addressInputRef.current) return;
+      const ac = new g.maps.places.Autocomplete(addressInputRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'in' },
+        fields: ['formatted_address', 'address_components', 'geometry'],
+      });
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if (!place?.address_components) return;
+        let city = '', state = '', pincode = '', locality = '';
+        for (const c of place.address_components) {
+          if (c.types.includes('locality')) city = c.long_name;
+          if (c.types.includes('sublocality_level_1')) locality = c.long_name;
+          if (c.types.includes('administrative_area_level_1')) state = c.long_name;
+          if (c.types.includes('postal_code')) pincode = c.long_name;
+        }
+        set({
+          address: place.formatted_address || '',
+          city: city || form.city,
+          state: state || form.state,
+          pincode: pincode || form.pincode,
+          locality: locality || form.locality,
+        });
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   // ── Validation per step ────────────────────────────────────────────────────
   const validate = (s: number): boolean => {
@@ -97,6 +146,9 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
       if (!form.address.trim()) e.address = 'Address is required';
       if (!form.state.trim()) e.state = 'State is required';
       if (!form.gender) e.gender = 'Gender type is required';
+    }
+    if (s === 1) {
+      if (form.latitude === '' || form.longitude === '') e.coords = 'Coordinates are required. Right-click on Google Maps → "What\'s here?" to get them.';
     }
     if (s === 3 && form.images.length < 1) e.images = 'Please upload at least 1 image';
     if (s === 4 && form.roomSetups.length === 0) e.roomSetups = 'Add at least 1 room type';
@@ -133,7 +185,7 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Check className="w-8 h-8 text-green-600" />
         </div>
-        <h2 className="text-xl font-bold text-text-primary mb-2">Property Submitted! 🎉</h2>
+        <h2 className="text-xl font-bold text-text-primary mb-2">Property Submitted!</h2>
         <p className="text-text-secondary text-sm mb-6">
           Your property is under review. NexStay will verify it within 24 hours and notify you once it's approved and live.
         </p>
@@ -177,9 +229,15 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
             </div>
           </div>
           <div>
-            <label className="form-label">Full Address *</label>
-            <input className={`input-field ${errors.address ? 'border-red-400' : ''}`} value={form.address}
-              onChange={e => set({ address: e.target.value })} placeholder="123 Main Street, Near XYZ College" />
+            <label className="form-label">Full Address * <span className="text-text-muted font-normal text-[11px]">{GMAP_KEY ? '— start typing for suggestions' : ''}</span></label>
+            <input
+              ref={addressInputRef}
+              className={`input-field ${errors.address ? 'border-red-400' : ''}`}
+              value={form.address}
+              onChange={e => set({ address: e.target.value })}
+              placeholder="Start typing address, e.g. Vijay Nagar..."
+              autoComplete="off"
+            />
             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -190,8 +248,8 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
               {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
             </div>
             <div>
-              <label className="form-label">Pincode</label>
-              <input className="input-field" value={form.pincode} onChange={e => set({ pincode: e.target.value })} placeholder="411038" maxLength={6} />
+              <label className="form-label">Pincode {form.pincode && <span className="text-emerald-600 font-normal text-[11px]">(auto-filled)</span>}</label>
+              <input className="input-field" value={form.pincode} onChange={e => set({ pincode: e.target.value })} placeholder="411038" maxLength={6} inputMode="numeric" />
             </div>
           </div>
           <div>
@@ -213,25 +271,26 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
       {/* ── Step 1: Location ───────────────────────────────────────────────── */}
       {step === 1 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-text-primary mb-1">Location Pin</h2>
-          <p className="text-text-muted text-sm">Enter your property coordinates. Guests will see the map and can get directions.</p>
+          <h2 className="text-lg font-bold text-text-primary mb-1">Location Pin <span className="text-red-500">*</span></h2>
+          <p className="text-text-muted text-sm">Coordinates are <strong>required</strong>. Guests will see the map and can get directions.</p>
           <div className="bg-surface rounded-2xl border-2 border-dashed border-primary/30 p-6 text-center">
             <MapPin className="w-10 h-10 text-primary/40 mx-auto mb-3" />
             <p className="text-sm text-text-secondary font-medium mb-1">Enter coordinates manually</p>
-            <p className="text-xs text-text-muted mb-4">(Full map pin drop will be available in a future update)</p>
+            <p className="text-xs text-text-muted mb-4">Right-click on Google Maps → "What's here?" to get coordinates.</p>
             <div className="grid grid-cols-2 gap-4 text-left">
               <div>
-                <label className="form-label">Latitude</label>
-                <input type="number" step="0.000001" className="input-field" value={form.latitude}
+                <label className="form-label">Latitude *</label>
+                <input type="number" step="0.000001" className={`input-field ${errors.coords ? 'border-red-400' : ''}`} value={form.latitude}
                   onChange={e => set({ latitude: e.target.value ? parseFloat(e.target.value) : '' })} placeholder="18.5204" />
               </div>
               <div>
-                <label className="form-label">Longitude</label>
-                <input type="number" step="0.000001" className="input-field" value={form.longitude}
+                <label className="form-label">Longitude *</label>
+                <input type="number" step="0.000001" className={`input-field ${errors.coords ? 'border-red-400' : ''}`} value={form.longitude}
                   onChange={e => set({ longitude: e.target.value ? parseFloat(e.target.value) : '' })} placeholder="73.8567" />
               </div>
             </div>
           </div>
+          {errors.coords && <p className="text-red-500 text-xs flex items-center gap-1">⚠ {errors.coords}</p>}
           {form.latitude !== '' && form.longitude !== '' && (
             <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
               <Check className="w-4 h-4" /> Pin set at ({String(form.latitude)}, {String(form.longitude)})
@@ -264,11 +323,56 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
               })}
             </div>
           </div>
+
+          {/* Custom Facilities — tag input */}
+          <div>
+            <label className="form-label">Additional Facilities <span className="text-text-muted font-normal">(e.g. Gym, Library, Hot Water)</span></label>
+            <div className="flex gap-2 mt-1">
+              <input
+                className="input-field flex-1"
+                value={customFacilityInput}
+                onChange={e => setCustomFacilityInput(e.target.value)}
+                onKeyDown={e => {
+                  if ((e.key === 'Enter' || e.key === ',') && customFacilityInput.trim()) {
+                    e.preventDefault();
+                    const tag = customFacilityInput.trim();
+                    if (!form.customFacilities.includes(tag)) set({ customFacilities: [...form.customFacilities, tag] });
+                    setCustomFacilityInput('');
+                  }
+                }}
+                placeholder="Type a facility and press Enter…"
+              />
+              <button type="button"
+                onClick={() => {
+                  const tag = customFacilityInput.trim();
+                  if (tag && !form.customFacilities.includes(tag)) {
+                    set({ customFacilities: [...form.customFacilities, tag] });
+                    setCustomFacilityInput('');
+                  }
+                }}
+                className="btn-secondary flex items-center gap-1 px-3 whitespace-nowrap text-sm">
+                <Plus className="w-3.5 h-3.5" /> Add
+              </button>
+            </div>
+            {form.customFacilities.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {form.customFacilities.map(f => (
+                  <span key={f} className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
+                    {f}
+                    <button type="button" onClick={() => set({ customFacilities: form.customFacilities.filter(x => x !== f) })}>
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="form-label">House Rules</label>
             <textarea className="input-field" rows={4} value={form.rules}
               onChange={e => set({ rules: e.target.value })}
-              placeholder="Visitors allowed till 9 PM&#10;No smoking on premises&#10;Quiet hours after 10 PM" />
+              placeholder={`Visitors allowed till 9 PM\nNo smoking on premises\nQuiet hours after 10 PM`} />
           </div>
         </div>
       )}

@@ -28,7 +28,7 @@ export default function WardenRoomsPage() {
         return (
           <div key={floor._id} style={{ marginBottom: 24 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              🏢 {floor.name}
+              ■ {floor.name}
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
               {floorRooms.map((room: any) => {

@@ -32,7 +32,7 @@ export default function WardenDashboardPage() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Welcome, {user?.name?.split(' ')[0]} 👋</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Welcome, {user?.name?.split(' ')[0]}</h1>
         <p style={{ color: '#64748b', margin: 0 }}>{hostel?.name} — {hostel?.hostelCode} · Warden Dashboard</p>
       </div>
 

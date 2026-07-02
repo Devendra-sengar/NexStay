@@ -37,7 +37,7 @@ export default function DashboardPage() {
       {/* Welcome */}
       <div>
         <div className="text-2xl font-bold text-slate-900">
-          Hello, {user?.name?.split(' ')[0]} 👋
+          Hello, {user?.name?.split(' ')[0]}
         </div>
         <p className="text-slate-500 text-sm mt-1">Welcome to your NexStay account</p>
       </div>
@@ -77,7 +77,7 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-center">
-          <div className="text-3xl mb-2">🏠</div>
+          <div className="text-3xl mb-2">□</div>
           <p className="font-semibold text-slate-800">No bookings yet</p>
           <p className="text-sm text-slate-500 mb-3">Find a PG and make your first booking</p>
           <button onClick={() => navigate('/')} className="text-sm text-blue-600 font-semibold hover:underline">Explore PGs →</button>

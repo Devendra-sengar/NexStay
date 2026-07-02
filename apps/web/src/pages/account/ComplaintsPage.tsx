@@ -9,7 +9,7 @@ const STATUS_COLORS: Record<string, string> = {
   RESOLVED: 'bg-green-100 text-green-700', CLOSED: 'bg-slate-100 text-slate-600',
 };
 const CATEGORY_ICONS: Record<string, string> = {
-  ELECTRICITY: '⚡', FOOD: '🍽️', INTERNET: '📶', WATER: '💧', CLEANING: '🧹', OTHER: '📌',
+  ELECTRICITY: '⚡', FOOD: '◆', INTERNET: '◈', WATER: '●', CLEANING: '✦', OTHER: '◎',
 };
 const CATEGORIES = ['ELECTRICITY', 'FOOD', 'INTERNET', 'WATER', 'CLEANING', 'OTHER'];
 
@@ -128,7 +128,7 @@ export default function ComplaintsPage() {
         <div className="space-y-3">{[1, 2].map(i => <div key={i} className="h-24 bg-slate-200 rounded-2xl animate-pulse" />)}</div>
       ) : complaints.length === 0 ? (
         <div className="flex flex-col items-center py-16 text-center gap-3">
-          <div className="text-5xl">📋</div>
+          <div className="text-5xl">□</div>
           <h3 className="font-bold text-slate-800">No complaints yet</h3>
           <p className="text-slate-500 text-sm">Have an issue? Raise a complaint and we'll look into it.</p>
         </div>
@@ -138,7 +138,7 @@ export default function ComplaintsPage() {
             <div key={c._id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
-                  {CATEGORY_ICONS[c.category] ?? '📌'}
+                  {CATEGORY_ICONS[c.category] ?? '◎'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">

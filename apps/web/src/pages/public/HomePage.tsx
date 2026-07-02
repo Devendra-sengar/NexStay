@@ -7,12 +7,12 @@ import PropertyCardSkeleton from '@/components/marketplace/PropertyCardSkeleton'
 
 // ─── Quick filter chips ───────────────────────────────────────────────────────
 const QUICK_FILTERS = [
-  { label: '🧑 Boys PG',      params: '?gender=BOYS' },
-  { label: '👩 Girls PG',     params: '?gender=GIRLS' },
-  { label: '🤝 Co-Living',    params: '?gender=CO_ED' },
-  { label: '🍽️ With Food',   params: '?amenities=FOOD' },
-  { label: '❄️ AC Room',     params: '?amenities=AC' },
-  { label: '💸 Under ₹5000', params: '?maxPrice=5000' },
+  { label: '♂ Boys PG',      params: '?gender=BOYS' },
+  { label: '♀ Girls PG',     params: '?gender=GIRLS' },
+  { label: '⊕ Co-Living',    params: '?gender=CO_ED' },
+  { label: '◈ With Food',    params: '?amenities=FOOD' },
+  { label: '❄ AC Room',      params: '?amenities=AC' },
+  { label: '₹ Under ₹5000', params: '?maxPrice=5000' },
 ];
 
 // ─── Individual property section row ─────────────────────────────────────────
@@ -159,7 +159,7 @@ export default function HomePage() {
               ) : (
                 <MapPin className="w-4 h-4" />
               )}
-              {userLat ? '✅ Location active — showing nearby PGs' : '📍 Use my current location'}
+              {userLat ? '✓ Location active — showing nearby PGs' : '◎ Use my current location'}
             </button>
           </div>
           {geoError && <p className="text-xs text-red-500 mt-2">{geoError}</p>}
@@ -185,11 +185,11 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500 font-medium">
           <span className="flex items-center gap-1.5"><span className="text-green-500 font-bold">✓</span> Verified Owners</span>
           <span className="w-px h-4 bg-slate-200 hidden sm:block" />
-          <span className="flex items-center gap-1.5"><span className="text-blue-500 font-bold">⭐</span> Rated by Students</span>
+          <span className="flex items-center gap-1.5"><span className="text-blue-500 font-bold">★</span> Rated by Students</span>
           <span className="w-px h-4 bg-slate-200 hidden sm:block" />
-          <span className="flex items-center gap-1.5"><span className="text-violet-500 font-bold">🔐</span> Safe &amp; Secure</span>
+          <span className="flex items-center gap-1.5"><span className="text-violet-500 font-bold">■</span> Safe &amp; Secure</span>
           <span className="w-px h-4 bg-slate-200 hidden sm:block" />
-          <span className="flex items-center gap-1.5"><span className="text-orange-500 font-bold">🍽️</span> Food Included Options</span>
+          <span className="flex items-center gap-1.5"><span className="text-orange-500 font-bold">◆</span> Food Included Options</span>
         </div>
       </div>
 
@@ -199,7 +199,7 @@ export default function HomePage() {
         {/* Section 1: Nearby (only if location granted) */}
         {userLat !== undefined && userLng !== undefined && (
           <PropertySection
-            title="📍 Nearby PGs"
+            title="◎ Nearby PGs"
             viewAllHref={`/search?lat=${userLat}&lng=${userLng}&radius=5&sortBy=distance`}
             queryParams={{ sortBy: 'distance', radius: 5 }}
             userLat={userLat}
@@ -209,28 +209,28 @@ export default function HomePage() {
 
         {/* Section 2: Budget Friendly */}
         <PropertySection
-          title="💸 Budget Friendly (Under ₹5,000)"
+          title="₹ Budget Friendly (Under ₹5,000)"
           viewAllHref="/search?maxPrice=5000"
           queryParams={{ maxPrice: 5000, sortBy: 'price_asc' }}
         />
 
         {/* Section 3: Boys Hostels */}
         <PropertySection
-          title="🧑 Boys Hostels"
+          title="♂ Boys Hostels"
           viewAllHref="/search?gender=BOYS"
           queryParams={{ gender: 'BOYS', sortBy: 'rating' }}
         />
 
         {/* Section 4: Girls PGs */}
         <PropertySection
-          title="👩 Girls PGs"
+          title="♀ Girls PGs"
           viewAllHref="/search?gender=GIRLS"
           queryParams={{ gender: 'GIRLS', sortBy: 'rating' }}
         />
 
         {/* Section 5: Newly Listed */}
         <PropertySection
-          title="🆕 Newly Listed"
+          title="◉ Newly Listed"
           viewAllHref="/search?sortBy=newest"
           queryParams={{ sortBy: 'newest' }}
         />

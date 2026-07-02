@@ -10,7 +10,7 @@ export default function DevEmailsPage() {
     <div className="page-container max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">📬 Mock Email Viewer</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Mock Email Viewer</h1>
           <p className="text-sm text-text-secondary mt-0.5">Dev-only — last 50 system-generated emails</p>
         </div>
         <button onClick={() => qc.invalidateQueries({ queryKey: ['dev-emails'] })}

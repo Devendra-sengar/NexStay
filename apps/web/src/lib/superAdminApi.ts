@@ -1,10 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import apiClient from '@/lib/api';
 
 const getToken = () => localStorage.getItem('nexstay_token');
-const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
 const sa = (url: string, options?: any) =>
-  axios({ url: `/api/superadmin${url}`, headers: authHeaders(), ...options });
+  apiClient({ url: `/api/superadmin${url}`, ...options });
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export function useSuperDashboard() {
@@ -106,6 +105,21 @@ export function useCreateHostel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['super-hostels'] }),
   });
 }
+// 🆕 Combined: creates new owner account + hostel in one call — returns credentials
+export function useCreateHostelWithOwner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const { data } = await sa('/hostels/create-with-owner', { method: 'POST', data: body });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['super-hostels'] });
+      qc.invalidateQueries({ queryKey: ['super-all-owners'] });
+      qc.invalidateQueries({ queryKey: ['super-owners'] });
+    },
+  });
+}
 export function useUpdateHostel() {
   const qc = useQueryClient();
   return useMutation({
@@ -159,3 +173,38 @@ export function useCreateStaffUser() {
     onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['super-hostel-staff', vars.hostelId] }),
   });
 }
+
+// ── Owner Permissions (SuperAdmin → HOSTEL_ADMIN module access) ───────────────
+export function useSetOwnerPermissions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ownerId, permissions }: { ownerId: string; permissions: Record<string, boolean> }) => {
+      const { data } = await sa(`/owners/${ownerId}/permissions`, { method: 'PATCH', data: permissions });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['super-all-owners'] });
+      qc.invalidateQueries({ queryKey: ['super-owners'] });
+    },
+  });
+}
+
+// ── Staff Permissions (Owner → staff feature access via hostelAdmin route) ─────
+export function useUpdateStaffPermissions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ staffId, permissions }: { staffId: string; permissions: Record<string, boolean> }) => {
+      const { data } = await apiClient({
+        url: `/api/hostel-admin/staff/${staffId}/permissions`,
+        method: 'PUT',
+        data: { permissions },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['login-staff'] });
+      qc.invalidateQueries({ queryKey: ['staff'] });
+    },
+  });
+}
+

@@ -16,10 +16,13 @@ function generatePassword(length = 10): string {
 }
 
 async function getNextHostelCode(): Promise<string> {
-  const last = await Hostel.findOne({}).sort({ hostelCode: -1 }).select('hostelCode').lean();
-  if (!last) return 'NST-001';
-  const num = parseInt(last.hostelCode.replace('NST-', ''), 10) || 0;
-  return `NST-${String(num + 1).padStart(3, '0')}`;
+  const all = await Hostel.find({}).select('hostelCode').lean();
+  if (!all.length) return 'NST-001';
+  // Sort numerically to avoid lexicographic bug (NST-9 > NST-10 as strings)
+  const max = Math.max(
+    ...all.map(h => parseInt(h.hostelCode.replace('NST-', ''), 10) || 0)
+  );
+  return `NST-${String(max + 1).padStart(3, '0')}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -203,6 +206,37 @@ export const createOwner = async (req: AuthRequest, res: Response): Promise<void
     });
   } catch (err) {
     console.error('createOwner:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// PATCH /api/superadmin/owners/:id/permissions  — SuperAdmin sets owner module access
+export const setOwnerPermissions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const owner = await User.findOne({ _id: req.params.id, role: 'HOSTEL_ADMIN' });
+    if (!owner) { res.status(404).json({ success: false, message: 'Owner not found' }); return; }
+
+    const {
+      canManageERP, canViewReports, canManageMarketplace, canManageRooms,
+      canManageMess, canManageExpenses, canManageComplaints, canManageStaff,
+    } = req.body;
+
+    // Merge with existing or defaults
+    owner.ownerPermissions = {
+      canManageERP:         canManageERP         ?? owner.ownerPermissions?.canManageERP         ?? true,
+      canViewReports:       canViewReports       ?? owner.ownerPermissions?.canViewReports       ?? true,
+      canManageMarketplace: canManageMarketplace ?? owner.ownerPermissions?.canManageMarketplace ?? true,
+      canManageRooms:       canManageRooms       ?? owner.ownerPermissions?.canManageRooms       ?? true,
+      canManageMess:        canManageMess        ?? owner.ownerPermissions?.canManageMess        ?? true,
+      canManageExpenses:    canManageExpenses    ?? owner.ownerPermissions?.canManageExpenses    ?? true,
+      canManageComplaints:  canManageComplaints  ?? owner.ownerPermissions?.canManageComplaints  ?? true,
+      canManageStaff:       canManageStaff       ?? owner.ownerPermissions?.canManageStaff       ?? true,
+    } as any;
+    await owner.save();
+
+    res.json({ success: true, data: owner.ownerPermissions, message: 'Owner permissions updated' });
+  } catch (err) {
+    console.error('setOwnerPermissions:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

@@ -215,6 +215,7 @@ export default function CheckInPage() {
   const [selectedBedId, setSelectedBedId] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [guardianPhoneError, setGuardianPhoneError] = useState('');
 
   // Common stay fields
   const [stayDetails, setStayDetails] = useState({ moveInDate: new Date().toISOString().split('T')[0], monthlyRent: booking?.monthlyRent ?? 6000, securityDeposit: 0, noticePeriodDays: 30 });
@@ -224,6 +225,8 @@ export default function CheckInPage() {
   const guest = booking?.guestId as any;
 
   const isPhoneValid = walkin.phone.replace(/\D/g, '').length === 10;
+  const isGuardianPhoneValid = !walkin.guardianPhone || walkin.guardianPhone.replace(/\D/g, '').length === 10;
+  const allDocsUploaded = !!walkinDocs.aadhaarUrl && !!walkinDocs.studentIdUrl && !!walkinDocs.photoUrl;
 
   const canProceed = () => {
     if (isBookingFlow) {
@@ -231,7 +234,8 @@ export default function CheckInPage() {
       if (step === 1) return true;
       return true;
     } else {
-      if (step === 0) return walkin.name.trim() && isPhoneValid && walkin.email.trim();
+      if (step === 0) return walkin.name.trim() && isPhoneValid && walkin.email.trim() && isGuardianPhoneValid;
+      if (step === 1) return allDocsUploaded; // ← ALL 3 docs required
       if (step === 2) return !!selectedBedId;
       return true;
     }
@@ -354,7 +358,6 @@ export default function CheckInPage() {
               ['email', 'Email *', 'email'],
               ['college', 'College', 'text'],
               ['guardianName', 'Guardian Name', 'text'],
-              ['guardianPhone', 'Guardian Phone', 'tel'],
             ] as [string, string, string][]).map(([field, lbl, type]) => (
               <div key={field}>
                 <label className="form-label">{lbl}</label>
@@ -366,7 +369,7 @@ export default function CheckInPage() {
                 />
               </div>
             ))}
-            {/* Phone — special field with validation */}
+            {/* Student Phone */}
             <div>
               <label className="form-label">Phone * <span className="text-text-muted font-normal">(10 digits)</span></label>
               <input
@@ -397,6 +400,37 @@ export default function CheckInPage() {
                 </p>
               )}
             </div>
+            {/* Guardian Phone — compulsory, 10 digits */}
+            <div>
+              <label className="form-label">Guardian Phone * <span className="text-text-muted font-normal">(10 digits required)</span></label>
+              <input
+                type="tel"
+                className={cn('input-field', guardianPhoneError && 'border-red-400 focus:border-red-500')}
+                value={walkin.guardianPhone}
+                maxLength={10}
+                inputMode="numeric"
+                placeholder="e.g. 9876543210"
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setWalkin(w => ({ ...w, guardianPhone: val }));
+                  if (val.length > 0 && val.length !== 10) {
+                    setGuardianPhoneError('Guardian phone must be exactly 10 digits');
+                  } else {
+                    setGuardianPhoneError('');
+                  }
+                }}
+              />
+              {guardianPhoneError && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {guardianPhoneError}
+                </p>
+              )}
+              {walkin.guardianPhone.length === 10 && !guardianPhoneError && (
+                <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Valid guardian phone
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -404,23 +438,27 @@ export default function CheckInPage() {
           <div className="space-y-4">
             <div>
               <h2 className="font-semibold text-text-primary mb-1">Upload Documents</h2>
-              <p className="text-xs text-text-muted mb-4">Drag & drop or click each box to upload. Image or PDF · Max 5MB each.</p>
+              <p className="text-xs text-text-muted mb-1">All 3 documents are <strong>compulsory</strong>. Next is enabled only after all are uploaded.</p>
+              {/* Status badges */}
+              <div className="flex gap-2 mt-2 mb-4 flex-wrap">
+                {([['Aadhaar', walkinDocs.aadhaarUrl], ['Student ID', walkinDocs.studentIdUrl], ['Photo', walkinDocs.photoUrl]] as [string,string][]).map(([label, url]) => (
+                  <span key={label} className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1',
+                    url ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400 border border-red-200')}>
+                    {url ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
-            <DocUpload
-              label="Aadhaar Card"
-              value={walkinDocs.aadhaarUrl}
-              onChange={url => setWalkinDocs(d => ({ ...d, aadhaarUrl: url }))}
-            />
-            <DocUpload
-              label="Student ID"
-              value={walkinDocs.studentIdUrl}
-              onChange={url => setWalkinDocs(d => ({ ...d, studentIdUrl: url }))}
-            />
-            <DocUpload
-              label="Photo"
-              value={walkinDocs.photoUrl}
-              onChange={url => setWalkinDocs(d => ({ ...d, photoUrl: url }))}
-            />
+            <DocUpload label="Aadhaar Card *" value={walkinDocs.aadhaarUrl} onChange={url => setWalkinDocs(d => ({ ...d, aadhaarUrl: url }))} />
+            <DocUpload label="Student ID *" value={walkinDocs.studentIdUrl} onChange={url => setWalkinDocs(d => ({ ...d, studentIdUrl: url }))} />
+            <DocUpload label="Photo *" value={walkinDocs.photoUrl} onChange={url => setWalkinDocs(d => ({ ...d, photoUrl: url }))} />
+            {!allDocsUploaded && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                Upload all 3 documents to proceed to the next step.
+              </p>
+            )}
           </div>
         )}
 

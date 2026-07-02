@@ -19,7 +19,7 @@ export default function EmptyShell({ title, subtitle, icon: Icon = BarChart2, ph
         <p className="text-text-secondary max-w-xs text-sm mb-4">
           {subtitle || 'This section will be fully built in the next phase.'}
         </p>
-        <span className="badge-info text-xs px-3 py-1">🚧 Coming in {phase}</span>
+        <span className="badge-info text-xs px-3 py-1">▷ Coming in {phase}</span>
       </div>
     </div>
   );

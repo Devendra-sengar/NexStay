@@ -6,10 +6,11 @@ import {
   getAllProperties, getPropertyDetail, approveProperty, rejectProperty,
   getPendingOwnerVerifications, approveOwnerVerification, rejectOwnerVerification,
   getAllBookings, getPlatformRevenue,
-  getAllHostels, getHostelById, createHostel, updateHostel, toggleHostelActive, deleteHostel,
+  getAllHostels, getHostelById, createHostel, createHostelWithOwner, updateHostel, toggleHostelActive, deleteHostel,
   getAllOwners, createOwner,
   getHostelStaff, createStaffUser,
 } from '../controllers/superAdmin.controller';
+import { setOwnerPermissions } from '../controllers/hostelManagement.controller';
 
 const router = Router();
 router.use(protect);
@@ -26,17 +27,19 @@ router.patch('/users/:id/suspend',    suspendUser);
 router.patch('/users/:id/reactivate', reactivateUser);
 
 // ── Hostels ───────────────────────────────────────────────────────────────────
-router.get('/hostels',               getAllHostels);
-router.post('/hostels',              createHostel);
-router.get('/hostels/:id',           getHostelById);
-router.put('/hostels/:id',           updateHostel);
-router.patch('/hostels/:id/toggle',  toggleHostelActive);
-router.delete('/hostels/:id',        deleteHostel);
-router.get('/hostels/:id/staff',     getHostelStaff);
+router.get('/hostels',                       getAllHostels);
+router.post('/hostels',                      createHostel);              // existing owner → new hostel
+router.post('/hostels/create-with-owner',    createHostelWithOwner);    // 🆕 new owner + hostel combined
+router.get('/hostels/:id',                   getHostelById);
+router.put('/hostels/:id',                   updateHostel);
+router.patch('/hostels/:id/toggle',          toggleHostelActive);
+router.delete('/hostels/:id',                deleteHostel);
+router.get('/hostels/:id/staff',             getHostelStaff);
 
 // ── Owners ────────────────────────────────────────────────────────────────────
-router.get('/owners',   getAllOwners);
-router.post('/owners',  createOwner);
+router.get('/owners',                        getAllOwners);
+router.post('/owners',                       createOwner);
+router.patch('/owners/:id/permissions',      setOwnerPermissions);   // 🔒 SuperAdmin controls owner modules
 
 // ── Staff ─────────────────────────────────────────────────────────────────────
 router.post('/staff',   createStaffUser);

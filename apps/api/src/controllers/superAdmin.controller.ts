@@ -379,6 +379,101 @@ export const createHostel = async (req: AuthRequest, res: Response): Promise<voi
   }
 };
 
+// ── CREATE HOSTEL WITH NEW OWNER (Combined Flow) ──────────────────────────────
+// Super Admin creates both the owner account AND the hostel in one shot.
+// Returns the plain-text credentials so Admin can share them with the owner.
+export const createHostelWithOwner = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      // Owner details
+      ownerName, ownerEmail, ownerPhone, ownerPassword, businessName,
+      // Hostel details
+      hostelName, gender, address, contactPhone, contactEmail, messEnabled,
+    } = req.body;
+
+    if (!ownerName || !ownerEmail || !ownerPhone || !ownerPassword || !hostelName) {
+      res.status(400).json({ success: false, message: 'ownerName, ownerEmail, ownerPhone, ownerPassword, hostelName are required' });
+      return;
+    }
+    if (ownerPassword.length < 6) {
+      res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+      return;
+    }
+
+    // Check duplicate owner
+    const existingUser = await User.findOne({ $or: [{ email: ownerEmail.toLowerCase() }, { phone: ownerPhone }] });
+    if (existingUser) {
+      res.status(409).json({ success: false, message: 'Email or phone already registered for another account' });
+      return;
+    }
+
+    // 1. Create owner account
+    const passwordHash = await bcrypt.hash(ownerPassword, 12);
+    const owner = await User.create({
+      name: ownerName,
+      email: ownerEmail.toLowerCase(),
+      phone: ownerPhone,
+      passwordHash,
+      role: 'HOSTEL_ADMIN',
+      status: 'ACTIVE',
+      businessName: businessName || '',
+      ownerVerificationStatus: 'APPROVED', // Pre-approved by super admin
+    });
+
+    // 2. Generate unique hostel code
+    const count = await Hostel.countDocuments({});
+    const hostelCode = `NST-${String(count + 1).padStart(3, '0')}`;
+
+    // 3. Create hostel linked to the new owner
+    const hostel = await Hostel.create({
+      hostelCode,
+      name: hostelName,
+      gender: gender || 'BOYS',
+      ownerId: owner._id,
+      isActive: true,
+      address: address || {},
+      contactPhone: contactPhone || ownerPhone,
+      contactEmail: contactEmail || ownerEmail,
+      messEnabled: messEnabled ?? false,
+    });
+
+    // 4. Link hostelId back to the owner
+    await User.findByIdAndUpdate(owner._id, { hostelId: hostel._id });
+
+    // 5. Return everything including plain-text credentials for the admin to share
+    res.status(201).json({
+      success: true,
+      message: 'Hostel and owner account created successfully',
+      data: {
+        hostel: {
+          _id: hostel._id,
+          hostelCode: hostel.hostelCode,
+          name: hostel.name,
+          gender: hostel.gender,
+        },
+        owner: {
+          _id: owner._id,
+          name: owner.name,
+          email: owner.email,
+          phone: owner.phone,
+        },
+        // Credentials to share with the owner
+        credentials: {
+          loginUrl: '/login',
+          email: ownerEmail,
+          phone: ownerPhone,
+          password: ownerPassword, // plain-text, admin must share securely
+          hostelCode: hostelCode,
+          role: 'HOSTEL_ADMIN',
+        },
+      },
+    });
+  } catch (err: any) {
+    console.error('[createHostelWithOwner]', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+};
+
 export const updateHostel = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const hostel = await Hostel.findByIdAndUpdate(req.params.id, req.body, { new: true }).lean();

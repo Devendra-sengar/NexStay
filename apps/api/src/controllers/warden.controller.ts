@@ -65,8 +65,7 @@ export const getStudents = async (req: AuthRequest, res: Response): Promise<void
     ];
     const [students, total] = await Promise.all([
       HostelStudent.find(filter)
-        .populate('bedId', 'bedNumber')
-        .populate({ path: 'bedId', populate: { path: 'roomId', select: 'roomNumber' } })
+        .populate({ path: 'bedId', select: 'bedNumber roomId', populate: { path: 'roomId', select: 'roomNumber' } })
         .sort({ name: 1 })
         .skip((p - 1) * lim)
         .limit(lim)

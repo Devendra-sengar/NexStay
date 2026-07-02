@@ -137,7 +137,9 @@ export default function PropertyDetailPage() {
   if (error || !property) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-5xl">🏠</div>
+        <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center">
+          <span className="text-3xl text-slate-400 font-bold">□</span>
+        </div>
         <h2 className="text-xl font-bold text-slate-800">Property not found</h2>
         <button onClick={() => navigate('/')} className="text-blue-600 hover:underline text-sm font-medium">← Back to Home</button>
       </div>
@@ -191,7 +193,7 @@ export default function PropertyDetailPage() {
                   {[property.locality, property.city, property.state].filter(Boolean).join(', ')}
                 </div>
                 {property.distance !== undefined && (
-                  <span className="text-blue-600 font-medium">📍 {property.distance} km away</span>
+                  <span className="text-blue-600 font-medium"><MapPin className="w-3.5 h-3.5 inline mr-0.5" /> {property.distance} km away</span>
                 )}
               </div>
             </div>
@@ -333,7 +335,9 @@ export default function PropertyDetailPage() {
 
               {allReviews.length === 0 ? (
                 <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
-                  <div className="text-3xl mb-2">⭐</div>
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-2">
+                    <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
+                  </div>
                   <p className="text-slate-500 text-sm">No reviews yet. Be the first to review!</p>
                 </div>
               ) : (
@@ -377,7 +381,7 @@ export default function PropertyDetailPage() {
               ) : (
                 <div className="bg-slate-100 rounded-2xl h-40 flex items-center justify-center text-slate-400 text-sm mb-3">Map not available</div>
               )}
-              <p className="text-sm text-slate-600 mb-2">📍 {property.address}, {property.city}, {property.state} — {property.pincode}</p>
+              <p className="text-sm text-slate-600 mb-2"><MapPin className="w-3.5 h-3.5 inline mr-1" />{property.address}, {property.city}, {property.state} — {property.pincode}</p>
               {property.latitude && property.longitude && (
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${property.latitude},${property.longitude}`}

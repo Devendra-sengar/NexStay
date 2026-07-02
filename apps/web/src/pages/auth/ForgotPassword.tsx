@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
             <>
               <h2 className="text-2xl font-bold text-text-primary mb-1">Reset password</h2>
               <p className="text-text-muted text-sm mb-2">Enter the OTP sent to <span className="text-text-primary">{email}</span></p>
-              {devOtp && <div className="bg-brand-primary/10 border border-brand-primary/20 rounded-md px-3 py-2 text-xs text-brand-primary mb-4">🧪 Dev OTP: <span className="font-bold">{devOtp}</span></div>}
+              {devOtp && <div className="bg-brand-primary/10 border border-brand-primary/20 rounded-md px-3 py-2 text-xs text-brand-primary mb-4">[DEV] OTP: <span className="font-bold">{devOtp}</span></div>}
               <form onSubmit={resetForm.handleSubmit(resetPassword)} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1.5">OTP</label>
@@ -103,7 +103,7 @@ export default function ForgotPasswordPage() {
 
           {step === 'done' && (
             <div className="text-center py-4">
-              <div className="text-5xl mb-4">✅</div>
+              <div className="text-5xl mb-4 text-green-500 font-bold">✓</div>
               <h2 className="text-xl font-bold text-text-primary mb-2">Password reset!</h2>
               <p className="text-text-muted text-sm mb-6">You can now sign in with your new password</p>
               <Link to="/login" className="btn-primary inline-flex items-center gap-2">Go to login <ArrowRight className="w-4 h-4" /></Link>

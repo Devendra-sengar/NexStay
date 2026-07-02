@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt';
-import { User, StaffPermissions } from '../models/User.model';
+import { User, StaffPermissions, OwnerPermissions } from '../models/User.model';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
     hostelId?: string | null;
     tenantId?: string | null;
     staffPermissions?: StaffPermissions;
+    ownerPermissions?: OwnerPermissions | null;
   };
 }
 
@@ -55,6 +56,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       hostelId: user.hostelId ? String(user.hostelId) : null,
       tenantId,
       staffPermissions: user.staffPermissions || undefined,
+      ownerPermissions: user.ownerPermissions || null,
     };
     next();
   } catch {

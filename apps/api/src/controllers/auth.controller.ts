@@ -21,7 +21,64 @@ const formatUser = (user: InstanceType<typeof User>) => ({
   hostelId: user.hostelId || null,
   studentId: user.studentId || null,
   staffPermissions: user.staffPermissions || null,
+  ownerPermissions: user.ownerPermissions || null,  // SuperAdmin-controlled
 });
+
+// ─── POST /api/auth/register ──────────────────────────────────────────────────
+// Only GUEST (student/tenant) self-signup is allowed.
+// HOSTEL_ADMIN accounts are created exclusively by Super Admin.
+export const register = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, email, phone, password, role, businessName } = req.body;
+
+    if (!name || !email || !phone || !password) {
+      res.status(400).json({ success: false, message: 'name, email, phone, password are required' });
+      return;
+    }
+
+    // 🔒 Block HOSTEL_ADMIN self-signup — only Super Admin can create owner accounts
+    if (role === 'HOSTEL_ADMIN') {
+      res.status(403).json({
+        success: false,
+        message: 'Hostel owner accounts can only be created by the platform administrator. Please contact support.',
+      });
+      return;
+    }
+
+    const allowedRoles = ['GUEST'];
+    const userRole = allowedRoles.includes(role) ? role : 'GUEST';
+
+    const existing = await User.findOne({ $or: [{ email: email.toLowerCase() }, { phone }] });
+    if (existing) {
+      res.status(409).json({ success: false, message: 'Email or phone already registered' });
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    const user = await User.create({
+      name, email: email.toLowerCase(), phone, passwordHash,
+      role: userRole, status: 'PENDING',
+      ...(businessName ? { businessName } : {}),
+      otp: isDev ? '123456' : generateOTP(),
+      otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    if (!isDev) {
+      await sendOtpEmail(user.email!, user.otp!, user.name);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: isDev ? 'Account created. Use OTP 123456 in dev mode.' : 'Account created. Check your email for the OTP.',
+      ...(isDev && { otp: user.otp }),
+    });
+  } catch (err: any) {
+    console.error('Register error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+  }
+};
 
 // ─── POST /api/auth/login ─────────────────────────────────────────────────────
 // Body: { identifier, password, role, hostelCode? }
@@ -74,6 +131,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(403).json({
         success: false,
         message: 'Your account has been suspended. Contact support.',
+      });
+      return;
+    }
+
+    // Block unverified (PENDING) accounts — they must complete OTP flow
+    if (user.status === 'PENDING') {
+      res.status(403).json({
+        success: false,
+        message: 'Account not verified. Please verify your email with the OTP sent to you.',
       });
       return;
     }
@@ -149,13 +215,18 @@ export const verifyOtp = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    user.status = 'ACTIVE'; // Activate account on successful OTP verification
     user.otp = undefined;
     user.otpExpiry = undefined;
-    await user.save();
 
     const payload = { id: user._id, role: user.role, email: user.email || '', hostelId: user.hostelId || null };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
+
+    // Store hashed refresh token so stateful logout works from first session
+    const hashedRefresh = await bcrypt.hash(refreshToken, 8);
+    user.refreshToken = hashedRefresh;
+    await user.save();
 
     res.json({
       success: true,

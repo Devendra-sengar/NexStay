@@ -26,7 +26,7 @@ export default function MessHistoryPage() {
               <div key={menu._id} style={{ background: menu.date === today ? '#fffbeb' : 'white', borderRadius: 12, padding: '16px', border: `1px solid ${menu.date === today ? '#fde68a' : '#f1f5f9'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 700, margin: 0 }}>
-                    {menu.date === today ? '📍 Today — ' : ''}{new Date(menu.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' })}
+                    {menu.date === today ? '◎ Today — ' : ''}{new Date(menu.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' })}
                   </p>
                   {(menu.uploadedBy as any)?.name && (
                     <span style={{ color: '#94a3b8', fontSize: 11 }}>by {(menu.uploadedBy as any).name}</span>
@@ -42,7 +42,7 @@ export default function MessHistoryPage() {
                     )
                   ))}
                 </div>
-                {menu.specialNote && <p style={{ color: '#7c3aed', fontSize: 12, margin: '8px 0 0' }}>✨ {menu.specialNote}</p>}
+                {menu.specialNote && <p style={{ color: '#7c3aed', fontSize: 12, margin: '8px 0 0' }}>★ {menu.specialNote}</p>}
               </div>
             ))}
           </div>

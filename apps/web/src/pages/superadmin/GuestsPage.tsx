@@ -13,7 +13,7 @@ function SuspendModal({ user, onClose, onConfirm, loading }: any) {
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
         <h3 className="font-bold text-text-primary mb-2">
-          {user.status === 'ACTIVE' ? '⛔ Suspend User?' : '✅ Reactivate User?'}
+          {user.status === 'ACTIVE' ? 'Suspend User?' : 'Reactivate User?'}
         </h3>
         <p className="text-sm text-text-secondary mb-5">
           {user.status === 'ACTIVE'

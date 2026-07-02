@@ -1,132 +1,219 @@
 import { useState } from 'react';
-import { Building2, Plus, Search, ToggleLeft, ToggleRight, Trash2, Users, X, Loader2, UserPlus, Eye, EyeOff } from 'lucide-react';
-import { useSuperHostels, useCreateHostel, useToggleHostelActive, useDeleteHostel, useSuperAllOwners, useCreateOwner } from '@/lib/superAdminApi';
+import {
+  Building2, Plus, Search, ToggleLeft, ToggleRight, Trash2, Users,
+  X, Loader2, Eye, EyeOff, Copy, CheckCheck, KeyRound, RefreshCw, ShieldCheck,
+} from 'lucide-react';
+import {
+  useSuperHostels, useCreateHostelWithOwner, useToggleHostelActive, useDeleteHostel,
+} from '@/lib/superAdminApi';
 import toast from 'react-hot-toast';
+import OwnerPermissionsModal from './OwnerPermissionsModal';
 
 const GENDER_LABELS: Record<string, string> = { BOYS: '♂ Boys', GIRLS: '♀ Girls', CO_ED: '⚥ Co-ed' };
+
 const lbl: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: '#6b7280', marginBottom: 4 };
 const inp: React.CSSProperties = { width: '100%', padding: '9px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
 
-// ── Create Admin Modal ────────────────────────────────────────────────────────
-function CreateAdminModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string, name: string) => void }) {
-  const createOwner = useCreateOwner();
-  const [showPw, setShowPw] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', businessName: '' });
-  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+// ── Random password generator ────────────────────────────────────────────────
+function genPassword() {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789@#!';
+  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (form.password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
-    try {
-      const res = await createOwner.mutateAsync(form);
-      toast.success(`Admin "${form.name}" created!`);
-      onCreated(res.data._id, form.name);
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to create admin');
-    }
+// ── Credentials Modal ────────────────────────────────────────────────────────
+function CredentialsModal({ creds, hostelName, onClose }: {
+  creds: { email: string; phone: string; password: string; hostelCode: string };
+  hostelName: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const credText = `NexStay — Hostel Login Credentials\n\nHostel: ${hostelName}\nHostel Code: ${creds.hostelCode}\n\nLogin: ${creds.email} (or phone: ${creds.phone})\nPassword: ${creds.password}\n\nPortal: ${window.location.origin}/login\n\nPlease change your password after first login.`;
+
+  const copyAll = () => {
+    navigator.clipboard.writeText(credText);
+    setCopied(true);
+    toast.success('Credentials copied!');
+    setTimeout(() => setCopied(false), 3000);
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
-      <div style={{ background: 'white', borderRadius: 16, padding: 28, width: '100%', maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <div style={{ width: 40, height: 40, background: '#eff6ff', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserPlus size={20} color="#1d4ed8" />
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: 'white', borderRadius: 20, padding: 32, width: '100%', maxWidth: 520 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div style={{ width: 48, height: 48, background: 'linear-gradient(135deg,#10b981,#059669)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <KeyRound size={22} color="white" />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>Register New Hostel Admin</h2>
-            <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Creates a login account for the admin</p>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>✓ Hostel Created!</h2>
+            <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Share these credentials with the owner</p>
           </div>
-          <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={20} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ gridColumn: '1/-1' }}>
-              <label style={lbl}>Full Name *</label>
-              <input required value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Rajesh Sharma" style={inp} />
-            </div>
-            <div>
-              <label style={lbl}>Email *</label>
-              <input required type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="admin@hostel.com" style={inp} />
-            </div>
-            <div>
-              <label style={lbl}>Phone *</label>
-              <input required value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="9876543210" style={inp} />
-            </div>
-            <div style={{ gridColumn: '1/-1' }}>
-              <label style={lbl}>Business / Company Name</label>
-              <input value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="e.g. Sharma Hostels Pvt. Ltd." style={inp} />
-            </div>
-            <div style={{ gridColumn: '1/-1' }}>
-              <label style={lbl}>Password *</label>
-              <div style={{ position: 'relative' }}>
-                <input required type={showPw ? 'text' : 'password'} value={form.password} onChange={e => set('password', e.target.value)} placeholder="Min 6 characters" style={{ ...inp, paddingRight: 40 }} />
-                <button type="button" onClick={() => setShowPw(p => !p)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
+        {/* Credentials Box */}
+        <div style={{ background: '#f8fafc', border: '2px solid #e2e8f0', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <Row label="Hostel" value={hostelName} />
+            <Row label="Hostel Code" value={creds.hostelCode} badge />
+            <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: 0 }} />
+            <Row label="Email" value={creds.email} mono />
+            <Row label="Phone" value={creds.phone} mono />
+            <Row label="Password" value={creds.password} mono secret />
+            <Row label="Login URL" value={`${window.location.origin}/login`} mono />
           </div>
+        </div>
 
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#166534' }}>
-            ✅ Admin will be <strong>pre-approved</strong> and can log in immediately with these credentials.
-          </div>
+        {/* Warning */}
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#92400e', marginBottom: 16 }}>
+          [!] <strong>Share securely.</strong> This password will not be shown again. Ask the owner to change it after first login.
+        </div>
 
-          <button type="submit" disabled={createOwner.isPending}
-            style={{ padding: '12px 0', background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            {createOwner.isPending ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> Creating…</> : '✓ Create Admin Account'}
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={copyAll}
+            style={{ flex: 1, padding: '12px 0', background: copied ? '#10b981' : '#1d4ed8', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'background 0.2s' }}>
+            {copied ? <><CheckCheck size={16} />Copied!</> : <><Copy size={16} />Copy All Credentials</>}
           </button>
-        </form>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <button onClick={onClose}
+            style={{ padding: '12px 20px', background: '#f1f5f9', color: '#374151', border: 'none', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Create Hostel Modal ───────────────────────────────────────────────────────
-function CreateHostelModal({ onClose }: { onClose: () => void }) {
-  const owners = useSuperAllOwners();
-  const create = useCreateHostel();
-  const [showCreateAdmin, setShowCreateAdmin] = useState(false);
+function Row({ label, value, mono, badge, secret }: { label: string; value: string; mono?: boolean; badge?: boolean; secret?: boolean }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {badge ? (
+          <span style={{ fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 100, background: '#dbeafe', color: '#1d4ed8', fontFamily: 'monospace' }}>{value}</span>
+        ) : (
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', fontFamily: mono ? 'monospace' : 'inherit', background: mono ? '#f1f5f9' : 'transparent', padding: mono ? '2px 6px' : 0, borderRadius: 4 }}>
+            {secret && !show ? '••••••••••' : value}
+          </span>
+        )}
+        {secret && (
+          <button onClick={() => setShow(s => !s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2 }}>
+            {show ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Create Hostel + Owner Modal ───────────────────────────────────────────────
+function CreateHostelModal({ onClose, onCreated }: {
+  onClose: () => void;
+  onCreated: (creds: any, hostelName: string) => void;
+}) {
+  const create = useCreateHostelWithOwner();
+  const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({
-    name: '', gender: 'BOYS', ownerId: '',
+    // Owner
+    ownerName: '', ownerEmail: '', ownerPhone: '', ownerPassword: genPassword(), businessName: '',
+    // Hostel
+    hostelName: '', gender: 'BOYS',
     city: '', state: '', street: '', pincode: '',
-    contactPhone: '', contactEmail: '', messEnabled: true,
+    contactPhone: '', contactEmail: '',
+    messEnabled: true,
   });
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.ownerId) { toast.error('Select a Hostel Admin'); return; }
+    if (form.ownerPassword.length < 6) { toast.error('Password must be at least 6 chars'); return; }
     try {
-      await create.mutateAsync({
-        name: form.name, gender: form.gender, ownerId: form.ownerId,
+      const res = await create.mutateAsync({
+        ownerName: form.ownerName, ownerEmail: form.ownerEmail,
+        ownerPhone: form.ownerPhone, ownerPassword: form.ownerPassword,
+        businessName: form.businessName,
+        hostelName: form.hostelName, gender: form.gender,
         address: { street: form.street, city: form.city, state: form.state, pincode: form.pincode },
-        contactPhone: form.contactPhone, contactEmail: form.contactEmail,
+        contactPhone: form.contactPhone || form.ownerPhone,
+        contactEmail: form.contactEmail || form.ownerEmail,
         messEnabled: form.messEnabled,
       });
-      toast.success('Hostel created!');
-      onClose();
+      onCreated(res.data.credentials, form.hostelName);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to create hostel');
     }
   };
 
   return (
-    <>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
-        <div style={{ background: 'white', borderRadius: 16, padding: 24, width: '100%', maxWidth: 580, maxHeight: '92vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Create New Hostel</h2>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={20} /></button>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+      <div style={{ background: 'white', borderRadius: 20, padding: 28, width: '100%', maxWidth: 620, maxHeight: '94vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 44, height: 44, background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Building2 size={20} color="white" />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>Register New Hostel</h2>
+              <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Creates the hostel + owner login in one step</p>
+            </div>
           </div>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={20} /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* ── Section: Owner Account ── */}
+          <div style={{ background: '#eff6ff', borderRadius: 12, padding: 16, border: '1px solid #bfdbfe' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>Owner / Admin Account</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={lbl}>Full Name *</label>
+                <input required value={form.ownerName} onChange={e => set('ownerName', e.target.value)} placeholder="e.g. Rajesh Sharma" style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Email *</label>
+                <input required type="email" value={form.ownerEmail} onChange={e => set('ownerEmail', e.target.value)} placeholder="owner@hostel.com" style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Phone *</label>
+                <input required value={form.ownerPhone} onChange={e => set('ownerPhone', e.target.value)} placeholder="9876543210" style={inp} />
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={lbl}>Business / Company Name</label>
+                <input value={form.businessName} onChange={e => set('businessName', e.target.value)} placeholder="e.g. Sharma Hostels Pvt. Ltd." style={inp} />
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Login Password *</label>
+                  <button type="button" onClick={() => set('ownerPassword', genPassword())}
+                    style={{ fontSize: 11, color: '#1d4ed8', background: 'white', border: '1px solid #bfdbfe', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <RefreshCw size={10} /> Generate
+                  </button>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <input required type={showPw ? 'text' : 'password'} value={form.ownerPassword} onChange={e => set('ownerPassword', e.target.value)}
+                    style={{ ...inp, paddingRight: 40, fontFamily: 'monospace', letterSpacing: showPw ? 1 : 3 }} />
+                  <button type="button" onClick={() => setShowPw(p => !p)}
+                    style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#3b82f6' }}>You'll get this to share with the owner after creation</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section: Hostel Details ── */}
+          <div style={{ background: '#f0fdf4', borderRadius: 12, padding: 16, border: '1px solid #bbf7d0' }}>
+            <p style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 700, color: '#15803d' }}>Hostel Details</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div style={{ gridColumn: '1/-1' }}>
                 <label style={lbl}>Hostel Name *</label>
-                <input required value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Sharma Boys Hostel" style={inp} />
+                <input required value={form.hostelName} onChange={e => set('hostelName', e.target.value)} placeholder="e.g. Sharma Boys Hostel" style={inp} />
               </div>
               <div>
                 <label style={lbl}>Gender *</label>
@@ -136,24 +223,6 @@ function CreateHostelModal({ onClose }: { onClose: () => void }) {
                   <option value="CO_ED">Co-ed</option>
                 </select>
               </div>
-
-              {/* Admin dropdown with create button */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <label style={{ ...lbl, marginBottom: 0 }}>Hostel Admin *</label>
-                  <button type="button" onClick={() => setShowCreateAdmin(true)}
-                    style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', background: '#eff6ff', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <UserPlus size={11} /> New Admin
-                  </button>
-                </div>
-                <select required value={form.ownerId} onChange={e => set('ownerId', e.target.value)} style={inp}>
-                  <option value="">-- Select Admin --</option>
-                  {(owners.data || []).map((o: any) => (
-                    <option key={o._id} value={o._id}>{o.name} ({o.email})</option>
-                  ))}
-                </select>
-              </div>
-
               <div>
                 <label style={lbl}>City</label>
                 <input value={form.city} onChange={e => set('city', e.target.value)} placeholder="Pune" style={inp} />
@@ -172,37 +241,27 @@ function CreateHostelModal({ onClose }: { onClose: () => void }) {
               </div>
               <div>
                 <label style={lbl}>Contact Phone</label>
-                <input value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} placeholder="9876543210" style={inp} />
+                <input value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} placeholder="(defaults to owner phone)" style={inp} />
               </div>
               <div style={{ gridColumn: '1/-1' }}>
                 <label style={lbl}>Contact Email</label>
-                <input type="email" value={form.contactEmail} onChange={e => set('contactEmail', e.target.value)} placeholder="hostel@example.com" style={inp} />
+                <input type="email" value={form.contactEmail} onChange={e => set('contactEmail', e.target.value)} placeholder="(defaults to owner email)" style={inp} />
               </div>
               <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <input type="checkbox" id="messEnabled" checked={form.messEnabled} onChange={e => set('messEnabled', e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
                 <label htmlFor="messEnabled" style={{ fontSize: 14, color: '#374151', cursor: 'pointer' }}>Enable Mess / Cafeteria</label>
               </div>
             </div>
-            <button type="submit" disabled={create.isPending}
-              style={{ padding: '12px 0', background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {create.isPending ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} /> Creating…</> : '+ Create Hostel'}
-            </button>
-          </form>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      </div>
+          </div>
 
-      {/* Sub-modal: Create Admin */}
-      {showCreateAdmin && (
-        <CreateAdminModal
-          onClose={() => setShowCreateAdmin(false)}
-          onCreated={(id, name) => {
-            // Refetch owners and auto-select the new one
-            owners.refetch().then(() => set('ownerId', id));
-          }}
-        />
-      )}
-    </>
+          <button type="submit" disabled={create.isPending}
+            style={{ padding: '14px 0', background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: 'white', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            {create.isPending ? <><Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} />Creating…</> : 'Create Hostel & Owner Account'}
+          </button>
+        </form>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
   );
 }
 
@@ -211,7 +270,8 @@ export default function HostelsPage() {
   const [search, setSearch] = useState('');
   const [gender, setGender] = useState('ALL');
   const [showCreate, setShowCreate] = useState(false);
-  const [showCreateAdmin, setShowCreateAdmin] = useState(false);
+  const [credentials, setCredentials] = useState<{ creds: any; hostelName: string } | null>(null);
+  const [permOwner, setPermOwner] = useState<any>(null); // owner for permissions modal
 
   const { data, isLoading } = useSuperHostels({
     ...(search ? { search } : {}),
@@ -247,16 +307,18 @@ export default function HostelsPage() {
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#0f172a' }}>Hostel Management</h1>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>{total} total hostel{total !== 1 ? 's' : ''} registered</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setShowCreateAdmin(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', background: 'white', color: '#1d4ed8', border: '2px solid #1d4ed8', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-            <UserPlus size={15} /> Add Admin
-          </button>
-          <button onClick={() => setShowCreate(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-            <Plus size={15} /> Add Hostel
-          </button>
-        </div>
+        <button onClick={() => setShowCreate(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 22px', background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: 'white', border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 12px rgba(29,78,216,0.3)' }}>
+          <Plus size={16} /> Register New Hostel
+        </button>
+      </div>
+
+      {/* Info Banner */}
+      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <KeyRound size={16} color="#1d4ed8" style={{ flexShrink: 0 }} />
+        <p style={{ margin: 0, fontSize: 13, color: '#1e40af' }}>
+          <strong>Super Admin Control:</strong> Only you can register hostels. The owner account is created automatically and credentials are shown to you for sharing.
+        </p>
       </div>
 
       {/* Filters */}
@@ -281,29 +343,36 @@ export default function HostelsPage() {
       ) : hostels.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '80px 24px', background: 'white', borderRadius: 16, border: '1px dashed #e2e8f0' }}>
           <Building2 size={48} color="#cbd5e1" style={{ marginBottom: 12 }} />
-          <p style={{ color: '#64748b', fontSize: 16, fontWeight: 600 }}>No hostels found</p>
-          <p style={{ color: '#94a3b8', fontSize: 14 }}>Click "+ Add Hostel" to create your first hostel</p>
+          <p style={{ color: '#64748b', fontSize: 16, fontWeight: 600 }}>No hostels registered yet</p>
+          <p style={{ color: '#94a3b8', fontSize: 14 }}>Click "Register New Hostel" to create the first one</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {hostels.map((h: any) => (
-            <div key={h._id} style={{ background: 'white', borderRadius: 14, padding: '16px 20px', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div key={h._id} style={{ background: 'white', borderRadius: 14, padding: '16px 20px', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: h.isActive ? '#22c55e' : '#ef4444', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{h.name}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: '#e0f2fe', color: '#0369a1' }}>{h.hostelCode}</span>
                   <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#f3f4f6', color: '#374151' }}>{GENDER_LABELS[h.gender]}</span>
-                  {h.messEnabled && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fef3c7', color: '#92400e' }}>🍽 Mess</span>}
+                  {h.messEnabled && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fef3c7', color: '#92400e' }}>◆ Mess</span>}
                   {!h.isActive && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fee2e2', color: '#991b1b' }}>Inactive</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 16, marginTop: 4, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: '#64748b' }}>👤 {(h.ownerId as any)?.name || 'Unassigned'}</span>
-                  {h.address?.city && <span style={{ fontSize: 12, color: '#64748b' }}>📍 {h.address.city}{h.address.state ? `, ${h.address.state}` : ''}</span>}
+                  <span style={{ fontSize: 12, color: '#64748b' }}>{(h.ownerId as any)?.name || 'Unassigned'}</span>
+                  {h.address?.city && <span style={{ fontSize: 12, color: '#64748b' }}>◎ {h.address.city}{h.address.state ? `, ${h.address.state}` : ''}</span>}
                   <span style={{ fontSize: 12, color: '#64748b' }}><Users size={11} style={{ display: 'inline', marginRight: 3 }} />{h.studentCount ?? 0} students</span>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {/* Permissions gear for owner */}
+                {(h.ownerId as any)?._id && (
+                  <button onClick={() => setPermOwner(h.ownerId)} title="Set owner permissions"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#7c3aed', padding: 4 }}>
+                    <ShieldCheck size={17} />
+                  </button>
+                )}
                 <button onClick={() => handleToggle(h._id)} title={h.isActive ? 'Deactivate' : 'Activate'}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: h.isActive ? '#22c55e' : '#94a3b8' }}>
                   {h.isActive ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
@@ -318,10 +387,33 @@ export default function HostelsPage() {
         </div>
       )}
 
-      {showCreate && <CreateHostelModal onClose={() => setShowCreate(false)} />}
-      {showCreateAdmin && (
-        <CreateAdminModal onClose={() => setShowCreateAdmin(false)} onCreated={() => { }} />
+      {showCreate && (
+        <CreateHostelModal
+          onClose={() => setShowCreate(false)}
+          onCreated={(creds, hostelName) => {
+            setShowCreate(false);
+            setCredentials({ creds, hostelName });
+            toast.success('Hostel created! Share credentials with the owner.');
+          }}
+        />
       )}
+
+      {credentials && (
+        <CredentialsModal
+          creds={credentials.creds}
+          hostelName={credentials.hostelName}
+          onClose={() => setCredentials(null)}
+        />
+      )}
+
+      {/* Owner Permissions Modal */}
+      {permOwner && (
+        <OwnerPermissionsModal
+          owner={permOwner}
+          onClose={() => setPermOwner(null)}
+        />
+      )}
+
       <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

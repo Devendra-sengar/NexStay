@@ -18,7 +18,7 @@ export default function MessDashboardPage() {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Hello, {user?.name?.split(' ')[0]} 🍽️</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', margin: '0 0 4px' }}>Hello, {user?.name?.split(' ')[0]}</h1>
         <p style={{ color: '#64748b', margin: 0 }}>{hostel?.name} — Mess Manager Dashboard</p>
       </div>
 
@@ -43,7 +43,7 @@ export default function MessDashboardPage() {
       {/* Upload CTA */}
       {!todayMenuUploaded && (
         <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12, padding: '16px', marginBottom: 20 }}>
-          <p style={{ color: '#b45309', fontSize: 14, fontWeight: 600, margin: '0 0 8px' }}>⚠️ Today's menu hasn't been uploaded yet!</p>
+          <p style={{ color: '#b45309', fontSize: 14, fontWeight: 600, margin: '0 0 8px' }}>[!] Today's menu hasn't been uploaded yet!</p>
           <Link to="/mess/menu" style={{ display: 'inline-block', padding: '8px 16px', background: '#d97706', color: 'white', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
             Upload Now →
           </Link>

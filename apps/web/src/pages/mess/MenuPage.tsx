@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
-const MEAL_LABELS = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner' };
+const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 
 const defaultMeal = () => ({ items: [] as string[], photoUrl: null });
 
@@ -36,7 +36,7 @@ export default function MessMenuPage() {
 
   const mutation = useMutation({
     mutationFn: () => api.post('/mess/menu', form),
-    onSuccess: () => { toast.success('Menu saved! Students notified 🔔'); qc.invalidateQueries({ queryKey: ['mess-menu-today'] }); setInitialized(false); },
+    onSuccess: () => { toast.success('Menu saved! Students notified.'); qc.invalidateQueries({ queryKey: ['mess-menu-today'] }); setInitialized(false); },
     onError: (e: any) => toast.error(e?.response?.data?.message || 'Save failed'),
   });
 
@@ -96,7 +96,7 @@ export default function MessMenuPage() {
 
         {/* Special note */}
         <div style={{ background: 'white', borderRadius: 14, padding: '18px', border: '1px solid #f1f5f9' }}>
-          <h3 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 700 }}>✨ Special Note (optional)</h3>
+          <h3 style={{ margin: '0 0 10px', fontSize: 15, fontWeight: 700 }}>Special Note (optional)</h3>
           <input value={form.specialNote} onChange={e => setForm(p => ({ ...p, specialNote: e.target.value }))} placeholder="e.g. Sunday Special: Gulab Jamun in dinner!" style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
         </div>
       </div>

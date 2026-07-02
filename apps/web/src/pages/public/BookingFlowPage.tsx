@@ -327,9 +327,9 @@ export default function BookingFlowPage() {
               <p className="text-sm text-slate-500 mt-1">Optional — you can upload later from your profile. Max 5MB each. Accepted: images and PDF.</p>
             </div>
             {[
-              { key: 'aadhaar', label: 'Aadhaar Card', icon: '🪪' },
-              { key: 'studentId', label: 'Student / ID Card', icon: '🎓' },
-              { key: 'photo', label: 'Your Photo', icon: '🤳' },
+              { key: 'aadhaar', label: 'Aadhaar Card', icon: '◊' },
+              { key: 'studentId', label: 'Student / ID Card', icon: '■' },
+              { key: 'photo', label: 'Your Photo', icon: '◉' },
             ].map(({ key, label, icon }) => (
               <div key={key} className="border-2 border-dashed border-slate-200 rounded-2xl p-5 hover:border-blue-300 transition-colors">
                 <label className="cursor-pointer flex flex-col items-center gap-2 text-center">

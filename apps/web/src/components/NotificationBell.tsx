@@ -6,10 +6,10 @@ import { useNotifications, useMarkNotificationRead, useMarkAllRead } from '@/lib
 import { cn } from '@/lib/utils';
 
 const TYPE_ICON: Record<string, string> = {
-  BOOKING_CONFIRMED: '✅', BOOKING_CANCELLED: '❌', CHECKIN_CONFIRMED: '🏠',
-  CHECKOUT_CONFIRMED: '👋', RENT_DUE: '📅', RENT_REMINDER: '⚠️',
-  RENT_OVERDUE: '🔴', COMPLAINT_UPDATE: '💬', NEW_BOOKING: '📥',
-  NEW_COMPLAINT: '📢', BOOKING: '📖', default: '🔔',
+  BOOKING_CONFIRMED: '✅', BOOKING_CANCELLED: '❌', CHECKIN_CONFIRMED: '■',
+  CHECKOUT_CONFIRMED: '▶', RENT_DUE: '◆', RENT_REMINDER: '⚠️',
+  RENT_OVERDUE: '●', COMPLAINT_UPDATE: '◈', NEW_BOOKING: '▾',
+  NEW_COMPLAINT: '▴', BOOKING: '▪', default: '◊',
 };
 
 export default function NotificationBell() {
@@ -73,7 +73,7 @@ export default function NotificationBell() {
             ) : notifications.length === 0 ? (
               <div className="py-10 text-center text-text-muted">
                 <Inbox className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">All caught up! 🎉</p>
+                <p className="text-sm">All caught up! ★</p>
               </div>
             ) : (
               notifications.map((n: any) => (

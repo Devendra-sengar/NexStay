@@ -36,24 +36,31 @@ const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').sl
 const NAV = [
   { section: 'OVERVIEW', items: [{ label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' }] },
   { section: 'MARKETPLACE', items: [
-    { label: 'My Properties', icon: Building2, path: '/admin/properties' },
-    { label: 'Bookings', icon: BookOpen, path: '/admin/bookings' },
+    { label: 'My Properties', icon: Building2, path: '/admin/properties', permKey: 'canManageMarketplace' },
+    { label: 'Bookings',      icon: BookOpen,  path: '/admin/bookings',   permKey: 'canManageMarketplace' },
   ]},
   { section: 'HOSTEL ERP', items: [
-    { label: 'Students', icon: Users, path: '/admin/tenants' },
-    { label: 'Rooms & Beds', icon: BedDouble, path: '/admin/rooms' },
-    { label: 'Rent & Fees', icon: CreditCard, path: '/admin/rent' },
-    { label: 'Staff', icon: UserCheck, path: '/admin/staff' },
-    { label: 'Inventory', icon: Package, path: '/admin/inventory' },
-    { label: 'Expenses', icon: Receipt, path: '/admin/expenses' },
-    { label: 'Complaints', icon: MessageSquare, path: '/admin/complaints' },
-    { label: 'Reports', icon: BarChart3, path: '/admin/reports' },
+    { label: 'Students',    icon: Users,         path: '/admin/tenants',    permKey: 'canManageERP' },
+    { label: 'Rooms & Beds', icon: BedDouble,    path: '/admin/rooms',      permKey: 'canManageRooms' },
+    { label: 'Rent & Fees', icon: CreditCard,    path: '/admin/rent',       permKey: 'canManageERP' },
+    { label: 'Staff',       icon: UserCheck,     path: '/admin/staff',      permKey: 'canManageStaff' },
+    { label: 'Inventory',   icon: Package,       path: '/admin/inventory',  permKey: 'canManageERP' },
+    { label: 'Expenses',    icon: Receipt,       path: '/admin/expenses',   permKey: 'canManageExpenses' },
+    { label: 'Complaints',  icon: MessageSquare, path: '/admin/complaints', permKey: 'canManageComplaints' },
+    { label: 'Reports',     icon: BarChart3,     path: '/admin/reports',    permKey: 'canViewReports' },
   ]},
   { section: 'SETTINGS', items: [
-    { label: 'Profile', icon: Settings, path: '/admin/profile' },
-    { label: '📬 Mock Emails', icon: Database, path: '/admin/dev/emails' },
+    { label: 'Profile',       icon: Settings,  path: '/admin/profile' },
+    { label: 'Mock Emails', icon: Database,  path: '/admin/dev/emails' },
   ]},
 ];
+
+// Helper — given ownerPermissions (null = full access), is this nav item visible?
+function isNavAllowed(permKey: string | undefined, ownerPerms: Record<string, boolean> | null | undefined): boolean {
+  if (!permKey) return true;               // No restriction on this item
+  if (!ownerPerms) return true;            // null = SuperAdmin hasn't set any restriction
+  return ownerPerms[permKey] !== false;    // Explicitly false = hidden
+}
 
 export default function HostelAdminShell() {
   // Collapse by default at tablet (md = 768px), expanded at desktop
@@ -87,20 +94,24 @@ export default function HostelAdminShell() {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
-        {NAV.map(({ section, items }) => (
-          <div key={section}>
-            {(!collapsed || mobile) && <p className="nav-section-label">{section}</p>}
-            {items.map(({ label, icon: Icon, path }) => (
-              <NavLink key={path} to={path}
-                className={({ isActive }) => cn('nav-item', isActive && 'active', collapsed && !mobile && 'justify-center px-2')}
-                title={collapsed && !mobile ? label : undefined}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {(!collapsed || mobile) && <span>{label}</span>}
-              </NavLink>
-            ))}
-          </div>
-        ))}
+        {NAV.map(({ section, items }) => {
+          const visibleItems = items.filter(it => isNavAllowed((it as any).permKey, (user as any)?.ownerPermissions));
+          if (visibleItems.length === 0) return null;
+          return (
+            <div key={section}>
+              {(!collapsed || mobile) && <p className="nav-section-label">{section}</p>}
+              {visibleItems.map(({ label, icon: Icon, path }) => (
+                <NavLink key={path} to={path}
+                  className={({ isActive }) => cn('nav-item', isActive && 'active', collapsed && !mobile && 'justify-center px-2')}
+                  title={collapsed && !mobile ? label : undefined}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  {(!collapsed || mobile) && <span>{label}</span>}
+                </NavLink>
+              ))}
+            </div>
+          );
+        })}
         {/* Billing — coming soon */}
         {(!collapsed || mobile) && (
           <div className="mt-2">

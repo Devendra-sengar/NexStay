@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Edit2, Search, ToggleLeft, ToggleRight, X, User } from 'lucide-react';
+import { Users, Plus, Edit2, Search, ToggleLeft, ToggleRight, X, ShieldCheck, ChefHat, Wrench, Lock, Briefcase, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useStaff, useCreateStaff, useUpdateStaff, useToggleStaffStatus, useAdminProperties } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
+import LoginStaffSection from './LoginStaffSection';
+import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
 
 const ROLES = ['WARDEN','COOK','CLEANER','SECURITY','MANAGER','OTHER'];
-const ROLE_ICONS: Record<string,string> = { WARDEN:'🛡️', COOK:'👨‍🍳', CLEANER:'🧹', SECURITY:'🔒', MANAGER:'💼', OTHER:'👤' };
 const ROLE_COLORS: Record<string,string> = { WARDEN:'badge-primary', COOK:'badge-warning', CLEANER:'badge-success', SECURITY:'badge-danger', MANAGER:'badge-gray', OTHER:'badge-gray' };
+const ROLE_LABEL: Record<string,string> = { WARDEN:'Warden', COOK:'Cook', CLEANER:'Cleaner', SECURITY:'Security', MANAGER:'Manager', OTHER:'Other' };
 
 function StaffModal({ staff, properties, onClose }: { staff?: any; properties: any[]; onClose: () => void }) {
   const [form, setForm] = useState({
@@ -29,14 +31,14 @@ function StaffModal({ staff, properties, onClose }: { staff?: any; properties: a
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between mb-4"><h3 className="font-bold text-lg">{staff?'Edit':'Add'} Staff</h3><button onClick={onClose}><X className="w-5 h-5"/></button></div>
+        <div className="flex justify-between mb-4"><h3 className="font-bold text-lg">{staff?'Edit':'Add'} Staff Member</h3><button onClick={onClose}><X className="w-5 h-5"/></button></div>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2"><label className="form-label">Name *</label><input className="input-field" value={form.name} onChange={set('name')} /></div>
           <div><label className="form-label">Phone *</label><input className="input-field" value={form.phone} onChange={set('phone')} /></div>
           <div><label className="form-label">Email</label><input type="email" className="input-field" value={form.email} onChange={set('email')} /></div>
           <div><label className="form-label">Role *</label>
             <select className="input-field" value={form.role} onChange={set('role')}>
-              {ROLES.map(r => <option key={r} value={r}>{ROLE_ICONS[r]} {r}</option>)}
+              {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
             </select></div>
           <div><label className="form-label">Property *</label>
             <select className="input-field" value={form.propertyId} onChange={set('propertyId')}>
@@ -45,7 +47,14 @@ function StaffModal({ staff, properties, onClose }: { staff?: any; properties: a
           <div><label className="form-label">Salary (₹/mo)</label><input type="number" className="input-field" value={form.salary} onChange={set('salary')} /></div>
           <div><label className="form-label">Joining Date</label><input type="date" className="input-field" value={form.joiningDate} onChange={set('joiningDate')} /></div>
           <div className="col-span-2"><label className="form-label">Address</label><input className="input-field" value={form.address} onChange={set('address')} /></div>
-          <div className="col-span-2"><label className="form-label">Photo URL</label><input className="input-field" value={form.photoUrl} onChange={set('photoUrl')} placeholder="https://…" /></div>
+          <div className="col-span-2">
+            <label className="form-label">Staff Photo <span className="text-text-muted font-normal">(optional)</span></label>
+            <CloudinaryUpload
+              value={form.photoUrl ? [form.photoUrl] : []}
+              onChange={urls => setForm(f => ({ ...f, photoUrl: urls[0] || '' }))}
+              maxImages={1}
+            />
+          </div>
           <div className="col-span-2"><label className="form-label">Notes</label><textarea className="input-field resize-none min-h-[60px]" value={form.notes} onChange={set('notes')} /></div>
         </div>
         <div className="flex gap-3 mt-5">
@@ -87,7 +96,7 @@ export default function StaffPage() {
       <div className="card p-4 mb-5 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-40"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted"/><input className="input-field pl-9" placeholder="Search name…" value={search} onChange={e=>setSearch(e.target.value)} /></div>
         <select className="input-field w-40" value={propId} onChange={e=>setPropId(e.target.value)}><option value="">All Properties</option>{properties.map((p:any)=><option key={p._id} value={p._id}>{p.name}</option>)}</select>
-        <select className="input-field w-36" value={role} onChange={e=>setRole(e.target.value)}><option value="">All Roles</option>{ROLES.map(r=><option key={r} value={r}>{ROLE_ICONS[r]} {r}</option>)}</select>
+        <select className="input-field w-36" value={role} onChange={e=>setRole(e.target.value)}><option value="">All Roles</option>{ROLES.map(r=><option key={r} value={r}>{ROLE_LABEL[r]||r}</option>)}</select>
         <div className="flex rounded-lg border border-surface-border overflow-hidden">
           {['ALL','ACTIVE','INACTIVE'].map(s=><button key={s} onClick={()=>setStatus(s)} className={cn('px-3 py-2 text-xs font-medium',status===s?'bg-primary text-white':'bg-white text-text-secondary hover:bg-surface-input')}>{s}</button>)}
         </div>
@@ -110,7 +119,7 @@ export default function StaffPage() {
                       <div><p className="text-sm font-medium text-text-primary">{m.name}</p><p className="text-xs text-text-muted">{m.email||'—'}</p></div>
                     </div>
                   </td>
-                  <td className="py-3 px-4 border-b border-surface-border"><span className={cn('badge',ROLE_COLORS[m.role]||'badge-gray')}>{ROLE_ICONS[m.role]} {m.role}</span></td>
+                  <td className="py-3 px-4 border-b border-surface-border"><span className={cn('badge',ROLE_COLORS[m.role]||'badge-gray')}>{ROLE_LABEL[m.role]||m.role}</span></td>
                   <td className="py-3 px-4 border-b border-surface-border text-sm text-text-muted">{(m.propertyId as any)?.name||'—'}</td>
                   <td className="py-3 px-4 border-b border-surface-border text-sm">{m.phone}</td>
                   <td className="py-3 px-4 border-b border-surface-border text-sm font-medium">₹{m.salary?.toLocaleString('en-IN')}</td>
@@ -130,6 +139,9 @@ export default function StaffPage() {
         )}
       </div>
       {modal.open && <StaffModal staff={modal.staff} properties={properties} onClose={()=>setModal({open:false})} />}
+
+      {/* ── Portal Login Staff (WARDEN / MESS_MANAGER) ── */}
+      <LoginStaffSection />
     </div>
   );
 }

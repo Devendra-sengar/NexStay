@@ -3,7 +3,7 @@ import { UtensilsCrossed, Calendar, Clock } from 'lucide-react';
 import api from '@/lib/api';
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
-const MEAL_LABELS = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', dinner: '🌙 Dinner' };
+const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 
 export default function StudentMessPage() {
   const { data: today } = useQuery({ queryKey: ['student-menu-today'], queryFn: () => api.get('/student/mess/menu').then(r => r.data.data) });
@@ -42,7 +42,7 @@ export default function StudentMessPage() {
             ))}
             {today.specialNote && (
               <div style={{ background: '#f3f0ff', border: '1px solid #c4b5fd', borderRadius: 10, padding: '10px 14px' }}>
-                <p style={{ color: '#7c3aed', fontSize: 13, margin: 0 }}>✨ {today.specialNote}</p>
+                <p style={{ color: '#7c3aed', fontSize: 13, margin: 0 }}>★ {today.specialNote}</p>
               </div>
             )}
           </div>
@@ -66,7 +66,7 @@ export default function StudentMessPage() {
           {weekMenus.map((menu: any) => (
             <div key={menu._id} style={{ background: menu.date === todayStr ? '#eff6ff' : 'white', borderRadius: 12, padding: '14px 16px', border: `1px solid ${menu.date === todayStr ? '#93c5fd' : '#f1f5f9'}` }}>
               <p style={{ color: menu.date === todayStr ? '#1d4ed8' : '#64748b', fontSize: 12, fontWeight: menu.date === todayStr ? 700 : 500, margin: '0 0 8px' }}>
-                {menu.date === todayStr ? '📍 Today — ' : ''}{new Date(menu.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {menu.date === todayStr ? '◎ Today — ' : ''}{new Date(menu.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
               </p>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 {MEALS.map(meal => menu[meal]?.items?.length > 0 && (

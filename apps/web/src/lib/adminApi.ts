@@ -1,11 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
+import apiClient from '@/lib/api';
 
-const getToken = () => localStorage.getItem('nexstay_token');
-const authHeaders = () => ({ Authorization: `Bearer ${getToken()}` });
-
+// Use the shared axios instance (has 401 auto-refresh interceptor built-in)
 const api = (url: string, options?: any) =>
-  axios({ url: `/api/hostel-admin${url}`, headers: authHeaders(), ...options });
+  apiClient({ url: `/hostel-admin${url}`, ...options });
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export function useAdminDashboard(propertyId?: string) {
@@ -125,7 +123,7 @@ export function useRejectBooking() {
 
 // ─── ERP ──────────────────────────────────────────────────────────────────────
 const erp = (url: string, options?: any) =>
-  axios({ url: `/api/hostel-admin/erp${url}`, headers: authHeaders(), ...options });
+  apiClient({ url: `/hostel-admin/erp${url}`, ...options });
 
 export function useErpRooms(propertyId?: string) {
   return useQuery({
@@ -404,6 +402,42 @@ export function useToggleStaffStatus() {
   return useMutation({ mutationFn: async (id: string) => { const { data } = await erp(`/staff/${id}/toggle`, { method: 'PATCH' }); return data.data; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ['staff'] }); qc.invalidateQueries({ queryKey: ['staff-member'] }); } });
 }
 
+// ─── Login Staff (WARDEN / MESS_MANAGER with portal credentials) ──────────────
+// Fetches the owner's hostels for the hostelId dropdown
+export function useMyHostels() {
+  return useQuery({
+    queryKey: ['my-hostels'],
+    queryFn: async () => { const { data } = await api('/my-hostels'); return data.data as any[]; },
+    staleTime: 60000,
+  });
+}
+// Creates a WARDEN or MESS_MANAGER login account — returns tempPassword from backend
+export function useCreateLoginStaff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: any) => {
+      // Uses POST /api/hostel-admin/staff (hostelManagement.createStaffUser)
+      const { data } = await api('/staff', { method: 'POST', data: body });
+      return data; // { success, data, message, tempPassword }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['login-staff'] });
+    },
+  });
+}
+// Lists WARDEN + MESS_MANAGER users for a given hostel
+export function useLoginStaff(hostelId?: string) {
+  return useQuery({
+    queryKey: ['login-staff', hostelId],
+    queryFn: async () => {
+      const { data } = await api(`/hostels/${hostelId}/staff`);
+      return data.data as any[];
+    },
+    enabled: !!hostelId,
+    staleTime: 20000,
+  });
+}
+
 // ─── Phase 6 — Inventory ─────────────────────────────────────────────────────
 export function useInventory(params?: { propertyId?: string }) {
   return useQuery({ queryKey: ['inventory', params], queryFn: async () => { const { data } = await erp('/inventory', { params }); return data as { data: any[]; summary: any }; }, staleTime: 20000 });
@@ -443,9 +477,9 @@ export function useAddInternalNote() {
   });
 }
 
-// ─── Phase 7 — Reports ────────────────────────────────────────────────────────
+// ─── Phase 7 — Reports ──────────────────────────────────────────────────────────────────────
 const report = (url: string, options?: any) =>
-  axios({ url: `/api/admin/reports${url}`, headers: authHeaders(), ...options });
+  apiClient({ url: `/admin/reports${url}`, ...options });
 
 export function useOccupancyReport(params?: { propertyId?: string }) {
   return useQuery({ queryKey: ['report-occupancy', params], queryFn: async () => { const { data } = await report('/occupancy', { params }); return data.data as any; }, staleTime: 30000 });
@@ -465,19 +499,17 @@ export function useProfitReport(params?: { propertyId?: string }) {
 export function exportReportCsv(type: string, params: Record<string, string>) {
   const qs = new URLSearchParams(params).toString();
   const url = `/api/admin/reports/${type}/export?${qs}`;
-  const a = document.createElement('a'); a.href = url;
-  a.setAttribute('Authorization', `Bearer ${getToken()}`);
-  // Use fetch with blob for auth headers
-  fetch(url, { headers: authHeaders() }).then(r => r.blob()).then(blob => {
+  const token = localStorage.getItem('nexstay_token');
+  fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.blob()).then(blob => {
     const burl = URL.createObjectURL(blob);
     const link = document.createElement('a'); link.href = burl; link.download = `${type}-report.csv`; link.click();
     URL.revokeObjectURL(burl);
   });
 }
 
-// ─── Phase 7 — Notifications ─────────────────────────────────────────────────
+// ─── Phase 7 — Notifications ──────────────────────────────────────────────────────────────────────
 const notifApi = (url: string, options?: any) =>
-  axios({ url: `/api/notifications${url}`, headers: authHeaders(), ...options });
+  apiClient({ url: `/notifications${url}`, ...options });
 
 export function useNotifications(page = 1) {
   return useQuery({ queryKey: ['notifications', page], queryFn: async () => { const { data } = await notifApi('/', { params: { page, limit: 10 } }); return data as { data: any[]; unreadCount: number; hasNextPage: boolean }; }, staleTime: 15000, refetchInterval: 30000 });
@@ -491,5 +523,5 @@ export function useMarkAllRead() {
   return useMutation({ mutationFn: async () => { await notifApi('/mark-all-read', { method: 'POST' }); }, onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }) });
 }
 export function useDevEmails() {
-  return useQuery({ queryKey: ['dev-emails'], queryFn: async () => { const { data } = await axios.get('/api/dev/emails'); return data.data as any[]; }, staleTime: 5000 });
+  return useQuery({ queryKey: ['dev-emails'], queryFn: async () => { const { data } = await apiClient.get('/dev/emails'); return data.data as any[]; }, staleTime: 5000 });
 }
