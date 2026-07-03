@@ -51,34 +51,34 @@ export interface IUserDoc extends Document {
 
 const StaffPermissionsSchema = new Schema<StaffPermissions>(
   {
-    canViewStudents:     { type: Boolean, default: false },
+    canViewStudents: { type: Boolean, default: false },
     canManageComplaints: { type: Boolean, default: false },
-    canViewRentRecords:  { type: Boolean, default: false },
-    canUploadMenu:       { type: Boolean, default: false },
-    canViewSalary:       { type: Boolean, default: false },
-    canManageRooms:      { type: Boolean, default: false },
-    canViewAttendance:   { type: Boolean, default: false },
+    canViewRentRecords: { type: Boolean, default: false },
+    canUploadMenu: { type: Boolean, default: false },
+    canViewSalary: { type: Boolean, default: false },
+    canManageRooms: { type: Boolean, default: false },
+    canViewAttendance: { type: Boolean, default: false },
   },
   { _id: false }
 );
 
 const OwnerPermissionsSchema = new Schema<OwnerPermissions>(
   {
-    canManageERP:          { type: Boolean, default: true },
-    canViewReports:        { type: Boolean, default: true },
-    canManageMarketplace:  { type: Boolean, default: true },
-    canManageRooms:        { type: Boolean, default: true },
-    canManageMess:         { type: Boolean, default: true },
-    canManageExpenses:     { type: Boolean, default: true },
-    canManageComplaints:   { type: Boolean, default: true },
-    canManageStaff:        { type: Boolean, default: true },
+    canManageERP: { type: Boolean, default: true },
+    canViewReports: { type: Boolean, default: true },
+    canManageMarketplace: { type: Boolean, default: true },
+    canManageRooms: { type: Boolean, default: true },
+    canManageMess: { type: Boolean, default: true },
+    canManageExpenses: { type: Boolean, default: true },
+    canManageComplaints: { type: Boolean, default: true },
+    canManageStaff: { type: Boolean, default: true },
   },
   { _id: false }
 );
 
 const UserSchema = new Schema<IUserDoc>(
   {
-    name:  { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true },
     email: {
       type: String,
       unique: true,
@@ -96,7 +96,7 @@ const UserSchema = new Schema<IUserDoc>(
     status: { type: String, enum: ['ACTIVE', 'SUSPENDED'], default: 'ACTIVE' },
     avatar: { type: String, default: '' },
     businessName: { type: String, default: '' },
-    gstNumber:    { type: String, default: '' },
+    gstNumber: { type: String, default: '' },
     identityProofUrl: { type: String, default: '' },
     ownerVerificationStatus: {
       type: String,
@@ -104,7 +104,7 @@ const UserSchema = new Schema<IUserDoc>(
       default: 'PENDING',
     },
     ownerRejectionReason: { type: String, default: '' },
-    otp:      { type: String },
+    otp: { type: String },
     otpExpiry: { type: Date },
     // ── New fields ────────────────────────────────────────────────────────────
     hostelId: {

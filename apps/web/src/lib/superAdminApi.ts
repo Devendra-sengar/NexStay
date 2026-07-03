@@ -3,7 +3,7 @@ import apiClient from '@/lib/api';
 
 const getToken = () => localStorage.getItem('nexstay_token');
 const sa = (url: string, options?: any) =>
-  apiClient({ url: `/api/superadmin${url}`, ...options });
+  apiClient({ url: `/superadmin${url}`, ...options });
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export function useSuperDashboard() {
@@ -195,7 +195,7 @@ export function useUpdateStaffPermissions() {
   return useMutation({
     mutationFn: async ({ staffId, permissions }: { staffId: string; permissions: Record<string, boolean> }) => {
       const { data } = await apiClient({
-        url: `/api/hostel-admin/staff/${staffId}/permissions`,
+        url: `/hostel-admin/staff/${staffId}/permissions`,
         method: 'PUT',
         data: { permissions },
       });

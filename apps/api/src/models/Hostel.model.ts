@@ -41,9 +41,9 @@ const HostelSchema = new Schema<IHostelDoc>(
       required: true,
     },
     address: {
-      street:  { type: String, default: '' },
-      city:    { type: String, default: '' },
-      state:   { type: String, default: '' },
+      street: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
       pincode: { type: String, default: '' },
     },
     gender: {
@@ -53,7 +53,7 @@ const HostelSchema = new Schema<IHostelDoc>(
     },
     contactPhone: { type: String, default: '' },
     contactEmail: { type: String, default: '' },
-    isActive:     { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true },
     propertyId: {
       type: Schema.Types.ObjectId,
       ref: 'Property',
@@ -62,14 +62,13 @@ const HostelSchema = new Schema<IHostelDoc>(
     messEnabled: { type: Boolean, default: true },
     messTimings: {
       breakfast: { type: String, default: '8:00 AM - 9:30 AM' },
-      lunch:     { type: String, default: '12:30 PM - 2:00 PM' },
-      dinner:    { type: String, default: '7:30 PM - 9:00 PM' },
+      lunch: { type: String, default: '12:30 PM - 2:00 PM' },
+      dinner: { type: String, default: '7:30 PM - 9:00 PM' },
     },
   },
   { timestamps: true }
 );
 
 HostelSchema.index({ ownerId: 1 });
-HostelSchema.index({ hostelCode: 1 }, { unique: true });
 
 export const Hostel = mongoose.model<IHostelDoc>('Hostel', HostelSchema);
