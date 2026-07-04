@@ -331,9 +331,17 @@ export const getAllHostels = async (req: AuthRequest, res: Response): Promise<vo
       Hostel.countDocuments(filter),
     ]);
 
-    // attach student count per hostel
+    // attach student count per hostel — count by hostelId OR by tenantId (ownerId) for backward compat
     const withCounts = await Promise.all(hostels.map(async (h: any) => {
-      const studentCount = await HostelStudent.countDocuments({ hostelId: h._id, status: 'ACTIVE' });
+      const ownerId = (h.ownerId as any)?._id || h.ownerId;
+      const studentCount = await HostelStudent.countDocuments({
+        $or: [
+          { hostelId: h._id },
+          { tenantId: ownerId, hostelId: null },
+          { tenantId: ownerId, hostelId: { $exists: false } },
+        ],
+        status: 'ACTIVE',
+      });
       return { ...h, studentCount };
     }));
 
@@ -560,3 +568,274 @@ export const createStaffUser = async (req: AuthRequest, res: Response): Promise<
   }
 };
 
+
+
+// ── PATCH: Fix students whose guestId User phone doesn't match their own phone ─
+// Detects any HostelStudent where the linked User's phone ≠ stu.phone,
+// meaning those students cannot log in with their own mobile number.
+// Creates individual User accounts (password = last 4 digits of phone).
+export const fixStudentOwnerConflict = async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const bcrypt = await import('bcryptjs');
+    let fixed = 0;
+    const log: any[] = [];
+
+    // Get all active HostelStudents
+    const allStudents = await HostelStudent.find({ status: 'ACTIVE' }).lean();
+
+    for (const stu of allStudents) {
+      const linkedUser = await User.findById(stu.guestId).lean();
+
+      // Case 1: No linked user at all
+      if (!linkedUser) {
+        await createStudentUser(stu, bcrypt, log);
+        await HostelStudent.findByIdAndUpdate(stu._id, { guestId: log[log.length - 1]?.newUserId });
+        fixed++;
+        continue;
+      }
+
+      // Case 2: Linked user phone MATCHES student phone — ensure they can login with last-4 password
+      if (linkedUser.phone === stu.phone) {
+        const newHash = await bcrypt.hash(stu.phone.slice(-4), 10);
+        const updates: any = {
+          passwordHash: newHash,
+          hostelId: stu.hostelId,   // always force-set correct hostel scope
+        };
+        if (linkedUser.role !== 'STUDENT') updates.role = 'STUDENT';
+        await User.findByIdAndUpdate(linkedUser._id, updates);
+        log.push({
+          action: 'RESET_PASSWORD',
+          studentName: stu.name,
+          phone: stu.phone,
+          hostelId: String(stu.hostelId),
+          loginPhone: stu.phone,
+          loginPassword: stu.phone.slice(-4),
+        });
+        continue;
+      }
+
+      // Case 3: Linked user phone DOESN'T match student phone → student can't log in
+      // Create or link an individual account by student's phone
+      const existingByPhone = await User.findOne({ phone: stu.phone }).lean();
+      if (existingByPhone) {
+        // Link existing user with this phone
+        const updates: any = {};
+        if (existingByPhone.role !== 'STUDENT') updates.role = 'STUDENT';
+        if (!existingByPhone.hostelId && stu.hostelId) updates.hostelId = stu.hostelId;
+        if (Object.keys(updates).length > 0) {
+          await User.findByIdAndUpdate(existingByPhone._id, updates);
+        }
+        await HostelStudent.findByIdAndUpdate(stu._id, { guestId: existingByPhone._id });
+        fixed++;
+        log.push({
+          action: 'LINKED_EXISTING_BY_PHONE',
+          studentName: stu.name,
+          studentPhone: stu.phone,
+          userId: String(existingByPhone._id),
+          loginPhone: stu.phone,
+          loginPassword: stu.phone.slice(-4),
+        });
+      } else {
+        // Create brand new user for this student
+        const hash = await bcrypt.hash(stu.phone.slice(-4), 10);
+        try {
+          const newUser = await User.create({
+            name: stu.name,
+            phone: stu.phone,
+            email: `student_${stu.phone}@nexstay.app`,
+            passwordHash: hash,
+            role: 'STUDENT',
+            status: 'ACTIVE',
+            hostelId: stu.hostelId,
+          });
+          await HostelStudent.findByIdAndUpdate(stu._id, { guestId: newUser._id });
+          fixed++;
+          log.push({
+            action: 'CREATED_NEW_STUDENT_USER',
+            studentName: stu.name,
+            studentPhone: stu.phone,
+            newUserId: String(newUser._id),
+            loginPhone: stu.phone,
+            loginPassword: stu.phone.slice(-4),
+          });
+        } catch (err: any) {
+          log.push({ action: 'ERROR', studentName: stu.name, phone: stu.phone, error: err.message });
+        }
+      }
+    }
+
+    res.json({ success: true, fixed, log });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+async function createStudentUser(stu: any, bcrypt: any, log: any[]) {
+  const hash = await bcrypt.hash(stu.phone.slice(-4), 10);
+  try {
+    const u = await User.create({
+      name: stu.name, phone: stu.phone,
+      email: `student_${stu.phone}@nexstay.app`,
+      passwordHash: hash, role: 'STUDENT', status: 'ACTIVE', hostelId: stu.hostelId,
+    });
+    log.push({ action: 'CREATED_ORPHAN_USER', phone: stu.phone, newUserId: String(u._id) });
+  } catch {}
+}
+
+
+// ── MIGRATION: Fix existing students (hostelId backfill + GUEST→STUDENT upgrade) ────────
+// Safe to run multiple times — only fixes records that still need it.
+export const migrateStudentHostelIds = async (_req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const bcrypt = await import('bcryptjs');
+
+    // Scan ALL active HostelStudent records
+    const allStudents = await HostelStudent.find({ status: 'ACTIVE' }).lean();
+
+    let hostelStudentFixed = 0;
+    let userFixed = 0;
+    const debugInfo: any[] = [];
+
+    for (const stu of allStudents) {
+      // Find the owner's hostel
+      const ownerHostel = await Hostel.findOne({ ownerId: stu.tenantId }).select('_id hostelCode').lean();
+      if (!ownerHostel) continue;
+
+      // Fix HostelStudent hostelId if missing
+      if (!stu.hostelId) {
+        await HostelStudent.findByIdAndUpdate(stu._id, { hostelId: ownerHostel._id });
+        hostelStudentFixed++;
+      }
+
+      // Fix linked User account
+      const linkedUser = await User.findById(stu.guestId);
+      if (linkedUser) {
+        // If the guestId points to a HOSTEL_ADMIN or SUPER_ADMIN, we need to create
+        // a separate User account for the student
+        if (linkedUser.role === 'HOSTEL_ADMIN' || linkedUser.role === 'SUPER_ADMIN' || linkedUser.role === 'WARDEN' || linkedUser.role === 'MESS_MANAGER') {
+          // Check if a user with this student's phone already exists
+          const existingByPhone = await User.findOne({ phone: stu.phone }).lean();
+          if (!existingByPhone) {
+            try {
+              const newHash = await bcrypt.hash(stu.phone.slice(-4), 10);
+              const newUser = await User.create({
+                name: stu.name,
+                phone: stu.phone,
+                email: `student_${stu.phone}@nexstay.app`,  // placeholder email
+                passwordHash: newHash,
+                role: 'STUDENT',
+                status: 'ACTIVE',
+                hostelId: ownerHostel._id,
+              });
+              await HostelStudent.findByIdAndUpdate(stu._id, { guestId: newUser._id });
+              userFixed++;
+              debugInfo.push({
+                studentName: stu.name,
+                studentPhone: stu.phone,
+                hostelCode: (ownerHostel as any).hostelCode,
+                action: 'CREATED_NEW_USER_FROM_ADMIN_GUESTID',
+                newUserId: String(newUser._id),
+                loginPhone: stu.phone,
+                loginPassword: stu.phone.slice(-4),
+              });
+            } catch (createErr: any) {
+              debugInfo.push({
+                studentName: stu.name,
+                studentPhone: stu.phone,
+                action: 'CREATE_FAILED',
+                error: createErr.message,
+              });
+            }
+          } else {
+            // User with this phone already exists — just link it and ensure role/hostelId
+            const updates: any = {};
+            if (existingByPhone.role !== 'STUDENT') updates.role = 'STUDENT';
+            if (!existingByPhone.hostelId) updates.hostelId = ownerHostel._id;
+            if (Object.keys(updates).length > 0) {
+              await User.findByIdAndUpdate(existingByPhone._id, updates);
+            }
+            await HostelStudent.findByIdAndUpdate(stu._id, { guestId: existingByPhone._id });
+            userFixed++;
+            debugInfo.push({
+              studentName: stu.name,
+              studentPhone: stu.phone,
+              hostelCode: (ownerHostel as any).hostelCode,
+              action: 'LINKED_EXISTING_USER',
+              userId: String(existingByPhone._id),
+            });
+          }
+          continue;
+        }
+
+        const updates: any = {};
+
+        // Upgrade GUEST → STUDENT
+        if ((linkedUser as any).role === 'GUEST') {
+          updates.role = 'STUDENT';
+        }
+        // Link hostelId if missing
+        if (!linkedUser.hostelId) {
+          updates.hostelId = ownerHostel._id;
+        }
+        // Fix broken password (random Math.random() hash doesn't start with $2)
+        if (!linkedUser.passwordHash || !linkedUser.passwordHash.startsWith('$2')) {
+          updates.passwordHash = await bcrypt.hash(stu.phone.slice(-4), 10);
+        }
+
+        debugInfo.push({
+          studentName: stu.name,
+          studentPhone: stu.phone,
+          hostelCode: (ownerHostel as any).hostelCode,
+          guestId: String(stu.guestId),
+          linkedUserPhone: linkedUser.phone,
+          linkedUserRole: linkedUser.role,
+          linkedUserHasHostelId: !!linkedUser.hostelId,
+          passwordHashValid: !!(linkedUser.passwordHash && linkedUser.passwordHash.startsWith('$2')),
+          updatesApplied: Object.keys(updates),
+        });
+
+        if (Object.keys(updates).length > 0) {
+          await User.findByIdAndUpdate(linkedUser._id, updates);
+          userFixed++;
+        }
+      } else {
+        // guestId doesn't point to any user — create one
+        const newHash = await bcrypt.hash(stu.phone.slice(-4), 10);
+        try {
+          const newUser = await User.create({
+            name: stu.name,
+            phone: stu.phone,
+            email: `student_${stu.phone}@nexstay.app`,
+            passwordHash: newHash,
+            role: 'STUDENT',
+            status: 'ACTIVE',
+            hostelId: ownerHostel._id,
+          });
+          // Update HostelStudent guestId
+          await HostelStudent.findByIdAndUpdate(stu._id, { guestId: newUser._id });
+          userFixed++;
+          debugInfo.push({
+            studentName: stu.name,
+            studentPhone: stu.phone,
+            hostelCode: (ownerHostel as any).hostelCode,
+            action: 'CREATED_NEW_USER',
+            newUserId: String(newUser._id),
+          });
+        } catch (createErr: any) {
+          debugInfo.push({ studentName: stu.name, action: 'CREATE_FAILED', error: createErr.message });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Migration complete. Fixed ${hostelStudentFixed} HostelStudent records and ${userFixed} User accounts.`,
+      hostelStudentFixed,
+      userFixed,
+      debug: debugInfo,
+    });
+  } catch (err: any) {
+    console.error('[migrateStudentHostelIds]', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
+  }
+};

@@ -9,7 +9,10 @@ import {
   getAllHostels, getHostelById, createHostel, createHostelWithOwner, updateHostel, toggleHostelActive, deleteHostel,
   getAllOwners, createOwner,
   getHostelStaff, createStaffUser,
+  migrateStudentHostelIds,
+  fixStudentOwnerConflict,
 } from '../controllers/superAdmin.controller';
+
 import { setOwnerPermissions } from '../controllers/hostelManagement.controller';
 
 const router = Router();
@@ -20,43 +23,48 @@ router.use(requireRoles('SUPER_ADMIN'));
 router.get('/dashboard', getSuperDashboard);
 
 // ── Users ─────────────────────────────────────────────────────────────────────
-router.get('/users/guests',           getGuests);
-router.get('/users/students',         getGuests);
-router.get('/users/owners',           getOwners);
-router.patch('/users/:id/suspend',    suspendUser);
+router.get('/users/guests', getGuests);
+router.get('/users/students', getGuests);
+router.get('/users/owners', getOwners);
+router.patch('/users/:id/suspend', suspendUser);
 router.patch('/users/:id/reactivate', reactivateUser);
 
 // ── Hostels ───────────────────────────────────────────────────────────────────
-router.get('/hostels',                       getAllHostels);
-router.post('/hostels',                      createHostel);              // existing owner → new hostel
-router.post('/hostels/create-with-owner',    createHostelWithOwner);    // 🆕 new owner + hostel combined
-router.get('/hostels/:id',                   getHostelById);
-router.put('/hostels/:id',                   updateHostel);
-router.patch('/hostels/:id/toggle',          toggleHostelActive);
-router.delete('/hostels/:id',                deleteHostel);
-router.get('/hostels/:id/staff',             getHostelStaff);
+router.get('/hostels', getAllHostels);
+router.post('/hostels', createHostel);              // existing owner → new hostel
+router.post('/hostels/create-with-owner', createHostelWithOwner);    // 🆕 new owner + hostel combined
+router.get('/hostels/:id', getHostelById);
+router.put('/hostels/:id', updateHostel);
+router.patch('/hostels/:id/toggle', toggleHostelActive);
+router.delete('/hostels/:id', deleteHostel);
+router.get('/hostels/:id/staff', getHostelStaff);
 
 // ── Owners ────────────────────────────────────────────────────────────────────
-router.get('/owners',                        getAllOwners);
-router.post('/owners',                       createOwner);
-router.patch('/owners/:id/permissions',      setOwnerPermissions);   // 🔒 SuperAdmin controls owner modules
+router.get('/owners', getAllOwners);
+router.post('/owners', createOwner);
+router.patch('/owners/:id/permissions', setOwnerPermissions);   // 🔒 SuperAdmin controls owner modules
 
 // ── Staff ─────────────────────────────────────────────────────────────────────
-router.post('/staff',   createStaffUser);
+router.post('/staff', createStaffUser);
 
 // ── Properties ────────────────────────────────────────────────────────────────
-router.get('/properties',                getAllProperties);
-router.get('/properties/:id',            getPropertyDetail);
-router.patch('/properties/:id/approve',  approveProperty);
-router.patch('/properties/:id/reject',   rejectProperty);
+router.get('/properties', getAllProperties);
+router.get('/properties/:id', getPropertyDetail);
+router.patch('/properties/:id/approve', approveProperty);
+router.patch('/properties/:id/reject', rejectProperty);
 
 // ── Owner verification ────────────────────────────────────────────────────────
-router.get('/owner-verifications',               getPendingOwnerVerifications);
+router.get('/owner-verifications', getPendingOwnerVerifications);
 router.patch('/owner-verifications/:id/approve', approveOwnerVerification);
-router.patch('/owner-verifications/:id/reject',  rejectOwnerVerification);
+router.patch('/owner-verifications/:id/reject', rejectOwnerVerification);
 
 // ── Platform monitoring ───────────────────────────────────────────────────────
 router.get('/bookings', getAllBookings);
-router.get('/revenue',  getPlatformRevenue);
+router.get('/revenue', getPlatformRevenue);
+
+// ── Data Migration (one-time repairs) ─────────────────────────────────────────
+router.post('/migrate/fix-student-hostel-ids', migrateStudentHostelIds);
+router.post('/migrate/fix-student-owner-conflict', fixStudentOwnerConflict);
 
 export default router;
+

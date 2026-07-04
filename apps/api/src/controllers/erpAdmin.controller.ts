@@ -298,6 +298,13 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     let finalBedId = bedId;
     let finalPropertyId = propertyId;
 
+    // ── Look up the owner's hostel so we can link it on the student/user ──────
+    const ownerHostel = await (await import('../models/Hostel.model')).Hostel
+      .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId) })
+      .select('_id hostelCode')
+      .lean();
+    const ownerHostelId = ownerHostel?._id ?? null;
+
     if (bookingId) {
       // ── Booking-linked flow ──
       booking = await Booking.findOne({ _id: bookingId, tenantId, status: 'CONFIRMED' });
@@ -332,24 +339,44 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       // ── Lookup or create a User account for the walk-in student ──
       // IMPORTANT: We always trust the FORM-SUBMITTED name/phone/email for HostelStudent.
       // The User record is only used for authentication linkage (guestId).
+      // Default password = last 4 digits of phone (easy to share with student).
+      const defaultPassword = phone.slice(-4);
       const existingUser = await User.findOne({ phone }).lean();
       if (!existingUser) {
         // Also check by email to avoid duplicate email accounts
         const existingByEmail = await User.findOne({ email: email.toLowerCase() }).lean();
         if (existingByEmail) {
           // Email already taken by a different phone — use that user account
-          guestUser = existingByEmail;
+          // Upgrade to STUDENT role and link hostel if needed
+          const upgrades: any = {};
+          if (existingByEmail.role === 'GUEST') upgrades.role = 'STUDENT';
+          if (!existingByEmail.hostelId && ownerHostelId) upgrades.hostelId = ownerHostelId;
+          if (Object.keys(upgrades).length > 0) {
+            await User.findByIdAndUpdate(existingByEmail._id, upgrades);
+          }
+          guestUser = { ...existingByEmail, ...upgrades };
         } else {
-          // Brand new user — create fresh account
+          // Brand new student — create proper STUDENT account with login credentials
+          const bcrypt = await import('bcryptjs');
+          const passwordHash = await bcrypt.hash(defaultPassword, 10);
           const created = await User.create([{
             name, phone, email: email.toLowerCase(),
-            passwordHash: Math.random().toString(36),
-            role: 'GUEST', status: 'ACTIVE', isVerified: false,
+            passwordHash,
+            role: 'STUDENT',
+            status: 'ACTIVE',
+            hostelId: ownerHostelId,
           }], { session });
           guestUser = created[0];
         }
       } else {
-        guestUser = existingUser;
+        // Existing user — ensure role and hostelId are set correctly
+        const upgrades: any = {};
+        if (existingUser.role === 'GUEST') upgrades.role = 'STUDENT';
+        if (!existingUser.hostelId && ownerHostelId) upgrades.hostelId = ownerHostelId;
+        if (Object.keys(upgrades).length > 0) {
+          await User.findByIdAndUpdate(existingUser._id, upgrades, { session });
+        }
+        guestUser = { ...existingUser, ...upgrades };
       }
     }
 
@@ -393,6 +420,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     const student = await HostelStudent.create([{
       tenantId, propertyId: finalPropertyId,
+      hostelId: ownerHostelId,  // ← Link to hostel so super admin count works
       bookingId: booking._id, guestId: guestUser._id, bedId: finalBedId,
       name: studentName,
       phone: studentPhone,
