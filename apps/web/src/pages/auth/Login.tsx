@@ -112,7 +112,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(identifier.trim(), password, selectedRole, hostelCode.trim() || undefined);
+      await login(identifier.trim(), password.trim(), selectedRole, hostelCode.trim() || undefined);
       navigate(ROLE_REDIRECTS[selectedRole] || '/');
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Invalid credentials. Please try again.');

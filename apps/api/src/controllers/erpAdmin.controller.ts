@@ -300,7 +300,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     // ── Look up the owner's hostel so we can link it on the student/user ──────
     const ownerHostel = await (await import('../models/Hostel.model')).Hostel
-      .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId) })
+      .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId), propertyId: new mongoose.Types.ObjectId(finalPropertyId) })
       .select('_id hostelCode')
       .lean();
     const ownerHostelId = ownerHostel?._id ?? null;
@@ -351,8 +351,9 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
           const upgrades: any = {};
           if (existingByEmail.role === 'GUEST') upgrades.role = 'STUDENT';
           if (!existingByEmail.hostelId && ownerHostelId) upgrades.hostelId = ownerHostelId;
+          if (!existingByEmail.studentId) upgrades.studentId = phone;
           if (Object.keys(upgrades).length > 0) {
-            await User.findByIdAndUpdate(existingByEmail._id, upgrades);
+            await User.findByIdAndUpdate(existingByEmail._id, upgrades, { session });
           }
           guestUser = { ...existingByEmail, ...upgrades };
         } else {
@@ -365,6 +366,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
             role: 'STUDENT',
             status: 'ACTIVE',
             hostelId: ownerHostelId,
+            studentId: phone,
           }], { session });
           guestUser = created[0];
         }
@@ -373,6 +375,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
         const upgrades: any = {};
         if (existingUser.role === 'GUEST') upgrades.role = 'STUDENT';
         if (!existingUser.hostelId && ownerHostelId) upgrades.hostelId = ownerHostelId;
+        if (!existingUser.studentId) upgrades.studentId = phone;
         if (Object.keys(upgrades).length > 0) {
           await User.findByIdAndUpdate(existingUser._id, upgrades, { session });
         }
