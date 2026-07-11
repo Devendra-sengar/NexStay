@@ -101,6 +101,8 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
   const createMutation = useCreateProperty();
   const [customFacilityInput, setCustomFacilityInput] = useState('');
   const addressInputRef = useRef<HTMLInputElement>(null);
+  const [suggestedPincodes, setSuggestedPincodes] = useState<string[]>([]);
+  const [fetchingPincodes, setFetchingPincodes] = useState(false);
 
   const set = useCallback((patch: Partial<FormState>) => setForm(f => ({ ...f, ...patch })), []);
 
@@ -132,6 +134,28 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
           pincode: pincode || form.pincode,
           locality: locality || form.locality,
         });
+
+        const localityStr = locality || city;
+        if (localityStr) {
+          setFetchingPincodes(true);
+          fetch(`https://api.postalpincode.in/postoffice/${encodeURIComponent(localityStr)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice) {
+                const pins = Array.from(new Set(data[0].PostOffice.map((po: any) => po.Pincode)));
+                setSuggestedPincodes(pins as string[]);
+                if (!pincode && pins.length > 0) {
+                  set({ pincode: pins[0] as string });
+                }
+              } else {
+                setSuggestedPincodes([]);
+              }
+            })
+            .catch(() => setSuggestedPincodes([]))
+            .finally(() => setFetchingPincodes(false));
+        } else {
+          setSuggestedPincodes([]);
+        }
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -248,8 +272,11 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
               {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
             </div>
             <div>
-              <label className="form-label">Pincode {form.pincode && <span className="text-emerald-600 font-normal text-[11px]">(auto-filled)</span>}</label>
-              <input className="input-field" value={form.pincode} onChange={e => set({ pincode: e.target.value })} placeholder="411038" maxLength={6} inputMode="numeric" />
+              <label className="form-label">Pincode {form.pincode && <span className="text-emerald-600 font-normal text-[11px]">(auto-filled)</span>} {fetchingPincodes && <span className="text-text-muted font-normal text-[11px]">(fetching...)</span>}</label>
+              <input className="input-field" value={form.pincode} onChange={e => set({ pincode: e.target.value })} placeholder="411038" maxLength={6} inputMode="numeric" list="pincodes-list" />
+              <datalist id="pincodes-list">
+                {suggestedPincodes.map(p => <option key={p} value={p} />)}
+              </datalist>
             </div>
           </div>
           <div>

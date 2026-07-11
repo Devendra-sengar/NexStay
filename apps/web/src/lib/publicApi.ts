@@ -18,7 +18,9 @@ export interface PublicProperty {
   longitude?: number;
   gender: 'BOYS' | 'GIRLS' | 'CO_ED';
   amenities: string[];
+  customFacilities?: string[];
   rules?: string;
+  nearbyPlaces?: Array<{ name: string; distance: string }>;
   foodIncluded: boolean;
   images: string[];
   rating: number;

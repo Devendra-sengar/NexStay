@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Building2, BedDouble, Users, BookOpen,
   CreditCard, Receipt, MessageSquare, BarChart3, Settings,
   LogOut, Menu, X,
-  Package, UserCheck, Database
+  Package, UserCheck, Database, UtensilsCrossed
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';

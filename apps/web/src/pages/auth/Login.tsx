@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Building2, Eye, EyeOff, LogIn, Shield, Home, UserCheck,
@@ -73,26 +73,26 @@ const ROLES: RoleOption[] = [
 ];
 
 const ROLE_REDIRECTS: Record<string, string> = {
-  [Role.SUPER_ADMIN]:  '/superadmin/dashboard',
+  [Role.SUPER_ADMIN]: '/superadmin/dashboard',
   [Role.HOSTEL_ADMIN]: '/admin/dashboard',
-  [Role.WARDEN]:       '/warden/dashboard',
+  [Role.WARDEN]: '/warden/dashboard',
   [Role.MESS_MANAGER]: '/mess/dashboard',
-  [Role.STUDENT]:      '/student/dashboard',
+  [Role.STUDENT]: '/student/dashboard',
 };
 
 /* ─── Component ───────────────────────────────────────────────────────────── */
 export default function Login() {
   const { login } = useAuth();
-  const navigate   = useNavigate();
-  const location   = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [selectedRole, setSelectedRole] = useState<string>(Role.HOSTEL_ADMIN);
-  const [identifier,   setIdentifier]   = useState('');
-  const [hostelCode,   setHostelCode]   = useState('');
-  const [password,     setPassword]     = useState('');
-  const [showPw,       setShowPw]       = useState(false);
-  const [error,        setError]        = useState('');
-  const [loading,      setLoading]      = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [hostelCode, setHostelCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // Parse QR code or external link parameters
   useEffect(() => {
@@ -301,11 +301,11 @@ export default function Login() {
               <p className="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-3">Dev Credentials</p>
               <div className="space-y-1">
                 {[
-                  { role: Role.SUPER_ADMIN,  id: 'admin@nexstay.in',    pw: 'admin123',  label: 'Super Admin',  code: '' },
-                  { role: Role.HOSTEL_ADMIN, id: 'rajesh@nexstay.in',   pw: 'owner123',  label: 'Owner',        code: '' },
-                  { role: Role.WARDEN,       id: 'warden@nexstay.in',   pw: 'warden123', label: 'Warden',       code: 'NST-001' },
-                  { role: Role.MESS_MANAGER, id: 'mess@nexstay.in',     pw: 'mess123',   label: 'Mess Mgr',     code: 'NST-001' },
-                  { role: Role.STUDENT,      id: '9000000001',           pw: '0001',      label: 'Student',      code: 'NST-001' },
+                  { role: Role.SUPER_ADMIN, id: 'admin@nexstay.in', pw: 'admin123', label: 'Super Admin', code: '' },
+                  { role: Role.HOSTEL_ADMIN, id: 'rajesh@nexstay.in', pw: 'owner123', label: 'Owner', code: '' },
+                  { role: Role.WARDEN, id: 'warden@nexstay.in', pw: 'warden123', label: 'Warden', code: 'NST-001' },
+                  { role: Role.MESS_MANAGER, id: 'mess@nexstay.in', pw: 'mess123', label: 'Mess Mgr', code: 'NST-001' },
+                  { role: Role.STUDENT, id: '9000000001', pw: '0001', label: 'Student', code: 'NST-001' },
                 ].map(c => (
                   <button key={c.role} type="button"
                     onClick={() => { handleRoleChange(c.role); setIdentifier(c.id); setPassword(c.pw); setHostelCode(c.code); }}

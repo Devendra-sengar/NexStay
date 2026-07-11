@@ -229,7 +229,7 @@ export default function PropertyDetailPage() {
             )}
 
             {/* ── e) Amenities ───────────────────────────────────────────────── */}
-            {(property.amenities?.length > 0 || property.customFacilities?.length > 0) && (
+            {((property.amenities?.length ?? 0) > 0 || (property.customFacilities?.length ?? 0) > 0) && (
               <section>
                 <h2 className="text-base font-bold text-slate-900 mb-3">Amenities & Facilities</h2>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -269,11 +269,11 @@ export default function PropertyDetailPage() {
             )}
 
             {/* ── Nearby Places ──────────────────────────────────────────────── */}
-            {property.nearbyPlaces?.length > 0 && (
+            {((property.nearbyPlaces?.length ?? 0) > 0) && (
               <section>
                 <h2 className="text-base font-bold text-slate-900 mb-2">Nearby Places</h2>
                 <div className="grid grid-cols-2 gap-3">
-                  {property.nearbyPlaces.map((np: any, idx: number) => (
+                  {property.nearbyPlaces?.map((np: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm">
                       <span className="font-medium text-slate-700 flex items-center gap-2">
                         <MapPin className="w-3.5 h-3.5 text-blue-500" /> {np.name}
