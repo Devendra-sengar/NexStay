@@ -229,11 +229,11 @@ export default function PropertyDetailPage() {
             )}
 
             {/* ── e) Amenities ───────────────────────────────────────────────── */}
-            {property.amenities?.length > 0 && (
+            {(property.amenities?.length > 0 || property.customFacilities?.length > 0) && (
               <section>
-                <h2 className="text-base font-bold text-slate-900 mb-3">Amenities</h2>
+                <h2 className="text-base font-bold text-slate-900 mb-3">Amenities & Facilities</h2>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {property.amenities.map(a => {
+                  {property.amenities?.map((a: string) => {
                     const cfg = AMENITY_ICONS[a];
                     const Icon = cfg?.icon;
                     return (
@@ -243,6 +243,12 @@ export default function PropertyDetailPage() {
                       </div>
                     );
                   })}
+                  {property.customFacilities?.map((f: string) => (
+                    <div key={f} className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col items-center gap-1.5 text-center">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <span className="text-xs text-slate-600 font-medium leading-tight">{f}</span>
+                    </div>
+                  ))}
                 </div>
               </section>
             )}
@@ -259,6 +265,23 @@ export default function PropertyDetailPage() {
                     </li>
                   ))}
                 </ul>
+              </section>
+            )}
+
+            {/* ── Nearby Places ──────────────────────────────────────────────── */}
+            {property.nearbyPlaces?.length > 0 && (
+              <section>
+                <h2 className="text-base font-bold text-slate-900 mb-2">Nearby Places</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {property.nearbyPlaces.map((np: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl text-sm">
+                      <span className="font-medium text-slate-700 flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500" /> {np.name}
+                      </span>
+                      <span className="text-slate-500 text-xs font-semibold bg-white px-2 py-1 rounded-md border border-slate-200">{np.distance}</span>
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
 

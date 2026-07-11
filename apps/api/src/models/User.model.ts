@@ -86,7 +86,7 @@ const UserSchema = new Schema<IUserDoc>(
       lowercase: true,
       trim: true,
     },
-    phone: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true, match: [/^\d{10}$/, 'Phone number must be exactly 10 digits'] },
     passwordHash: { type: String, required: true },
     role: {
       type: String,

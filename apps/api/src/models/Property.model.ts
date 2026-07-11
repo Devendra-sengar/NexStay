@@ -13,6 +13,8 @@ export interface IPropertyDoc extends Document {
   longitude?: number;
   gender: string;
   amenities: string[];
+  customFacilities?: string[];
+  nearbyPlaces?: { name: string; distance: string }[];
   rules?: string;
   foodIncluded: boolean;
   images: string[];
@@ -46,6 +48,11 @@ const PropertySchema = new Schema<IPropertyDoc>(
       default: 'CO_ED',
     },
     amenities: [{ type: String }],
+    customFacilities: [{ type: String }],
+    nearbyPlaces: [{
+      name: { type: String },
+      distance: { type: String },
+    }],
     rules: { type: String, default: '' },
     foodIncluded: { type: Boolean, default: false },
     images: [{ type: String }],

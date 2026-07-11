@@ -34,7 +34,7 @@ function SuspendModal({ user, onClose, onConfirm, loading }: any) {
   );
 }
 
-function GuestsTab() {
+function StudentsTab() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('ALL');
   const [actionUser, setActionUser] = useState<any>(null);
@@ -42,7 +42,7 @@ function GuestsTab() {
   const suspend = useSuspendUser();
   const reactivate = useReactivateUser();
 
-  const guests = data?.data ?? [];
+  const students = data?.data ?? [];
 
   const handleAction = async () => {
     if (!actionUser) return;
@@ -79,9 +79,9 @@ function GuestsTab() {
           <table className="data-table">
             <thead><tr>{['Name','Email','Phone','Status','Registered','Active Bookings','Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>
-              {guests.length === 0 ? (
-                <tr><td colSpan={7} className="py-8 text-center text-text-muted">No guests found</td></tr>
-              ) : guests.map((g: any) => (
+              {students.length === 0 ? (
+                <tr><td colSpan={7} className="py-8 text-center text-text-muted">No students found</td></tr>
+              ) : students.map((g: any) => (
                 <tr key={g._id} className={cn('hover:bg-surface-input/40', g.status === 'SUSPENDED' && 'bg-red-50/40')}>
                   <td className="py-2.5 px-4 border-b border-surface-border text-sm font-medium">{g.name}</td>
                   <td className="py-2.5 px-4 border-b border-surface-border text-sm text-text-muted">{g.email}</td>
@@ -195,15 +195,15 @@ function OwnersTab() {
 }
 
 export default function SuperUsersPage() {
-  const [tab, setTab] = useState<'guests' | 'owners'>('guests');
+  const [tab, setTab] = useState<'students' | 'owners'>('students');
   return (
     <div className="page-container">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text-primary">User Management</h1>
-        <p className="text-sm text-text-secondary mt-0.5">Manage guests and hostel owners across the platform</p>
+        <p className="text-sm text-text-secondary mt-0.5">Manage students and hostel owners across the platform</p>
       </div>
       <div className="flex gap-1 mb-5 p-1 bg-surface-input rounded-xl w-fit">
-        {(['guests','owners'] as const).map(t => (
+        {(['students','owners'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={cn('px-5 py-2 rounded-lg text-sm font-medium capitalize transition-all',
               tab === t ? 'bg-white shadow text-primary' : 'text-text-secondary hover:text-text-primary')}>
@@ -211,7 +211,7 @@ export default function SuperUsersPage() {
           </button>
         ))}
       </div>
-      {tab === 'guests' ? <GuestsTab /> : <OwnersTab />}
+      {tab === 'students' ? <StudentsTab /> : <OwnersTab />}
     </div>
   );
 }

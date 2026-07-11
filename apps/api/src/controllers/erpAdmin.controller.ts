@@ -87,6 +87,19 @@ export const createFloor = async (req: AuthRequest, res: Response): Promise<void
     const prop = await Property.findOne({ _id: propertyId, tenantId }).lean();
     if (!prop) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
     const floor = await Floor.create({ tenantId, propertyId, name, order: order ?? 0 });
+    
+    // Notify Super Admins
+    const superAdmins = await User.find({ role: 'SUPER_ADMIN' }).select('_id').lean();
+    for (const admin of superAdmins) {
+      notify({
+        userId: String(admin._id),
+        type: 'PROPERTY_EXPANSION',
+        title: '📈 Property Expansion',
+        message: `A new floor "${name}" was added to property "${prop.name}".`,
+        linkUrl: '/admin/properties',
+      }).catch(() => {});
+    }
+
     res.status(201).json({ success: true, data: floor });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -142,6 +155,20 @@ export const createRoom = async (req: AuthRequest, res: Response): Promise<void>
     for (let i = 1; i <= capacity; i++) {
       await Bed.create({ tenantId, propertyId, roomId: room._id, bedNumber: `B${i}`, status: 'AVAILABLE' });
     }
+
+    // Notify Super Admins
+    const superAdmins = await User.find({ role: 'SUPER_ADMIN' }).select('_id').lean();
+    const prop = await Property.findById(propertyId).select('name').lean();
+    for (const admin of superAdmins) {
+      notify({
+        userId: String(admin._id),
+        type: 'PROPERTY_EXPANSION',
+        title: '📈 Property Expansion',
+        message: `A new room "${roomNumber}" (${capacity} beds) was added to property "${prop?.name || 'Unknown'}".`,
+        linkUrl: '/admin/properties',
+      }).catch(() => {});
+    }
+
     res.status(201).json({ success: true, data: room });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });

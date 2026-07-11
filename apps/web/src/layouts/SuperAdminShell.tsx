@@ -10,7 +10,7 @@ import NotificationBell from '@/components/NotificationBell';
 // Pages
 import SuperDashboard from '@/pages/superadmin/DashboardPage';
 import SuperOwnersPage from '@/pages/superadmin/OwnersPage';
-import SuperUsersPage from '@/pages/superadmin/GuestsPage';
+import SuperUsersPage from '@/pages/superadmin/StudentsPage';
 import SuperPropertiesPage from '@/pages/superadmin/PropertiesVerificationPage';
 import SuperBookingsPage from '@/pages/superadmin/BookingsPage';
 import SuperReportsPage from '@/pages/superadmin/ReportsPage';

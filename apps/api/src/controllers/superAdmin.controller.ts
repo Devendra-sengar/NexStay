@@ -428,16 +428,33 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
       ownerVerificationStatus: 'APPROVED', // Pre-approved by super admin
     });
 
-    // 2. Generate unique hostel code
+    // 2. Create Marketplace Property
+    const property = await Property.create({
+      name: hostelName,
+      tenantId: owner._id,
+      city: address?.city || '',
+      address: address?.fullAddress || '',
+      verificationStatus: 'APPROVED',
+      propertyType: 'Hostel',
+      gender: gender || 'BOYS',
+      contactPhone: contactPhone || ownerPhone,
+      contactEmail: contactEmail || ownerEmail,
+      amenities: ['WiFi', 'CCTV', 'Power Backup'],
+      rules: '1. No smoking\n2. Quiet hours after 10 PM',
+      rentStartingFrom: 5000,
+    });
+
+    // 3. Generate unique hostel code
     const count = await Hostel.countDocuments({});
     const hostelCode = `NST-${String(count + 1).padStart(3, '0')}`;
 
-    // 3. Create hostel linked to the new owner
+    // 4. Create hostel linked to the new owner and property
     const hostel = await Hostel.create({
       hostelCode,
       name: hostelName,
       gender: gender || 'BOYS',
       ownerId: owner._id,
+      propertyId: property._id,
       isActive: true,
       address: address || {},
       contactPhone: contactPhone || ownerPhone,
@@ -445,10 +462,10 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
       messEnabled: messEnabled ?? false,
     });
 
-    // 4. Link hostelId back to the owner
+    // 5. Link hostelId back to the owner
     await User.findByIdAndUpdate(owner._id, { hostelId: hostel._id });
 
-    // 5. Return everything including plain-text credentials for the admin to share
+    // 6. Return everything including plain-text credentials for the admin to share
     res.status(201).json({
       success: true,
       message: 'Hostel and owner account created successfully',

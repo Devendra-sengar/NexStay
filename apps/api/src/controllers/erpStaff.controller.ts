@@ -6,6 +6,17 @@ import { Inventory } from '../models/Inventory.model';
 import { Complaint } from '../models/Complaint.model';
 import { Booking } from '../models/Booking.model';
 import { Property } from '../models/Property.model';
+import { User } from '../models/User.model';
+import { Hostel } from '../models/Hostel.model';
+import bcrypt from 'bcryptjs';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function generatePassword(length = 10): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$';
+  let pw = '';
+  for (let i = 0; i < length; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+  return pw;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // STAFF
@@ -50,8 +61,40 @@ export const createStaff = async (req: AuthRequest, res: Response): Promise<void
       salary: salary || 0, joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
       photoUrl: photoUrl || '', address: address || '', notes: notes || '', isActive: true,
     });
-    res.status(201).json({ success: true, data: staff });
-  } catch { res.status(500).json({ success: false, message: 'Server error' }); }
+    let tempPassword;
+    if (['WARDEN', 'MESS_MANAGER'].includes(role)) {
+      const hostel = await Hostel.findOne({ propertyId: prop._id, tenantId }).lean();
+      if (hostel) {
+        if (email) {
+          const existing = await User.findOne({ email: email.toLowerCase() });
+          if (existing) {
+            res.status(409).json({ success: false, message: 'Email already registered for login.' });
+            return;
+          }
+        }
+        
+        tempPassword = generatePassword(10);
+        const passwordHash = await bcrypt.hash(tempPassword, 12);
+        
+        const defaultPermissions = role === 'MESS_MANAGER'
+          ? { canUploadMenu: true, canViewSalary: false, canViewStudents: false, canManageComplaints: false, canViewRentRecords: false, canManageRooms: false, canViewAttendance: false }
+          : { canViewStudents: true, canManageComplaints: true, canManageRooms: true, canViewSalary: false, canUploadMenu: false, canViewRentRecords: false, canViewAttendance: false };
+        
+        await User.create({
+          name,
+          email: email ? email.toLowerCase() : undefined,
+          phone,
+          passwordHash,
+          role,
+          hostelId: hostel._id,
+          staffPermissions: defaultPermissions,
+          status: 'ACTIVE',
+        });
+      }
+    }
+
+    res.status(201).json({ success: true, data: staff, tempPassword });
+  } catch (err) { console.error(err); res.status(500).json({ success: false, message: 'Server error' }); }
 };
 
 export const updateStaff = async (req: AuthRequest, res: Response): Promise<void> => {

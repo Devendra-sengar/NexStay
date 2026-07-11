@@ -1,6 +1,7 @@
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronRight, BedDouble, Upload, Loader2, CheckCircle2, AlertCircle, X, FileImage } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, BedDouble, Upload, Loader2, CheckCircle2, AlertCircle, X, FileImage, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
@@ -205,6 +206,7 @@ export default function CheckInPage() {
   const checkIn = useProcessCheckIn();
   const [step, setStep] = useState(0);
   const [success, setSuccess] = useState<string | null>(null);
+  const [successData, setSuccessData] = useState<any>(null);
 
   // Booking-linked fields
   const [docVerified, setDocVerified] = useState({ aadhaar: false, studentId: false, photo: false });
@@ -248,25 +250,49 @@ export default function CheckInPage() {
         : { ...walkin, ...walkinDocs, bedId: selectedBedId, propertyId: selectedPropertyId, ...stayDetails };
 
       const res = await checkIn.mutateAsync(payload);
+      setSuccessData(res.data?.data);
       setSuccess(res.data?.message ?? 'Check-In complete!');
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Check-in failed');
     }
   };
 
-  if (success) return (
-    <div className="page-container flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-        <Check className="w-8 h-8 text-emerald-600" />
+  if (success) {
+    const studentPhone = successData?.student?.phone || walkin.phone;
+    const loginUrl = `${window.location.origin}/login?role=STUDENT&phone=${studentPhone}`;
+
+    return (
+      <div className="page-container flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
+          <Check className="w-8 h-8 text-emerald-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-text-primary mb-2">Check-In Complete!</h2>
+        <p className="text-text-secondary mb-6">{success}</p>
+
+        {studentPhone && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-surface-border mb-6 flex flex-col items-center max-w-sm w-full mx-auto animate-slide-up">
+            <div className="flex items-center gap-2 mb-2">
+              <QrCode className="w-5 h-5 text-indigo-600" />
+              <h3 className="font-bold text-text-primary">Student Login QR</h3>
+            </div>
+            <p className="text-xs text-text-muted mb-4">Ask the student to scan this QR code to access their portal.</p>
+            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 inline-block">
+              <QRCodeSVG value={loginUrl} size={150} level="H" />
+            </div>
+            <div className="w-full text-left space-y-1 bg-surface p-3 rounded-lg border border-surface-border">
+              <p className="text-xs text-text-muted">Username: <strong className="text-text-primary">{studentPhone}</strong></p>
+              <p className="text-xs text-text-muted">Default Password: <strong className="text-text-primary">{studentPhone.slice(-4)}</strong></p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-center">
+          <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Students</button>
+          <button className="btn-primary" onClick={() => navigate('/admin/rooms')}>View BedGrid</button>
+        </div>
       </div>
-      <h2 className="text-2xl font-bold text-text-primary mb-2">Check-In Complete!</h2>
-      <p className="text-text-secondary mb-6">{success}</p>
-      <div className="flex gap-3">
-        <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Students</button>
-        <button className="btn-primary" onClick={() => navigate('/admin/rooms')}>View BedGrid</button>
-      </div>
-    </div>
-  );
+    );
+  }
 
   const stepLabels = isBookingFlow
     ? ['Verify Documents', 'Confirm Bed', 'Stay Details', 'Confirm']

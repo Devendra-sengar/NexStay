@@ -391,7 +391,7 @@ export function useStaffById(id?: string) {
 }
 export function useCreateStaff() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: async (body: any) => { const { data } = await erp('/staff', { method: 'POST', data: body }); return data.data; }, onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }) });
+  return useMutation({ mutationFn: async (body: any) => { const { data } = await erp('/staff', { method: 'POST', data: body }); return data; }, onSuccess: () => qc.invalidateQueries({ queryKey: ['staff'] }) });
 }
 export function useUpdateStaff() {
   const qc = useQueryClient();

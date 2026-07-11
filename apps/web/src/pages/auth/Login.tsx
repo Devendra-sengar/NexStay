@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Building2, Eye, EyeOff, LogIn, Shield, Home, UserCheck,
   ChefHat, GraduationCap, AlertCircle, Hash,
@@ -84,6 +84,7 @@ const ROLE_REDIRECTS: Record<string, string> = {
 export default function Login() {
   const { login } = useAuth();
   const navigate   = useNavigate();
+  const location   = useLocation();
 
   const [selectedRole, setSelectedRole] = useState<string>(Role.HOSTEL_ADMIN);
   const [identifier,   setIdentifier]   = useState('');
@@ -92,6 +93,20 @@ export default function Login() {
   const [showPw,       setShowPw]       = useState(false);
   const [error,        setError]        = useState('');
   const [loading,      setLoading]      = useState(false);
+
+  // Parse QR code or external link parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const roleParam = params.get('role');
+    const identifierParam = params.get('identifier') || params.get('phone');
+    const hostelCodeParam = params.get('hostelCode');
+
+    if (roleParam && ROLES.some(r => r.value === roleParam)) {
+      setSelectedRole(roleParam);
+    }
+    if (identifierParam) setIdentifier(identifierParam);
+    if (hostelCodeParam) setHostelCode(hostelCodeParam);
+  }, [location.search]);
 
   const currentRole = ROLES.find(r => r.value === selectedRole)!;
 
@@ -233,6 +248,8 @@ export default function Login() {
                 placeholder={currentRole.identifierPlaceholder}
                 required
                 className="input-field"
+                maxLength={currentRole.value === Role.STUDENT ? 10 : undefined}
+                inputMode={currentRole.value === Role.STUDENT ? 'numeric' : undefined}
               />
             </div>
 

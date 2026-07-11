@@ -23,6 +23,8 @@ import AdminInventoryPage from '@/pages/admin/erp/InventoryPage';
 import AdminExpensesPage from '@/pages/admin/erp/ExpensesPage';
 import AdminComplaintsPage from '@/pages/admin/erp/ComplaintsPage';
 import AdminReportsPage from '@/pages/admin/erp/ReportsPage';
+import MessMenuPage from '@/pages/mess/MenuPage';
+import MessHistoryPage from '@/pages/mess/MenuHistoryPage';
 import StudentProfilePage from '@/pages/admin/erp/StudentProfilePage';
 import CheckInPage from '@/pages/admin/erp/CheckInPage';
 import CheckOutPage from '@/pages/admin/erp/CheckOutPage';
@@ -49,6 +51,10 @@ const NAV = [
     { label: 'Complaints',  icon: MessageSquare, path: '/admin/complaints', permKey: 'canManageComplaints' },
     { label: 'Reports',     icon: BarChart3,     path: '/admin/reports',    permKey: 'canViewReports' },
   ]},
+  { section: 'MESS / CAFE', items: [
+    { label: 'Menu Schedule', icon: UtensilsCrossed, path: '/admin/mess-menu', permKey: 'canManageERP', requiresMess: true },
+    { label: 'Menu History',  icon: BookOpen,        path: '/admin/mess-history', permKey: 'canManageERP', requiresMess: true },
+  ]},
   { section: 'SETTINGS', items: [
     { label: 'Profile',       icon: Settings,  path: '/admin/profile' },
     { label: 'Mock Emails', icon: Database,  path: '/admin/dev/emails' },
@@ -66,7 +72,7 @@ export default function HostelAdminShell() {
   // Collapse by default at tablet (md = 768px), expanded at desktop
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 1024);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, hostel, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -95,7 +101,11 @@ export default function HostelAdminShell() {
       {/* Nav */}
       <nav className="flex-1 px-2 py-3 overflow-y-auto space-y-0.5">
         {NAV.map(({ section, items }) => {
-          const visibleItems = items.filter(it => isNavAllowed((it as any).permKey, (user as any)?.ownerPermissions));
+          const visibleItems = items.filter(it => {
+            if (!isNavAllowed((it as any).permKey, (user as any)?.ownerPermissions)) return false;
+            if ((it as any).requiresMess && !hostel?.messEnabled) return false;
+            return true;
+          });
           if (visibleItems.length === 0) return null;
           return (
             <div key={section}>
@@ -200,6 +210,8 @@ export default function HostelAdminShell() {
             <Route path="expenses" element={<AdminExpensesPage />} />
             <Route path="complaints" element={<AdminComplaintsPage />} />
             <Route path="reports" element={<AdminReportsPage />} />
+            <Route path="mess-menu" element={<MessMenuPage />} />
+            <Route path="mess-history" element={<MessHistoryPage />} />
             <Route path="profile" element={<AdminProfilePage />} />
             <Route path="checkin" element={<CheckInPage />} />
             <Route path="checkout/:studentId" element={<CheckOutPage />} />

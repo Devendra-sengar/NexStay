@@ -4,7 +4,6 @@ import { Users, Plus, Edit2, Search, ToggleLeft, ToggleRight, X, ShieldCheck, Ch
 import toast from 'react-hot-toast';
 import { useStaff, useCreateStaff, useUpdateStaff, useToggleStaffStatus, useAdminProperties } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
-import LoginStaffSection from './LoginStaffSection';
 import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
 
 const ROLES = ['WARDEN','COOK','CLEANER','SECURITY','MANAGER','OTHER'];
@@ -24,7 +23,20 @@ function StaffModal({ staff, properties, onClose }: { staff?: any; properties: a
     if (!form.name || !form.phone || !form.propertyId) { toast.error('Name, phone, property required'); return; }
     try {
       if (staff) { await update.mutateAsync({ id: staff._id, ...form }); toast.success('Staff updated'); }
-      else { await create.mutateAsync(form); toast.success('Staff added'); }
+      else { 
+        const res = await create.mutateAsync(form); 
+        toast.success('Staff added'); 
+        if (res.tempPassword) {
+          toast((t) => (
+            <div className="flex flex-col gap-2">
+              <span className="font-bold text-sm">Login Account Created!</span>
+              <span className="text-xs">Role: {form.role}</span>
+              <span className="text-xs font-mono bg-surface-input p-1 rounded">Password: {res.tempPassword}</span>
+              <button onClick={() => toast.dismiss(t.id)} className="text-xs text-indigo-600 self-end mt-1 font-semibold">Dismiss</button>
+            </div>
+          ), { duration: 10000 });
+        }
+      }
       onClose();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
   };
@@ -123,7 +135,14 @@ export default function StaffPage() {
                   <td className="py-3 px-4 border-b border-surface-border text-sm text-text-muted">{(m.propertyId as any)?.name||'—'}</td>
                   <td className="py-3 px-4 border-b border-surface-border text-sm">{m.phone}</td>
                   <td className="py-3 px-4 border-b border-surface-border text-sm font-medium">₹{m.salary?.toLocaleString('en-IN')}</td>
-                  <td className="py-3 px-4 border-b border-surface-border"><span className={cn('badge',m.isActive?'badge-success':'badge-gray')}>{m.isActive?'ACTIVE':'INACTIVE'}</span></td>
+                  <td className="py-3 px-4 border-b border-surface-border">
+                    <div className="flex flex-col gap-1 items-start">
+                      <span className={cn('badge',m.isActive?'badge-success':'badge-gray')}>{m.isActive?'ACTIVE':'INACTIVE'}</span>
+                      {['WARDEN', 'MESS_MANAGER'].includes(m.role) && (
+                        <span className="badge badge-primary text-[10px]" title="Has portal login access">Portal Access</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="py-3 px-4 border-b border-surface-border" onClick={e=>e.stopPropagation()}>
                     <div className="flex gap-1">
                       <button onClick={()=>setModal({open:true,staff:m})} className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg text-text-muted"><Edit2 className="w-3.5 h-3.5"/></button>
@@ -140,8 +159,6 @@ export default function StaffPage() {
       </div>
       {modal.open && <StaffModal staff={modal.staff} properties={properties} onClose={()=>setModal({open:false})} />}
 
-      {/* ── Portal Login Staff (WARDEN / MESS_MANAGER) ── */}
-      <LoginStaffSection />
     </div>
   );
 }

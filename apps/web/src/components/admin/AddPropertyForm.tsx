@@ -31,7 +31,7 @@ interface FormState {
   // Step 2
   latitude: number | ''; longitude: number | '';
   // Step 3
-  amenities: string[]; customFacilities: string[]; rules: string; foodIncluded: boolean;
+  amenities: string[]; customFacilities: string[]; nearbyPlaces: { name: string; distance: string }[]; rules: string; foodIncluded: boolean;
   // Step 4
   images: string[]; videoUrl: string;
   // Step 5
@@ -63,7 +63,7 @@ const ROOM_LABELS: Record<string, string> = { SINGLE:'Single', DOUBLE:'Double', 
 
 const INITIAL: FormState = {
   name:'', description:'', city:'', locality:'', address:'', state:'', pincode:'', gender:'BOYS',
-  latitude:'', longitude:'', amenities:[], customFacilities:[], rules:'', foodIncluded:false,
+  latitude:'', longitude:'', amenities:[], customFacilities:[], nearbyPlaces:[], rules:'', foodIncluded:false,
   images:[], videoUrl:'', roomSetups:[{ roomType:'DOUBLE', count:1, pricePerBed:6000 }],
 };
 
@@ -111,7 +111,7 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
       const g = (window as any).google;
       if (!g?.maps?.places || !addressInputRef.current) return;
       const ac = new g.maps.places.Autocomplete(addressInputRef.current, {
-        types: ['address'],
+        types: ['geocode', 'establishment'],
         componentRestrictions: { country: 'in' },
         fields: ['formatted_address', 'address_components', 'geometry'],
       });
@@ -363,6 +363,46 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
                       <XIcon className="w-3 h-3" />
                     </button>
                   </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Nearby Places */}
+          <div>
+            <label className="form-label">Nearby Places <span className="text-text-muted font-normal">(e.g. 500 meters from SGSITS)</span></label>
+            <div className="flex gap-2 mt-1">
+              <input
+                className="input-field flex-1"
+                placeholder="Place name (e.g. SGSITS College)"
+                id="nearbyName"
+              />
+              <input
+                className="input-field w-32"
+                placeholder="Distance (e.g. 500m)"
+                id="nearbyDistance"
+              />
+              <button type="button"
+                onClick={() => {
+                  const nameEl = document.getElementById('nearbyName') as HTMLInputElement;
+                  const distEl = document.getElementById('nearbyDistance') as HTMLInputElement;
+                  if (nameEl.value.trim() && distEl.value.trim()) {
+                    set({ nearbyPlaces: [...form.nearbyPlaces, { name: nameEl.value.trim(), distance: distEl.value.trim() }] });
+                    nameEl.value = '';
+                    distEl.value = '';
+                  }
+                }}
+                className="btn-secondary flex items-center gap-1 px-3 whitespace-nowrap text-sm">
+                <Plus className="w-3.5 h-3.5" /> Add
+              </button>
+            </div>
+            {form.nearbyPlaces.length > 0 && (
+              <div className="flex flex-col gap-2 mt-2">
+                {form.nearbyPlaces.map((np, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-surface-input px-3 py-2 rounded-lg text-sm">
+                    <span><span className="font-medium text-text-primary">{np.name}</span> <span className="text-text-muted">({np.distance})</span></span>
+                    <button type="button" onClick={() => set({ nearbyPlaces: form.nearbyPlaces.filter((_, i) => i !== idx) })} className="text-danger hover:text-red-700"><Trash2 className="w-4 h-4" /></button>
+                  </div>
                 ))}
               </div>
             )}

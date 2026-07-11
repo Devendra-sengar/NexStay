@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Enter a valid email'),
-  phone: z.string().min(10, 'Enter a valid phone number').max(15),
+  phone: z.string().length(10, 'Phone number must be exactly 10 digits').regex(/^\d{10}$/, 'Must contain only numbers'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ['confirmPassword'] });
@@ -109,7 +109,7 @@ export default function SignupPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-1.5">Phone</label>
-                <input {...register('phone')} placeholder="9876543210" className={cn('input-field', errors.phone && 'border-status-error')} />
+                <input {...register('phone')} placeholder="9876543210" className={cn('input-field', errors.phone && 'border-status-error')} maxLength={10} inputMode="numeric" />
                 {errors.phone && <p className="text-status-error text-xs mt-1">{errors.phone.message}</p>}
               </div>
             </div>

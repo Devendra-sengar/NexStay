@@ -4,7 +4,7 @@ import {
   X, Loader2, Eye, EyeOff, Copy, CheckCheck, KeyRound, RefreshCw, ShieldCheck,
 } from 'lucide-react';
 import {
-  useSuperHostels, useCreateHostelWithOwner, useToggleHostelActive, useDeleteHostel,
+  useSuperHostels, useCreateHostelWithOwner, useToggleHostelActive, useDeleteHostel, useUpdateHostel
 } from '@/lib/superAdminApi';
 import toast from 'react-hot-toast';
 import OwnerPermissionsModal from './OwnerPermissionsModal';
@@ -280,6 +280,7 @@ export default function HostelsPage() {
 
   const toggleActive = useToggleHostelActive();
   const deleteHostel = useDeleteHostel();
+  const updateHostel = useUpdateHostel();
 
   const hostels: any[] = data?.data || [];
   const total: number = data?.total || 0;
@@ -297,6 +298,15 @@ export default function HostelsPage() {
   const handleToggle = async (id: string) => {
     try { await toggleActive.mutateAsync(id); toast.success('Status updated'); }
     catch { toast.error('Failed to update'); }
+  };
+
+  const handleToggleMess = async (id: string, currentStatus: boolean) => {
+    try {
+      await updateHostel.mutateAsync({ id, messEnabled: !currentStatus });
+      toast.success(`Mess module ${!currentStatus ? 'enabled' : 'disabled'}`);
+    } catch {
+      toast.error('Failed to update mess module');
+    }
   };
 
   return (
@@ -356,7 +366,11 @@ export default function HostelsPage() {
                   <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>{h.name}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: '#e0f2fe', color: '#0369a1' }}>{h.hostelCode}</span>
                   <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#f3f4f6', color: '#374151' }}>{GENDER_LABELS[h.gender]}</span>
-                  {h.messEnabled && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fef3c7', color: '#92400e' }}>◆ Mess</span>}
+                  <button onClick={() => handleToggleMess(h._id, h.messEnabled)}
+                    style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: h.messEnabled ? '#fef3c7' : '#f1f5f9', color: h.messEnabled ? '#92400e' : '#64748b', border: '1px solid ' + (h.messEnabled ? '#fde68a' : '#e2e8f0'), cursor: 'pointer', transition: 'all 0.2s' }}
+                    title={h.messEnabled ? 'Disable Mess' : 'Enable Mess'}>
+                    {h.messEnabled ? '◆ Mess Enabled' : '◇ Mess Disabled'}
+                  </button>
                   {!h.isActive && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fee2e2', color: '#991b1b' }}>Inactive</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 16, marginTop: 4, flexWrap: 'wrap' }}>
