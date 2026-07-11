@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
-const publicApi = axios.create({ baseURL: '/api/public' });
+const publicApi = axios.create({ baseURL: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/public` : '/api/public' });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ const TOKEN_KEY   = 'nexstay_token';
 const REFRESH_KEY = 'nexstay_refresh';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
