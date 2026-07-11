@@ -11,5 +11,9 @@
   "devDependencies": {
     "concurrently": "^8.2.2",
     "typescript": "^5.9.2"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
