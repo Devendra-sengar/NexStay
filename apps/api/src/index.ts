@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db';
 import authRoutes from './routes/auth.routes';
-import marketplaceRoutes from './routes/marketplace.routes'; 
+import marketplaceRoutes from './routes/marketplace.routes';
 import notificationRoutes from './routes/notification.routes';
 import publicRoutes from './routes/public.routes';
 import guestRoutes from './routes/guest.routes';

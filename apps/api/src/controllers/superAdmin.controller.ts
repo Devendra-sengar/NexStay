@@ -1,4 +1,4 @@
-import { Response } from 'express';
+﻿import { Response } from 'express';
 import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { User } from '../models/User.model';
@@ -90,7 +90,7 @@ export const getGuests = async (req: AuthRequest, res: Response): Promise<void> 
     ]);
     // Enrich with active bookings count
     const enriched = await Promise.all(users.map(async u => {
-      const activeBookings = await Booking.countDocuments({ guestId: u._id, status: { $in: ['CONFIRMED','CHECKED_IN'] } });
+      const activeBookings = await Booking.countDocuments({ guestId: u._id, status: { $in: ['CONFIRMED', 'CHECKED_IN'] } });
       return { ...u, activeBookings };
     }));
     res.json({ success: true, data: enriched, total, hasNextPage: p * lim < total });
@@ -188,7 +188,7 @@ export const approveProperty = async (req: AuthRequest, res: Response): Promise<
       title: '🎉 Property Approved!',
       message: `Congratulations! "${prop.name}" is now live on NexStay marketplace.`,
       linkUrl: '/admin/properties',
-    }).catch(() => {});
+    }).catch(() => { });
     res.json({ success: true, data: prop });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -210,7 +210,7 @@ export const rejectProperty = async (req: AuthRequest, res: Response): Promise<v
       title: '❌ Property Not Approved',
       message: `Your property "${prop.name}" was not approved. Reason: ${reason.trim()}`,
       linkUrl: '/admin/properties',
-    }).catch(() => {});
+    }).catch(() => { });
     res.json({ success: true, data: prop });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -239,7 +239,7 @@ export const approveOwnerVerification = async (req: AuthRequest, res: Response):
       title: '✅ Owner Verification Approved',
       message: 'Your business verification has been approved! You can now list properties on NexStay.',
       linkUrl: '/admin/properties',
-    }).catch(() => {});
+    }).catch(() => { });
     res.json({ success: true, message: 'Owner verified successfully' });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -260,7 +260,7 @@ export const rejectOwnerVerification = async (req: AuthRequest, res: Response): 
       type: 'OWNER_VERIFICATION_REJECTED',
       title: '❌ Verification Not Approved',
       message: `Your business verification was not approved. Reason: ${reason.trim()}`,
-    }).catch(() => {});
+    }).catch(() => { });
     res.json({ success: true, message: 'Owner verification rejected' });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -331,7 +331,7 @@ export const getAllHostels = async (req: AuthRequest, res: Response): Promise<vo
       Hostel.countDocuments(filter),
     ]);
 
-    // attach student count per hostel — count by hostelId OR by tenantId (ownerId) for backward compat
+    // Attach student count per hostel
     const withCounts = await Promise.all(hostels.map(async (h: any) => {
       const ownerId = (h.ownerId as any)?._id || h.ownerId;
       const studentCount = await HostelStudent.countDocuments({
@@ -365,7 +365,6 @@ export const createHostel = async (req: AuthRequest, res: Response): Promise<voi
     const owner = await User.findById(ownerId);
     if (!owner) { res.status(404).json({ success: false, message: 'Owner not found' }); return; }
 
-    // Generate unique hostel code
     const count = await Hostel.countDocuments({});
     const hostelCode = `NST-${String(count + 1).padStart(3, '0')}`;
 
@@ -377,7 +376,6 @@ export const createHostel = async (req: AuthRequest, res: Response): Promise<voi
       messEnabled: messEnabled ?? false,
     });
 
-    // Assign hostelId to owner user
     await User.findByIdAndUpdate(ownerId, { hostelId: hostel._id });
 
     res.status(201).json({ success: true, data: hostel, message: 'Hostel created successfully' });
@@ -386,16 +384,15 @@ export const createHostel = async (req: AuthRequest, res: Response): Promise<voi
     res.status(500).json({ success: false, message: err.message || 'Server error' });
   }
 };
-
 // ── CREATE HOSTEL WITH NEW OWNER (Combined Flow) ──────────────────────────────
 // Super Admin creates both the owner account AND the hostel in one shot.
+// All writes (User + Property + Hostel + User.hostelId) run inside a single
+// MongoDB transaction — if ANY step fails the entire operation is rolled back.
 // Returns the plain-text credentials so Admin can share them with the owner.
 export const createHostelWithOwner = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const {
-      // Owner details
       ownerName, ownerEmail, ownerPhone, ownerPassword, businessName,
-      // Hostel details
       hostelName, gender, address, contactPhone, contactEmail, messEnabled,
     } = req.body;
 
@@ -408,64 +405,104 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    // Check duplicate owner
+    // Duplicate-check before opening the transaction (read-only, no rollback needed)
     const existingUser = await User.findOne({ $or: [{ email: ownerEmail.toLowerCase() }, { phone: ownerPhone }] });
     if (existingUser) {
       res.status(409).json({ success: false, message: 'Email or phone already registered for another account' });
       return;
     }
 
-    // 1. Create owner account
+    // Hash password before the transaction (CPU-bound, outside the DB lock)
     const passwordHash = await bcrypt.hash(ownerPassword, 12);
-    const owner = await User.create({
-      name: ownerName,
-      email: ownerEmail.toLowerCase(),
-      phone: ownerPhone,
-      passwordHash,
-      role: 'HOSTEL_ADMIN',
-      status: 'ACTIVE',
-      businessName: businessName || '',
-      ownerVerificationStatus: 'APPROVED', // Pre-approved by super admin
-    });
 
-    // 2. Create Marketplace Property
-    const property = await Property.create({
-      name: hostelName,
-      tenantId: owner._id,
-      city: address?.city || '',
-      address: address?.fullAddress || '',
-      verificationStatus: 'APPROVED',
-      propertyType: 'Hostel',
-      gender: gender || 'BOYS',
-      contactPhone: contactPhone || ownerPhone,
-      contactEmail: contactEmail || ownerEmail,
-      amenities: ['WiFi', 'CCTV', 'Power Backup'],
-      rules: '1. No smoking\n2. Quiet hours after 10 PM',
-      rentStartingFrom: 5000,
-    });
+    // Open a MongoDB session and start a transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // 3. Generate unique hostel code
-    const count = await Hostel.countDocuments({});
-    const hostelCode = `NST-${String(count + 1).padStart(3, '0')}`;
+    let owner: any;
+    let property: any;
+    let hostel: any;
+    let hostelCode!: string;
 
-    // 4. Create hostel linked to the new owner and property
-    const hostel = await Hostel.create({
-      hostelCode,
-      name: hostelName,
-      gender: gender || 'BOYS',
-      ownerId: owner._id,
-      propertyId: property._id,
-      isActive: true,
-      address: address || {},
-      contactPhone: contactPhone || ownerPhone,
-      contactEmail: contactEmail || ownerEmail,
-      messEnabled: messEnabled ?? false,
-    });
+    try {
+      // Step 1 — Create owner account
+      [owner] = await User.create(
+        [{
+          name: ownerName,
+          email: ownerEmail.toLowerCase(),
+          phone: ownerPhone,
+          passwordHash,
+          role: 'HOSTEL_ADMIN',
+          status: 'ACTIVE',
+          businessName: businessName || '',
+          ownerVerificationStatus: 'APPROVED',
+        }],
+        { session },
+      );
 
-    // 5. Link hostelId back to the owner
-    await User.findByIdAndUpdate(owner._id, { hostelId: hostel._id });
+      // Step 2 — Create Marketplace Property
+      // Property schema uses a flat String for address; city/state/pincode are top-level fields.
+      const addrParts = [address?.street, address?.city, address?.state, address?.pincode].filter(Boolean);
+      const addressString = addrParts.length ? (addrParts as string[]).join(', ') : '';
 
-    // 6. Return everything including plain-text credentials for the admin to share
+      [property] = await Property.create(
+        [{
+          name: hostelName,
+          tenantId: owner._id,
+          address: addressString,
+          city: address?.city || '',
+          state: address?.state || '',
+          pincode: address?.pincode || '',
+          locality: address?.street || '',
+          verificationStatus: 'APPROVED',
+          gender: gender || 'BOYS',
+          amenities: ['WiFi', 'CCTV', 'Power Backup'],
+          rules: '1. No smoking\n2. Quiet hours after 10 PM',
+          rentStartingFrom: 5000,
+        }],
+        { session },
+      );
+
+      // Step 3 — Generate unique hostel code (counted within the session)
+      const count = await Hostel.countDocuments({}).session(session);
+      hostelCode = `NST-${String(count + 1).padStart(3, '0')}`;
+
+      // Step 4 — Create hostel linked to the new owner and property
+      [hostel] = await Hostel.create(
+        [{
+          hostelCode,
+          name: hostelName,
+          gender: gender || 'BOYS',
+          ownerId: owner._id,
+          propertyId: property._id,
+          isActive: true,
+          address: address || {},
+          contactPhone: contactPhone || ownerPhone,
+          contactEmail: contactEmail || ownerEmail,
+          messEnabled: messEnabled ?? false,
+        }],
+        { session },
+      );
+
+      // Step 5 — Link hostelId back to the owner user document
+      await User.findByIdAndUpdate(owner._id, { hostelId: hostel._id }, { session });
+
+      // All writes succeeded — commit atomically
+      await session.commitTransaction();
+    } catch (txError: any) {
+      // Any failure aborts ALL writes above; the DB is left completely unchanged
+      await session.abortTransaction();
+      console.error('[createHostelWithOwner] Transaction aborted:', txError);
+      res.status(500).json({
+        success: false,
+        message: txError.message || 'Creation failed — all changes have been rolled back',
+      });
+      return;
+    } finally {
+      session.endSession();
+    }
+
+    // Return everything including plain-text credentials for the admin to share
     res.status(201).json({
       success: true,
       message: 'Hostel and owner account created successfully',
@@ -482,13 +519,12 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
           email: owner.email,
           phone: owner.phone,
         },
-        // Credentials to share with the owner
         credentials: {
           loginUrl: '/login',
           email: ownerEmail,
           phone: ownerPhone,
-          password: ownerPassword, // plain-text, admin must share securely
-          hostelCode: hostelCode,
+          password: ownerPassword, // plain-text — admin must share securely
+          hostelCode,
           role: 'HOSTEL_ADMIN',
         },
       },
@@ -498,7 +534,6 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
     res.status(500).json({ success: false, message: err.message || 'Server error' });
   }
 };
-
 export const updateHostel = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const hostel = await Hostel.findByIdAndUpdate(req.params.id, req.body, { new: true }).lean();
@@ -696,7 +731,7 @@ async function createStudentUser(stu: any, bcrypt: any, log: any[]) {
       passwordHash: hash, role: 'STUDENT', status: 'ACTIVE', hostelId: stu.hostelId,
     });
     log.push({ action: 'CREATED_ORPHAN_USER', phone: stu.phone, newUserId: String(u._id) });
-  } catch {}
+  } catch { }
 }
 
 
