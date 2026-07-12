@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Check, Loader2, MapPin, Plus, Trash2,
@@ -6,20 +6,7 @@ import {
 } from 'lucide-react';
 import { useCreateProperty } from '@/lib/adminApi';
 import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
-
-// Google Maps Places Autocomplete loader
-const GMAP_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_KEY || '';
-function loadGoogleMaps(): Promise<void> {
-  return new Promise((resolve) => {
-    if ((window as any).google?.maps?.places) { resolve(); return; }
-    if (!GMAP_KEY) { resolve(); return; }
-    const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${GMAP_KEY}&libraries=places`;
-    s.async = true; s.defer = true;
-    s.onload = () => resolve();
-    document.head.appendChild(s);
-  });
-}
+import PlacesAutocomplete, { PlaceResult } from '@/components/ui/PlacesAutocomplete';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface RoomSetup { roomType: string; count: number; pricePerBed: number }
@@ -27,7 +14,7 @@ interface RoomSetup { roomType: string; count: number; pricePerBed: number }
 interface FormState {
   // Step 1
   name: string; description: string; city: string; locality: string;
-  address: string; state: string; pincode: string; gender: string;
+  address: string; state: string; pincode: string; gender: string; landmark: string;
   // Step 2
   latitude: number | ''; longitude: number | '';
   // Step 3
@@ -62,7 +49,7 @@ const ROOM_CAPACITY: Record<string, number> = { SINGLE:1, DOUBLE:2, TRIPLE:3, FO
 const ROOM_LABELS: Record<string, string> = { SINGLE:'Single', DOUBLE:'Double', TRIPLE:'Triple', FOUR_SHARING:'4-Sharing' };
 
 const INITIAL: FormState = {
-  name:'', description:'', city:'', locality:'', address:'', state:'', pincode:'', gender:'BOYS',
+  name:'', description:'', city:'', locality:'', address:'', state:'', pincode:'', gender:'BOYS', landmark:'',
   latitude:'', longitude:'', amenities:[], customFacilities:[], nearbyPlaces:[], rules:'', foodIncluded:false,
   images:[], videoUrl:'', roomSetups:[{ roomType:'DOUBLE', count:1, pricePerBed:6000 }],
 };
@@ -100,66 +87,21 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
   const [submitted, setSubmitted] = useState(false);
   const createMutation = useCreateProperty();
   const [customFacilityInput, setCustomFacilityInput] = useState('');
-  const addressInputRef = useRef<HTMLInputElement>(null);
-  const [suggestedPincodes, setSuggestedPincodes] = useState<string[]>([]);
-  const [fetchingPincodes, setFetchingPincodes] = useState(false);
 
   const set = useCallback((patch: Partial<FormState>) => setForm(f => ({ ...f, ...patch })), []);
 
-  // Google Maps Places Autocomplete — wires up on step 0 mount
-  useEffect(() => {
-    if (step !== 0 || !addressInputRef.current) return;
-    loadGoogleMaps().then(() => {
-      const g = (window as any).google;
-      if (!g?.maps?.places || !addressInputRef.current) return;
-      const ac = new g.maps.places.Autocomplete(addressInputRef.current, {
-        types: ['geocode', 'establishment'],
-        componentRestrictions: { country: 'in' },
-        fields: ['formatted_address', 'address_components', 'geometry'],
-      });
-      ac.addListener('place_changed', () => {
-        const place = ac.getPlace();
-        if (!place?.address_components) return;
-        let city = '', state = '', pincode = '', locality = '';
-        for (const c of place.address_components) {
-          if (c.types.includes('locality')) city = c.long_name;
-          if (c.types.includes('sublocality_level_1')) locality = c.long_name;
-          if (c.types.includes('administrative_area_level_1')) state = c.long_name;
-          if (c.types.includes('postal_code')) pincode = c.long_name;
-        }
-        set({
-          address: place.formatted_address || '',
-          city: city || form.city,
-          state: state || form.state,
-          pincode: pincode || form.pincode,
-          locality: locality || form.locality,
-        });
-
-        const localityStr = locality || city;
-        if (localityStr) {
-          setFetchingPincodes(true);
-          fetch(`https://api.postalpincode.in/postoffice/${encodeURIComponent(localityStr)}`)
-            .then(res => res.json())
-            .then(data => {
-              if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice) {
-                const pins = Array.from(new Set(data[0].PostOffice.map((po: any) => po.Pincode)));
-                setSuggestedPincodes(pins as string[]);
-                if (!pincode && pins.length > 0) {
-                  set({ pincode: pins[0] as string });
-                }
-              } else {
-                setSuggestedPincodes([]);
-              }
-            })
-            .catch(() => setSuggestedPincodes([]))
-            .finally(() => setFetchingPincodes(false));
-        } else {
-          setSuggestedPincodes([]);
-        }
-      });
+  const handlePlaceSelect = useCallback((place: PlaceResult) => {
+    set({
+      address:  place.formatted,
+      city:     place.city     || form.city,
+      state:    place.state    || form.state,
+      pincode:  place.pincode  || form.pincode,
+      locality: place.street   || form.locality,
+      ...(place.lat != null ? { latitude:  place.lat } : {}),
+      ...(place.lng != null ? { longitude: place.lng } : {}),
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  }, [form.city, form.state, form.pincode, form.locality]);
 
   // ── Validation per step ────────────────────────────────────────────────────
   const validate = (s: number): boolean => {
@@ -229,56 +171,23 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
       {step === 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-text-primary mb-1">Basic Information</h2>
+
+          {/* Property Name */}
           <div>
             <label className="form-label">Property Name *</label>
             <input className={`input-field ${errors.name ? 'border-red-400' : ''}`} value={form.name}
               onChange={e => set({ name: e.target.value })} placeholder="e.g. Green Valley PG" />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
           </div>
+
+          {/* Description */}
           <div>
             <label className="form-label">Description</label>
             <textarea className="input-field" rows={3} value={form.description}
               onChange={e => set({ description: e.target.value })} placeholder="Describe your PG — facilities, neighbourhood, highlights..." />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">City *</label>
-              <input className={`input-field ${errors.city ? 'border-red-400' : ''}`} value={form.city}
-                onChange={e => set({ city: e.target.value })} placeholder="Pune" />
-              {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
-            </div>
-            <div>
-              <label className="form-label">Locality / Area</label>
-              <input className="input-field" value={form.locality} onChange={e => set({ locality: e.target.value })} placeholder="Kothrud" />
-            </div>
-          </div>
-          <div>
-            <label className="form-label">Full Address * <span className="text-text-muted font-normal text-[11px]">{GMAP_KEY ? '— start typing for suggestions' : ''}</span></label>
-            <input
-              ref={addressInputRef}
-              className={`input-field ${errors.address ? 'border-red-400' : ''}`}
-              value={form.address}
-              onChange={e => set({ address: e.target.value })}
-              placeholder="Start typing address, e.g. Vijay Nagar..."
-              autoComplete="off"
-            />
-            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="form-label">State *</label>
-              <input className={`input-field ${errors.state ? 'border-red-400' : ''}`} value={form.state}
-                onChange={e => set({ state: e.target.value })} placeholder="Maharashtra" />
-              {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
-            </div>
-            <div>
-              <label className="form-label">Pincode {form.pincode && <span className="text-emerald-600 font-normal text-[11px]">(auto-filled)</span>} {fetchingPincodes && <span className="text-text-muted font-normal text-[11px]">(fetching...)</span>}</label>
-              <input className="input-field" value={form.pincode} onChange={e => set({ pincode: e.target.value })} placeholder="411038" maxLength={6} inputMode="numeric" list="pincodes-list" />
-              <datalist id="pincodes-list">
-                {suggestedPincodes.map(p => <option key={p} value={p} />)}
-              </datalist>
-            </div>
-          </div>
+
+          {/* Gender Type */}
           <div>
             <label className="form-label">Gender Type *</label>
             <div className="grid grid-cols-3 gap-3 mt-1">
@@ -290,6 +199,72 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
                   {opt.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* ── Address Fields in logical order ─────────────────────────── */}
+          <div className="rounded-2xl border border-surface-border bg-surface p-4 space-y-4">
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wide">Property Location</p>
+
+            {/* Row 1 — State + Pincode */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="form-label">State *</label>
+                <input className={`input-field ${errors.state ? 'border-red-400' : ''}`} value={form.state}
+                  onChange={e => set({ state: e.target.value })} placeholder="e.g. Madhya Pradesh" />
+                {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state}</p>}
+              </div>
+              <div>
+                <label className="form-label">
+                  Pincode{' '}
+                  {form.pincode && <span className="text-emerald-600 font-normal text-[11px]">(auto-filled)</span>}
+                </label>
+                <input className="input-field" value={form.pincode}
+                  onChange={e => set({ pincode: e.target.value })}
+                  placeholder="e.g. 452010" maxLength={6} inputMode="numeric" />
+              </div>
+            </div>
+
+            {/* Row 2 — City */}
+            <div>
+              <label className="form-label">City *</label>
+              <input className={`input-field ${errors.city ? 'border-red-400' : ''}`} value={form.city}
+                onChange={e => set({ city: e.target.value })} placeholder="e.g. Indore" />
+              {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
+            </div>
+
+            {/* Row 3 — Full Address (autocomplete) */}
+            <div>
+              <label className="form-label">
+                Full Address *{' '}
+                <span className="text-text-muted font-normal text-[11px]">— start typing for Google suggestions</span>
+              </label>
+              <PlacesAutocomplete
+                value={form.address}
+                onChange={(v) => set({ address: v })}
+                onSelect={handlePlaceSelect}
+                placeholder="e.g. 46, Vijay Nagar, Indore…"
+                inputClass={`input-field ${errors.address ? 'border-red-400' : ''}`}
+              />
+              {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
+            </div>
+
+            {/* Row 4 — Locality / Area */}
+            <div>
+              <label className="form-label">Locality / Area</label>
+              <input className="input-field" value={form.locality}
+                onChange={e => set({ locality: e.target.value })}
+                placeholder="e.g. Vijay Nagar, Kothrud, Sector 21" />
+              <p className="text-[11px] text-text-muted mt-1">Neighbourhood or colony name (auto-filled from address)</p>
+            </div>
+
+            {/* Row 5 — Landmark */}
+            <div>
+              <label className="form-label">Landmark / Nearby Place</label>
+              <input className="input-field" value={form.landmark}
+                onChange={e => set({ landmark: e.target.value })}
+                placeholder="e.g. Near SGSITS College, Opposite City Mall" />
+              <p className="text-[11px] text-text-muted mt-1">Helps guests find you easily</p>
             </div>
           </div>
         </div>

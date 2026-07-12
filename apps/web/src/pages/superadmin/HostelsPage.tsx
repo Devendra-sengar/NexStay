@@ -8,6 +8,7 @@ import {
 } from '@/lib/superAdminApi';
 import toast from 'react-hot-toast';
 import OwnerPermissionsModal from './OwnerPermissionsModal';
+import PlacesAutocomplete, { PlaceResult } from '@/components/ui/PlacesAutocomplete';
 
 const GENDER_LABELS: Record<string, string> = { BOYS: '♂ Boys', GIRLS: '♀ Girls', CO_ED: '⚥ Co-ed' };
 
@@ -232,8 +233,19 @@ function CreateHostelModal({ onClose, onCreated }: {
                 <input value={form.state} onChange={e => set('state', e.target.value)} placeholder="Maharashtra" style={inp} />
               </div>
               <div style={{ gridColumn: '1/-1' }}>
-                <label style={lbl}>Street Address</label>
-                <input value={form.street} onChange={e => set('street', e.target.value)} placeholder="12, Model Colony" style={inp} />
+                <label style={lbl}>Street Address — <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 11 }}>start typing for Google suggestions</span></label>
+                <PlacesAutocomplete
+                  value={form.street}
+                  onChange={(v) => set('street', v)}
+                  onSelect={(place: PlaceResult) => {
+                    set('street',  place.street   || place.formatted);
+                    if (place.city)    set('city',    place.city);
+                    if (place.state)   set('state',   place.state);
+                    if (place.pincode) set('pincode', place.pincode);
+                  }}
+                  placeholder="e.g. 12, Vijay Nagar, Indore"
+                  inputStyle={inp}
+                />
               </div>
               <div>
                 <label style={lbl}>Pincode</label>
