@@ -6,6 +6,7 @@ import { RentRecord } from '../models/RentRecord.model';
 import { Expense } from '../models/Expense.model';
 import { Property } from '../models/Property.model';
 import { Notification } from '../models/Notification.model';
+import { notify } from '../services/notification.service';
 
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
@@ -368,3 +369,78 @@ export const deleteExpense = async (req: AuthRequest, res: Response): Promise<vo
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// ─── PATCH /api/hostel-admin/erp/rent/:id/proof-action ───────────────────────────
+// Admin APPROVE/REJECT a student’s uploaded payment proof
+export const proofAction = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.id;
+    const { action, amount, paymentMethod, note } = req.body as {
+      action: 'APPROVE' | 'REJECT';
+      amount?: number;
+      paymentMethod?: string;
+      note?: string;
+    };
+
+    if (!action || !['APPROVE', 'REJECT'].includes(action)) {
+      res.status(400).json({ success: false, message: 'action must be APPROVE or REJECT' }); return;
+    }
+
+    const record = await RentRecord.findOne({ _id: req.params.id, tenantId })
+      .populate<{ hostelStudentId: any }>('hostelStudentId', 'name guestId');
+    if (!record) { res.status(404).json({ success: false, message: 'Record not found' }); return; }
+    if (!record.paymentProofUrl) {
+      res.status(400).json({ success: false, message: 'No payment proof uploaded for this record' }); return;
+    }
+    if (record.paymentProofStatus !== 'PENDING') {
+      res.status(400).json({ success: false, message: `Proof is already ${record.paymentProofStatus}` }); return;
+    }
+
+    const student = record.hostelStudentId as any;
+    const guestUserId: string | undefined = student?.guestId?.toString();
+
+    if (action === 'APPROVE') {
+      const paidAmt = typeof amount === 'number' ? amount : record.amount + (record.fine || 0);
+      record.paidAmount = (record.paidAmount || 0) + paidAmt;
+      const total = record.amount + (record.fine || 0);
+      record.status = record.paidAmount >= total ? 'PAID' : 'PARTIAL';
+      record.paidAt = new Date();
+      record.paymentMethod = paymentMethod || record.paymentMethod || 'UPI';
+      record.paymentProofStatus = 'APPROVED';
+      await record.save();
+
+      if (guestUserId) {
+        notify({
+          userId: guestUserId,
+          type: 'RENT',
+          title: '✅ Payment Confirmed!',
+          message: `Your payment of ₹${paidAmt.toLocaleString('en-IN')} for ${record.month} has been confirmed by the admin.`,
+          linkUrl: '/student/rent',
+        }).catch(() => {});
+      }
+    } else {
+      // REJECT
+      record.paymentProofStatus = 'REJECTED';
+      record.paymentProofNote = note || 'Payment proof was rejected by admin.';
+      await record.save();
+
+      if (guestUserId) {
+        notify({
+          userId: guestUserId,
+          type: 'RENT',
+          title: '❌ Payment Proof Rejected',
+          message: note
+            ? `Your payment proof for ${record.month} was rejected. Reason: ${note}. Please re-upload.`
+            : `Your payment proof for ${record.month} was rejected. Please re-upload a valid screenshot.`,
+          linkUrl: '/student/rent',
+        }).catch(() => {});
+      }
+    }
+
+    res.json({ success: true, data: record, message: action === 'APPROVE' ? 'Payment confirmed successfully.' : 'Proof rejected. Student has been notified.' });
+  } catch (err) {
+    console.error('[proofAction]', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+

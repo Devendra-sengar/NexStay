@@ -98,14 +98,27 @@ export default function AdminDashboardPage() {
   }
 
   const { stats, properties, recentBookings, recentComplaints, overdueRent, occupancyTrend, revenueTrend } = data;
+  const activeProp = selectedProperty ? properties.find((p: any) => p._id === selectedProperty) : properties[0];
 
   return (
     <div className="page-container space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
-          <p className="text-text-secondary text-sm mt-0.5">Here's your hostel overview</p>
+          <h1 className="text-2xl font-bold text-text-primary flex items-center gap-3">
+            Dashboard
+            {activeProp?.hostelCode && (
+              <span className="px-2.5 py-1 bg-primary/10 text-primary text-xs font-bold rounded-lg tracking-wider border border-primary/20">
+                CODE: {activeProp.hostelCode}
+              </span>
+            )}
+          </h1>
+          <p className="text-text-secondary text-sm mt-1 flex items-center gap-2">
+            Here's your hostel overview
+            {activeProp?.hostelCode && (
+              <span className="text-xs text-text-muted bg-surface-hover px-1.5 py-0.5 rounded">Share this code with students</span>
+            )}
+          </p>
         </div>
         {properties.length > 1 && (
           <select

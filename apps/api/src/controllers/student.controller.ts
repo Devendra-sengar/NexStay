@@ -10,6 +10,7 @@ import { Bed } from '../models/Bed.model';
 import { Room } from '../models/Room.model';
 import { User } from '../models/User.model';
 import bcrypt from 'bcryptjs';
+import cloudinary from '../config/cloudinary';
 
 const todayDate = () => new Date().toISOString().split('T')[0];
 
@@ -289,3 +290,48 @@ export const getMyRoommates = async (req: AuthRequest, res: Response): Promise<v
     res.json({ success: true, data: safeRoommates });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
+
+// ─── POST /api/student/rent/:id/payment-proof ─────────────────────────────────
+// Student uploads a payment screenshot; sets paymentProofStatus = PENDING
+export const submitPaymentProof = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const studentRecord = await HostelStudent.findOne({ guestId: req.user?.id, status: 'ACTIVE' }).lean();
+    if (!studentRecord) {
+      res.status(403).json({ success: false, message: 'No active student record found' }); return;
+    }
+
+    const record = await RentRecord.findOne({ _id: id, hostelStudentId: studentRecord._id });
+    if (!record) {
+      res.status(404).json({ success: false, message: 'Rent record not found' }); return;
+    }
+    if (record.status === 'PAID') {
+      res.status(400).json({ success: false, message: 'This record is already marked as PAID' }); return;
+    }
+    if (record.paymentProofStatus === 'PENDING') {
+      res.status(400).json({ success: false, message: 'A proof is already under review. Please wait for admin confirmation.' }); return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({ success: false, message: 'No image file provided' }); return;
+    }
+
+    // Upload to Cloudinary
+    const b64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    const result = await cloudinary.uploader.upload(b64, {
+      folder: 'nexstay/payment-proofs',
+      overwrite: false,
+    });
+
+    record.paymentProofUrl = result.secure_url;
+    record.paymentProofStatus = 'PENDING';
+    record.paymentProofNote = '';
+    await record.save();
+
+    res.json({ success: true, message: 'Payment proof submitted. Admin will verify shortly.', data: { paymentProofUrl: record.paymentProofUrl, paymentProofStatus: record.paymentProofStatus } });
+  } catch (err: any) {
+    console.error('submitPaymentProof:', err);
+    res.status(500).json({ success: false, message: err?.message || 'Server error' });
+  }
+};
+

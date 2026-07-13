@@ -11,10 +11,10 @@ import { getRentReceipt } from '../controllers/hostelAdmin.controller';
 import {
   getRentDashboard, getRentRecords, generateMonthlyRent, previewGenerateRent,
   addFine, sendReminders, createFee, getSecurityDeposits,
-  getExpenses, createExpense, updateExpense, deleteExpense,
+  getExpenses, createExpense, updateExpense, deleteExpense, proofAction,
 } from '../controllers/erpRent.controller';
 import {
-  getStaff, getStaffById, createStaff, updateStaff, toggleStaffStatus,
+  getStaff, getStaffById, createStaff, updateStaff, toggleStaffStatus, deleteStaff,
   getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem,
   getAdminComplaints, getAdminComplaintById, updateComplaintStatus, addInternalNote,
 } from '../controllers/erpStaff.controller';
@@ -54,6 +54,7 @@ router.get('/rent/preview-generate', previewGenerateRent);
 router.get('/rent/security-deposits', getSecurityDeposits);
 router.post('/rent/generate', generateMonthlyRent);
 router.patch('/rent/:id/fine', addFine);
+router.patch('/rent/:id/proof-action', proofAction);
 router.post('/rent/send-reminders', sendReminders);
 
 // ── Additional Fees ──────────────────────────────────────────────
@@ -75,6 +76,7 @@ router.get('/staff/:id', getStaffById);
 router.post('/staff', createStaff);
 router.put('/staff/:id', updateStaff);
 router.patch('/staff/:id/toggle', toggleStaffStatus);
+router.delete('/staff/:id', deleteStaff);
 
 // ── Inventory (Phase 6) ──────────────────────────────────────────
 router.get('/inventory', getInventory);

@@ -24,7 +24,7 @@ const StaffSchema = new Schema<IStaffDoc>(
     hostelId: { type: Schema.Types.ObjectId, ref: 'Hostel', default: null },
     propertyId: { type: Schema.Types.ObjectId, ref: 'Property', required: true },
     name: { type: String, required: true, trim: true },
-    phone: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true, match: [/^\d{10}$/, 'Phone number must be exactly 10 digits'] },
     email: { type: String, default: '', lowercase: true, trim: true },
     role: {
       type: String,

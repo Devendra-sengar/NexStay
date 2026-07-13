@@ -350,6 +350,18 @@ export function useSecurityDeposits(propertyId?: string) {
   });
 }
 
+export function useProofAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, action, amount, paymentMethod, note }: { id: string; action: 'APPROVE' | 'REJECT'; amount?: number; paymentMethod?: string; note?: string }) => {
+      const { data } = await erp(`/rent/${id}/proof-action`, { method: 'PATCH', data: { action, amount, paymentMethod, note } });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rent-records'] }),
+  });
+}
+
+
 export function useExpenses(params?: { propertyId?: string; month?: string; page?: number }) {
   return useQuery({
     queryKey: ['expenses', params],
@@ -400,6 +412,14 @@ export function useUpdateStaff() {
 export function useToggleStaffStatus() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: async (id: string) => { const { data } = await erp(`/staff/${id}/toggle`, { method: 'PATCH' }); return data.data; }, onSuccess: () => { qc.invalidateQueries({ queryKey: ['staff'] }); qc.invalidateQueries({ queryKey: ['staff-member'] }); } });
+}
+
+export function useDeleteStaff() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => { const { data } = await erp(`/staff/${id}`, { method: 'DELETE' }); return data; },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['staff'] }); qc.invalidateQueries({ queryKey: ['staff-member'] }); },
+  });
 }
 
 // ─── Login Staff (WARDEN / MESS_MANAGER with portal credentials) ──────────────

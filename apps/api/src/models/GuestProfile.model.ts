@@ -18,7 +18,7 @@ const GuestProfileSchema = new Schema<IGuestProfileDoc>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     college: { type: String, default: '' },
     guardianName: { type: String, default: '' },
-    guardianPhone: { type: String, default: '' },
+    guardianPhone: { type: String, default: '', match: [/^(?:\d{10})?$/, 'Guardian phone number must be exactly 10 digits'] },
     aadhaarUrl: { type: String, default: '' },
     studentIdUrl: { type: String, default: '' },
     photoUrl: { type: String, default: '' },

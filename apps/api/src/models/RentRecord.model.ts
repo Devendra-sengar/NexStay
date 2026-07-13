@@ -19,6 +19,9 @@ export interface IRentRecordDoc extends Document {
   notes?: string;
   isFee?: boolean;
   feeType?: string;
+  paymentProofUrl?: string;
+  paymentProofStatus?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  paymentProofNote?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,6 +50,9 @@ const RentRecordSchema = new Schema<IRentRecordDoc>(
     notes: { type: String, default: '' },
     isFee: { type: Boolean, default: false },
     feeType: { type: String, default: '' },
+    paymentProofUrl: { type: String, default: '' },
+    paymentProofStatus: { type: String, enum: ['NONE', 'PENDING', 'APPROVED', 'REJECTED'], default: 'NONE' },
+    paymentProofNote: { type: String, default: '' },
   },
   { timestamps: true }
 );

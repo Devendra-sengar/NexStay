@@ -28,14 +28,19 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
     const tenantId = req.user!.id;
     const { propertyId } = req.query;
 
+    // Fetch all properties for the dropdown to prevent it from disappearing
+    const allProperties = await Property.find({ tenantId }).lean();
+    const allPropertyIds = allProperties.map(p => p._id);
+    const allHostels = await mongoose.model('Hostel').find({ propertyId: { $in: allPropertyIds } }).select('propertyId hostelCode').lean() as any[];
+
     const propFilter: any = { tenantId };
     if (propertyId) propFilter._id = new mongoose.Types.ObjectId(propertyId as string);
 
-    const properties = await Property.find(propFilter).lean();
-    const propertyIds = properties.map(p => p._id);
+    const filteredProperties = await Property.find(propFilter).lean();
+    const filteredPropertyIds = filteredProperties.map(p => p._id);
 
     // Rooms & Beds
-    const rooms = await Room.find({ propertyId: { $in: propertyIds } }).lean();
+    const rooms = await Room.find({ propertyId: { $in: filteredPropertyIds } }).lean();
     const roomIds = rooms.map(r => r._id);
     const [totalBeds, availableBeds, occupiedBeds] = await Promise.all([
       Bed.countDocuments({ roomId: { $in: roomIds } }),
@@ -45,21 +50,15 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
 
     // Revenue & Due this month
     const { start: mStart, end: mEnd } = currentMonthRange();
-    const paidRent = await RentRecord.find({
-      tenantId,
-      status: { $in: ['PAID', 'PARTIAL'] },
-      paidAt: { $gte: mStart, $lte: mEnd },
-    }).lean();
-    const unpaidRent = await RentRecord.find({
-      tenantId,
-      status: { $in: ['UNPAID', 'PARTIAL'] },
-    }).lean();
+    const rentQuery: any = { tenantId, propertyId: { $in: filteredPropertyIds } };
+    const paidRent = await RentRecord.find({ ...rentQuery, status: { $in: ['PAID', 'PARTIAL'] }, paidAt: { $gte: mStart, $lte: mEnd } }).lean();
+    const unpaidRent = await RentRecord.find({ ...rentQuery, status: { $in: ['UNPAID', 'PARTIAL'] } }).lean();
 
     const monthlyRevenue = paidRent.reduce((s, r) => s + (r.paidAmount ?? 0), 0);
     const dueRent = unpaidRent.reduce((s, r) => s + Math.max(0, (r.amount ?? 0) - (r.paidAmount ?? 0)), 0);
 
     // Recent bookings (last 5)
-    const recentBookings = await Booking.find({ tenantId })
+    const recentBookings = await Booking.find({ tenantId, propertyId: { $in: filteredPropertyIds } })
       .populate('guestId', 'name email')
       .populate('propertyId', 'name city')
       .populate('roomId', 'roomNumber roomType')
@@ -69,7 +68,7 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
       .lean();
 
     // Recent complaints (last 5)
-    const recentComplaints = await Complaint.find({ tenantId })
+    const recentComplaints = await Complaint.find({ tenantId, propertyId: { $in: filteredPropertyIds } })
       .populate('guestId', 'name')
       .populate('propertyId', 'name')
       .sort({ createdAt: -1 })
@@ -77,13 +76,13 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
       .lean();
 
     // Top overdue rent (last 5)
-    const overdueRent = await RentRecord.find({ tenantId, status: { $in: ['UNPAID', 'PARTIAL'] } })
+    const overdueRent = await RentRecord.find({ tenantId, propertyId: { $in: filteredPropertyIds }, status: { $in: ['UNPAID', 'PARTIAL'] } })
       .populate('hostelStudentId', 'name')
       .sort({ dueDate: 1 })
       .limit(5)
       .lean();
 
-    // Occupancy trend: last 6 months (approximate — count OCCUPIED beds via bookings)
+    // Occupancy trend: last 6 months
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const occupancyTrend: { month: string; occupancy: number }[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -94,6 +93,7 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
       const monthEnd   = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       const checkedIn = await Booking.countDocuments({
         tenantId,
+        propertyId: { $in: filteredPropertyIds },
         status: { $in: ['CHECKED_IN', 'CONFIRMED', 'PENDING'] },
         createdAt: { $lte: monthEnd },
         $or: [{ checkOutDate: null }, { checkOutDate: { $gte: monthStart } }],
@@ -111,8 +111,8 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
       const mS = new Date(d.getFullYear(), d.getMonth(), 1);
       const mE = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
       const [rentDocs, expDocs] = await Promise.all([
-        RentRecord.find({ tenantId, status: { $in: ['PAID','PARTIAL'] }, paidAt: { $gte: mS, $lte: mE } }).lean(),
-        Expense.find({ tenantId, date: { $gte: mS.toISOString().split('T')[0], $lte: mE.toISOString().split('T')[0] } }).lean(),
+        RentRecord.find({ tenantId, propertyId: { $in: filteredPropertyIds }, status: { $in: ['PAID','PARTIAL'] }, paidAt: { $gte: mS, $lte: mE } }).lean(),
+        Expense.find({ tenantId, propertyId: { $in: filteredPropertyIds }, date: { $gte: mS.toISOString().split('T')[0], $lte: mE.toISOString().split('T')[0] } }).lean(),
       ]);
       const revenue  = rentDocs.reduce((s, r) => s + (r.paidAmount ?? 0), 0);
       const expenses = expDocs.reduce((s, e) => s + (e.amount ?? 0), 0);
@@ -123,7 +123,7 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
       success: true,
       data: {
         stats: {
-          totalProperties: properties.length,
+          totalProperties: filteredProperties.length,
           totalRooms: rooms.length,
           totalBeds,
           availableBeds,
@@ -131,7 +131,10 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
           monthlyRevenue,
           dueRent,
         },
-        properties: properties.map(p => ({ _id: p._id, name: p.name })),
+        properties: allProperties.map(p => {
+          const h = allHostels.find(hostel => String(hostel.propertyId) === String(p._id));
+          return { _id: p._id, name: p.name, hostelCode: h ? h.hostelCode : null };
+        }),
         recentBookings,
         recentComplaints,
         overdueRent,

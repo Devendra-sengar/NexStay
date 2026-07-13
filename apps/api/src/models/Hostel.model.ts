@@ -51,7 +51,7 @@ const HostelSchema = new Schema<IHostelDoc>(
       enum: ['BOYS', 'GIRLS', 'CO_ED'],
       required: true,
     },
-    contactPhone: { type: String, default: '' },
+    contactPhone: { type: String, default: '', match: [/^(?:\d{10})?$/, 'Contact phone number must be exactly 10 digits'] },
     contactEmail: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     propertyId: {

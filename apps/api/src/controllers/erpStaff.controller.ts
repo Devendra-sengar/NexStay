@@ -56,14 +56,18 @@ export const createStaff = async (req: AuthRequest, res: Response): Promise<void
     }
     const prop = await Property.findOne({ _id: propertyId, tenantId }).lean();
     if (!prop) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
+    
+    // Find associated hostel (if any) to link staff directly to the hostel
+    const hostel = await Hostel.findOne({ propertyId: prop._id, ownerId: tenantId }).lean();
+
     const staff = await Staff.create({
-      tenantId, propertyId, name, phone, email: email || '', role,
+      tenantId, propertyId, hostelId: hostel?._id || null, name, phone, email: email || '', role,
       salary: salary || 0, joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
       photoUrl: photoUrl || '', address: address || '', notes: notes || '', isActive: true,
     });
+    
     let tempPassword;
     if (['WARDEN', 'MESS_MANAGER'].includes(role)) {
-      const hostel = await Hostel.findOne({ propertyId: prop._id, tenantId }).lean();
       if (hostel) {
         if (email) {
           const existing = await User.findOne({ email: email.toLowerCase() });
@@ -103,6 +107,16 @@ export const updateStaff = async (req: AuthRequest, res: Response): Promise<void
     const staff = await Staff.findOne({ _id: req.params.id, tenantId });
     if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
     const fields = ['name','phone','email','role','salary','joiningDate','photoUrl','address','notes','propertyId','isActive'];
+    
+    // Check if propertyId is being updated and fetch new hostelId
+    if (req.body.propertyId && req.body.propertyId !== staff.propertyId.toString()) {
+      const newProp = await Property.findOne({ _id: req.body.propertyId, tenantId }).lean();
+      if (newProp) {
+        const newHostel = await Hostel.findOne({ propertyId: newProp._id, ownerId: tenantId }).lean();
+        staff.hostelId = newHostel?._id || null;
+      }
+    }
+
     fields.forEach(f => { if (req.body[f] !== undefined) (staff as any)[f] = req.body[f]; });
     await staff.save();
     res.json({ success: true, data: staff });
@@ -116,8 +130,32 @@ export const toggleStaffStatus = async (req: AuthRequest, res: Response): Promis
     if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
     staff.isActive = !staff.isActive;
     await staff.save();
+
+    // If staff was Warden/Manager, toggle their user account too
+    if (['WARDEN', 'MESS_MANAGER'].includes(staff.role)) {
+      await User.updateOne({ email: staff.email }, { status: staff.isActive ? 'ACTIVE' : 'INACTIVE' });
+    }
+
     res.json({ success: true, data: staff, message: `Staff ${staff.isActive ? 'reactivated' : 'deactivated'}` });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
+};
+
+export const deleteStaff = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.id;
+    const staff = await Staff.findOne({ _id: req.params.id, tenantId });
+    if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
+    
+    // If they have a user login, delete it
+    if (staff.email && ['WARDEN', 'MESS_MANAGER'].includes(staff.role)) {
+      await User.deleteOne({ email: staff.email });
+    }
+    
+    await Staff.deleteOne({ _id: staff._id });
+    res.json({ success: true, message: 'Staff deleted successfully' });
+  } catch {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 };
 
 // ═══════════════════════════════════════════════════════════════════

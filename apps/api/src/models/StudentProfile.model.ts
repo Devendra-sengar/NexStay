@@ -18,7 +18,7 @@ const StudentProfileSchema = new Schema<IStudentProfileDoc>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     guardianName: { type: String, default: '' },
-    guardianPhone: { type: String, default: '' },
+    guardianPhone: { type: String, default: '', match: [/^(?:\d{10})?$/, 'Guardian phone number must be exactly 10 digits'] },
     documents: {
       aadhaar: { type: String },
       studentId: { type: String },

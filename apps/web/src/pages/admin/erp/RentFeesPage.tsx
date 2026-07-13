@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { CreditCard, Plus, Bell, RefreshCw, X, Check, Printer, ShieldCheck, ChevronRight } from 'lucide-react';
+import { CreditCard, Plus, Bell, RefreshCw, X, Check, Printer, ShieldCheck, ChevronRight, Image as ImageIcon, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   useRentDashboard, useRentRecords, usePreviewGenerateRent, useGenerateRent,
   useAddFine, useSendReminders, useRecordRentPayment, useAdminProperties, useErpStudents,
-  useCreateFee, useSecurityDeposits,
+  useCreateFee, useSecurityDeposits, useProofAction,
 } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
@@ -326,6 +326,123 @@ function AddFeeModal({ onClose }: { onClose: () => void }) {
 
 const STATUS_OPTS = ['ALL','PAID','UNPAID','PARTIAL'];
 
+// ── Proof Review Modal ─────────────────────────────────────────────────────────
+function ProofReviewModal({ record, onClose }: { record: any; onClose: () => void }) {
+  const student = record.hostelStudentId as any;
+  const total   = record.amount + (record.fine || 0);
+  const balance = Math.max(0, total - (record.paidAmount || 0));
+
+  const [amount, setAmount]  = useState(balance);
+  const [method, setMethod]  = useState('UPI');
+  const [note, setNote]      = useState('');
+  const [imgEnlarged, setImgEnlarged] = useState(false);
+  const proofAction = useProofAction();
+
+  const handle = async (action: 'APPROVE' | 'REJECT') => {
+    if (action === 'REJECT' && !note.trim()) { toast.error('Please provide a rejection reason'); return; }
+    if (action === 'APPROVE' && amount <= 0) { toast.error('Enter valid amount'); return; }
+    try {
+      const res = await proofAction.mutateAsync({ id: record._id, action, amount: action === 'APPROVE' ? amount : undefined, paymentMethod: method, note });
+      toast.success(res.message);
+      onClose();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[95vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-surface-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center">
+              <ImageIcon className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-text-primary">Review Payment Proof</h3>
+              <p className="text-xs text-text-muted">{student?.name} · {record.month}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-surface-input flex items-center justify-center"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Screenshot */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            {record.paymentProofUrl ? (
+              <div className="relative group">
+                <img
+                  src={record.paymentProofUrl}
+                  alt="Payment proof"
+                  onClick={() => setImgEnlarged(true)}
+                  className="w-full rounded-xl border border-surface-border object-contain cursor-zoom-in"
+                  style={{ maxHeight: 300 }}
+                />
+                <button onClick={() => setImgEnlarged(true)}
+                  className="absolute top-2 right-2 bg-white/90 rounded-lg p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow">
+                  <Eye className="w-4 h-4 text-text-secondary" />
+                </button>
+              </div>
+            ) : (
+              <div className="h-40 bg-surface-input rounded-xl flex items-center justify-center">
+                <p className="text-text-muted text-sm">No proof image</p>
+              </div>
+            )}
+
+            {/* Info row */}
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              {[['Student', student?.name || '—'], ['Month', record.month], ['Balance', FMT(balance)]].map(([l, v]) => (
+                <div key={l} className="bg-surface-input rounded-lg p-2.5 text-center">
+                  <p className="text-[10px] text-text-muted mb-0.5">{l}</p>
+                  <p className="text-sm font-semibold text-text-primary truncate">{v}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Approve form */}
+            <div className="mt-4 space-y-3 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+              <p className="text-xs font-semibold text-emerald-800 mb-2">✅ Approve Payment</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label text-xs">Confirm Amount (₹)</label>
+                  <input type="number" className="input-field" value={amount} max={balance} onChange={e => setAmount(+e.target.value)} />
+                </div>
+                <div>
+                  <label className="form-label text-xs">Payment Method</label>
+                  <select className="input-field" value={method} onChange={e => setMethod(e.target.value)}>
+                    {['UPI','CASH','CARD','BANK_TRANSFER'].map(m => <option key={m} value={m}>{m.replace('_',' ')}</option>)}
+                  </select>
+                </div>
+              </div>
+              <button className="btn-primary w-full flex items-center justify-center gap-2" onClick={() => handle('APPROVE')} disabled={proofAction.isPending}>
+                <Check className="w-4 h-4" /> {proofAction.isPending ? 'Saving…' : 'Confirm Payment'}
+              </button>
+            </div>
+
+            {/* Reject form */}
+            <div className="mt-3 p-4 bg-red-50 rounded-xl border border-red-100">
+              <p className="text-xs font-semibold text-danger mb-2">❌ Reject Proof</p>
+              <input className="input-field mb-2" placeholder="Rejection reason (required)…" value={note} onChange={e => setNote(e.target.value)} />
+              <button className="btn-danger w-full text-sm" onClick={() => handle('REJECT')} disabled={proofAction.isPending}>
+                Reject &amp; Notify Student
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Enlarged image lightbox */}
+      {imgEnlarged && (
+        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center" onClick={() => setImgEnlarged(false)}>
+          <img src={record.paymentProofUrl} alt="proof" className="max-w-[95vw] max-h-[92vh] rounded-xl" />
+          <button onClick={() => setImgEnlarged(false)} className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function RentFeesPage() {
   const { data: propsData } = useAdminProperties();
@@ -420,7 +537,7 @@ export default function RentFeesPage() {
             <table className="data-table">
               <thead><tr>
                 <th><input type="checkbox" checked={allSelected} onChange={()=>allSelected?setSelected([]):setSelected(rows.map((r:any)=>r._id))} /></th>
-                {['Student','Property','Room','Month','Due Date','Rent','Fine','Total','Paid','Balance','Status','Actions'].map(h=><th key={h}>{h}</th>)}
+                {['Student','Property','Room','Month','Due Date','Rent','Fine','Total','Paid','Balance','Status','Proof','Actions'].map(h=><th key={h}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {rows.map((r:any)=>{
@@ -442,6 +559,28 @@ export default function RentFeesPage() {
                       <td className="py-3 px-4 border-b border-surface-border text-sm text-danger">{FMT(bal)}</td>
                       <td className="py-3 px-4 border-b border-surface-border">
                         <span className={cn('badge text-xs',r.status==='PAID'?'badge-success':r.status==='PARTIAL'?'badge-warning':'badge-danger')}>{r.status}</span>
+                      </td>
+                      {/* Proof column */}
+                      <td className="py-3 px-4 border-b border-surface-border">
+                        {r.paymentProofUrl ? (
+                          <button
+                            title="Review payment proof"
+                            onClick={() => setModal({ type: 'proof', record: r })}
+                            className={cn(
+                              'flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold border transition-all',
+                              r.paymentProofStatus === 'PENDING'  && 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+                              r.paymentProofStatus === 'APPROVED' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                              r.paymentProofStatus === 'REJECTED' && 'bg-red-50 text-danger border-red-200 hover:bg-red-100',
+                            )}
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                            {r.paymentProofStatus === 'PENDING'  && 'Pending'}
+                            {r.paymentProofStatus === 'APPROVED' && 'Verified'}
+                            {r.paymentProofStatus === 'REJECTED' && 'Rejected'}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-text-muted">—</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 border-b border-surface-border">
                         <div className="flex gap-1">
@@ -473,6 +612,7 @@ export default function RentFeesPage() {
       {modal?.type==='fine'   && <FineModal     record={modal.record} onClose={()=>setModal(null)} />}
       {modal?.type==='generate' && <GenerateModal onClose={()=>setModal(null)} />}
       {modal?.type==='fee'    && <AddFeeModal   onClose={()=>setModal(null)} />}
+      {modal?.type==='proof'  && <ProofReviewModal record={modal.record} onClose={()=>setModal(null)} />}
       {showDepositModal && <SecurityDepositModal propertyId={propId||undefined} onClose={()=>setShowDepositModal(false)} />}
     </div>
   );

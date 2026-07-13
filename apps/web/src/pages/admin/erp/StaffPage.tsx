@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Plus, Edit2, Search, ToggleLeft, ToggleRight, X, ShieldCheck, ChefHat, Wrench, Lock, Briefcase, User } from 'lucide-react';
+import { Users, Plus, Edit2, Search, ToggleLeft, ToggleRight, X, ShieldCheck, ChefHat, Wrench, Lock, Briefcase, User, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useStaff, useCreateStaff, useUpdateStaff, useToggleStaffStatus, useAdminProperties } from '@/lib/adminApi';
+import { useStaff, useCreateStaff, useUpdateStaff, useToggleStaffStatus, useDeleteStaff, useAdminProperties } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
 
@@ -10,7 +10,79 @@ const ROLES = ['WARDEN','COOK','CLEANER','SECURITY','MANAGER','OTHER'];
 const ROLE_COLORS: Record<string,string> = { WARDEN:'badge-primary', COOK:'badge-warning', CLEANER:'badge-success', SECURITY:'badge-danger', MANAGER:'badge-gray', OTHER:'badge-gray' };
 const ROLE_LABEL: Record<string,string> = { WARDEN:'Warden', COOK:'Cook', CLEANER:'Cleaner', SECURITY:'Security', MANAGER:'Manager', OTHER:'Other' };
 
-function StaffModal({ staff, properties, onClose }: { staff?: any; properties: any[]; onClose: () => void }) {
+// ── Password Reveal Modal ───────────────────────────────────────────────────────────────
+function PasswordRevealModal({ name, role, email, phone, password, onClose }: {
+  name: string; role: string; email: string; phone: string; password: string; onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(password);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        {/* Green header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-white text-center">
+          <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h3 className="font-bold text-lg">Login Account Created!</h3>
+          <p className="text-sm opacity-80 mt-1">Share these credentials with the staff member</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Info rows */}
+          <div className="space-y-2">
+            {[
+              ['Name',  name],
+              ['Role',  ROLE_LABEL[role] || role],
+              ['Email / Login', email || 'Not set (use phone)'],
+              ['Phone', phone],
+            ].map(([label, value]) => (
+              <div key={label} className="flex justify-between text-sm">
+                <span className="text-text-muted">{label}</span>
+                <span className="font-medium text-text-primary">{value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Password box */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <p className="text-xs text-amber-700 font-semibold mb-2 uppercase tracking-wide">Temporary Password</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-lg font-mono font-bold text-text-primary tracking-widest bg-white px-3 py-2 rounded-lg border border-amber-200 select-all">
+                {password}
+              </code>
+              <button
+                onClick={copy}
+                className={cn(
+                  'px-3 py-2 rounded-lg text-xs font-semibold transition-all',
+                  copied ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                )}
+              >
+                {copied ? '✓ Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          {/* Warning */}
+          <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+            <p className="text-xs text-danger font-semibold">⚠️ Save this password now!</p>
+            <p className="text-xs text-red-500 mt-0.5">This password will NOT be shown again. Staff can change it after first login.</p>
+          </div>
+
+          <button onClick={onClose} className="btn-primary w-full">
+            I've saved the password — Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StaffModal({ staff, properties, onClose, onPasswordCreated }: { staff?: any; properties: any[]; onClose: () => void; onPasswordCreated: (info: any) => void }) {
   const [form, setForm] = useState({
     name: staff?.name || '', phone: staff?.phone || '', email: staff?.email || '',
     role: staff?.role || 'WARDEN', propertyId: staff?.propertyId?._id || staff?.propertyId || properties[0]?._id || '',
@@ -21,23 +93,24 @@ function StaffModal({ staff, properties, onClose }: { staff?: any; properties: a
   const set = (k: string) => (e: any) => setForm(f => ({ ...f, [k]: e.target.value }));
   const submit = async () => {
     if (!form.name || !form.phone || !form.propertyId) { toast.error('Name, phone, property required'); return; }
+    if (!/^\d{10}$/.test(form.phone)) { toast.error('Phone number must be exactly 10 digits'); return; }
     try {
-      if (staff) { await update.mutateAsync({ id: staff._id, ...form }); toast.success('Staff updated'); }
-      else { 
-        const res = await create.mutateAsync(form); 
-        toast.success('Staff added'); 
-        if (res.tempPassword) {
-          toast((t) => (
-            <div className="flex flex-col gap-2">
-              <span className="font-bold text-sm">Login Account Created!</span>
-              <span className="text-xs">Role: {form.role}</span>
-              <span className="text-xs font-mono bg-surface-input p-1 rounded">Password: {res.tempPassword}</span>
-              <button onClick={() => toast.dismiss(t.id)} className="text-xs text-indigo-600 self-end mt-1 font-semibold">Dismiss</button>
-            </div>
-          ), { duration: 10000 });
+      if (staff) {
+        await update.mutateAsync({ id: staff._id, ...form });
+        toast.success('Staff updated');
+        onClose();
+      } else {
+        const res = await create.mutateAsync(form);
+        const password = res.tempPassword || (res.data && res.data.tempPassword) || (res as any)?.data?.tempPassword;
+        if (password) {
+          // Close the add-staff modal FIRST, then show password reveal modal
+          onClose();
+          onPasswordCreated({ name: form.name, role: form.role, email: form.email, phone: form.phone, password });
+        } else {
+          toast.success('Staff added successfully');
+          onClose();
         }
       }
-      onClose();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
   };
   return (
@@ -87,7 +160,9 @@ export default function StaffPage() {
   const [status, setStatus] = useState('ACTIVE');
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState<{open:boolean;staff?:any}>({open:false});
+  const [newStaffPassword, setNewStaffPassword] = useState<any>(null);
   const toggle = useToggleStaffStatus();
+  const deleteStaff = useDeleteStaff();
 
   const { data, isLoading } = useStaff({ propertyId:propId||undefined, role:role||undefined, status:status||undefined, search:search||undefined });
   const members = data?.data ?? [];
@@ -95,6 +170,17 @@ export default function StaffPage() {
   const handleToggle = async (id: string, name: string, active: boolean) => {
     try { await toggle.mutateAsync(id); toast.success(`${name} ${active?'deactivated':'reactivated'}`); }
     catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to permanently delete ${name}? This action cannot be undone.`)) return;
+    try {
+      await deleteStaff.mutateAsync(id);
+      toast.success(`${name} deleted successfully`);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to delete staff');
+    }
   };
 
   return (
@@ -143,22 +229,37 @@ export default function StaffPage() {
                       )}
                     </div>
                   </td>
-                  <td className="py-3 px-4 border-b border-surface-border" onClick={e=>e.stopPropagation()}>
-                    <div className="flex gap-1">
-                      <button onClick={()=>setModal({open:true,staff:m})} className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg text-text-muted"><Edit2 className="w-3.5 h-3.5"/></button>
-                      <button onClick={()=>handleToggle(m._id,m.name,m.isActive)} className={cn('p-1.5 rounded-lg text-text-muted',m.isActive?'hover:bg-danger/10 hover:text-danger':'hover:bg-emerald-50 hover:text-emerald-700')} title={m.isActive?'Deactivate':'Reactivate'}>
-                        {m.isActive?<ToggleRight className="w-3.5 h-3.5"/>:<ToggleLeft className="w-3.5 h-3.5"/>}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-      {modal.open && <StaffModal staff={modal.staff} properties={properties} onClose={()=>setModal({open:false})} />}
-
+                    <td className="py-3 px-4 border-b border-surface-border" onClick={e=>e.stopPropagation()}>
+                      <div className="flex gap-1">
+                        <button onClick={()=>setModal({open:true,staff:m})} className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg text-text-muted"><Edit2 className="w-3.5 h-3.5"/></button>
+                        <button onClick={()=>handleToggle(m._id,m.name,m.isActive)} className={cn('p-1.5 rounded-lg text-text-muted',m.isActive?'hover:bg-danger/10 hover:text-danger':'hover:bg-emerald-50 hover:text-emerald-700')} title={m.isActive?'Deactivate':'Reactivate'}>
+                          {m.isActive?<ToggleRight className="w-3.5 h-3.5"/>:<ToggleLeft className="w-3.5 h-3.5"/>}
+                        </button>
+                        <button onClick={(e)=>handleDelete(e,m._id,m.name)} className="p-1.5 hover:bg-danger/10 hover:text-danger rounded-lg text-text-muted" title="Delete">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      {modal.open && (
+        <StaffModal 
+          staff={modal.staff} 
+          properties={properties} 
+          onClose={()=>setModal({open:false})} 
+          onPasswordCreated={(info) => setNewStaffPassword(info)}
+        />
+      )}
+      {newStaffPassword && (
+        <PasswordRevealModal 
+          {...newStaffPassword}
+          onClose={() => setNewStaffPassword(null)}
+        />
+      )}
     </div>
   );
 }
