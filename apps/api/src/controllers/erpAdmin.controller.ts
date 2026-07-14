@@ -328,7 +328,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     // ── Look up the owner's hostel so we can link it on the student/user ──────
     const ownerHostel = await (await import('../models/Hostel.model')).Hostel
       .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId), propertyId: new mongoose.Types.ObjectId(finalPropertyId) })
-      .select('_id hostelCode')
+      .select('_id hostelCode name')
       .lean();
     const ownerHostelId = ownerHostel?._id ?? null;
 
@@ -506,7 +506,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     await session.commitTransaction();
     // Notify after commit (non-critical, mock-email included)
     notify({ userId: guestUser._id.toString(), type: 'CHECKIN_CONFIRMED', title: '🏠 Check-In Confirmed!', message: `Welcome! Your check-in at bed ${bed.bedNumber} is complete.`, linkUrl: '/account/bookings' }).catch(() => {});
-    res.status(201).json({ success: true, data: { student: student[0], booking, hostelCode: ownerHostel?.hostelCode, message: `Check-In complete for ${guestUser.name ?? name}` } });
+    res.status(201).json({ success: true, data: { student: student[0], booking, hostelCode: ownerHostel?.hostelCode, hostelName: ownerHostel?.name, message: `Check-In complete for ${guestUser.name ?? name}` } });
   } catch (err) {
     await session.abortTransaction();
     console.error('[erp] checkIn:', err);

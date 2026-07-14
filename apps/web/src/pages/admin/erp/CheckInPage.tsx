@@ -260,6 +260,7 @@ export default function CheckInPage() {
   if (success) {
     const studentPhone = successData?.student?.phone || walkin.phone;
     const hostelCode = successData?.hostelCode || '';
+    const hostelName = successData?.hostelName || '';
     const loginUrl = `${window.location.origin}/login?role=STUDENT&phone=${studentPhone}${hostelCode ? `&hostelCode=${hostelCode}` : ''}`;
 
     return (
@@ -280,10 +281,27 @@ export default function CheckInPage() {
             <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 inline-block">
               <QRCodeSVG value={loginUrl} size={150} level="H" />
             </div>
-            <div className="w-full text-left space-y-1 bg-surface p-3 rounded-lg border border-surface-border">
-              {hostelCode && <p className="text-xs text-text-muted">Hostel Code: <strong className="text-text-primary">{hostelCode}</strong></p>}
-              <p className="text-xs text-text-muted">Username (Phone): <strong className="text-text-primary">{studentPhone}</strong></p>
-              <p className="text-xs text-text-muted">Default Password: <strong className="text-text-primary">{studentPhone.slice(-4)}</strong></p>
+            <div className="w-full text-left space-y-2 bg-surface p-4 rounded-lg border border-surface-border">
+              {hostelName && (
+                <div className="pb-2 border-b border-surface-border">
+                  <p className="text-xs text-text-muted">Hostel Name</p>
+                  <p className="text-sm font-semibold text-text-primary">{hostelName}</p>
+                </div>
+              )}
+              {hostelCode && (
+                <div className="pb-2 border-b border-surface-border">
+                  <p className="text-xs text-text-muted">Hostel Code</p>
+                  <p className="text-sm font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md inline-block mt-1">{hostelCode}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-text-muted">Username (Phone)</p>
+                <p className="text-sm font-semibold text-text-primary">{studentPhone}</p>
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">Default Password</p>
+                <p className="text-sm font-semibold text-text-primary tracking-widest">{studentPhone.slice(-4)}</p>
+              </div>
             </div>
           </div>
         )}
