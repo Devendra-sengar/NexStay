@@ -259,7 +259,8 @@ export default function CheckInPage() {
 
   if (success) {
     const studentPhone = successData?.student?.phone || walkin.phone;
-    const loginUrl = `${window.location.origin}/login?role=STUDENT&phone=${studentPhone}`;
+    const hostelCode = successData?.hostelCode || '';
+    const loginUrl = `${window.location.origin}/login?role=STUDENT&phone=${studentPhone}${hostelCode ? `&hostelCode=${hostelCode}` : ''}`;
 
     return (
       <div className="page-container flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -280,7 +281,8 @@ export default function CheckInPage() {
               <QRCodeSVG value={loginUrl} size={150} level="H" />
             </div>
             <div className="w-full text-left space-y-1 bg-surface p-3 rounded-lg border border-surface-border">
-              <p className="text-xs text-text-muted">Username: <strong className="text-text-primary">{studentPhone}</strong></p>
+              {hostelCode && <p className="text-xs text-text-muted">Hostel Code: <strong className="text-text-primary">{hostelCode}</strong></p>}
+              <p className="text-xs text-text-muted">Username (Phone): <strong className="text-text-primary">{studentPhone}</strong></p>
               <p className="text-xs text-text-muted">Default Password: <strong className="text-text-primary">{studentPhone.slice(-4)}</strong></p>
             </div>
           </div>

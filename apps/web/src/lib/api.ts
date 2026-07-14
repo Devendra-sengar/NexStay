@@ -20,20 +20,29 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    // Do not attempt to refresh if the 401 is from the login route itself
+    if (error.response?.status === 401 && !original._retry && !original.url?.includes('/auth/login')) {
       original._retry = true;
       try {
         const refreshToken = localStorage.getItem(REFRESH_KEY);
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
+        if (!refreshToken) throw new Error('No refresh token');
+        
+        const baseURL = import.meta.env.VITE_API_URL || '/api';
+        const { data } = await axios.post(`${baseURL}/auth/refresh`, { refreshToken });
+        
         localStorage.setItem(TOKEN_KEY, data.accessToken);
         if (data.refreshToken) localStorage.setItem(REFRESH_KEY, data.refreshToken);
+        
         api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
         original.headers.Authorization = `Bearer ${data.accessToken}`;
         return api(original);
       } catch {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(REFRESH_KEY);
-        window.location.href = '/login';
+        // Only redirect to login if we are not already on the login page
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

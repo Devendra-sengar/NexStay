@@ -379,6 +379,13 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
           if (existingByEmail.role === 'GUEST') upgrades.role = 'STUDENT';
           if (!existingByEmail.hostelId && ownerHostelId) upgrades.hostelId = ownerHostelId;
           if (!existingByEmail.studentId) upgrades.studentId = phone;
+          if (existingByEmail.status === 'PENDING') upgrades.status = 'ACTIVE';
+          
+          if (existingByEmail.role === 'GUEST' || existingByEmail.status === 'PENDING') {
+            const bcrypt = await import('bcryptjs');
+            upgrades.passwordHash = await bcrypt.hash(defaultPassword, 10);
+          }
+
           if (Object.keys(upgrades).length > 0) {
             await User.findByIdAndUpdate(existingByEmail._id, upgrades, { session });
           }
@@ -403,6 +410,14 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
         if (existingUser.role === 'GUEST') upgrades.role = 'STUDENT';
         if (!existingUser.hostelId && ownerHostelId) upgrades.hostelId = ownerHostelId;
         if (!existingUser.studentId) upgrades.studentId = phone;
+        if (existingUser.status === 'PENDING') upgrades.status = 'ACTIVE';
+        
+        // If they were just a GUEST or PENDING, reset their password to default so the generated credentials work
+        if (existingUser.role === 'GUEST' || existingUser.status === 'PENDING') {
+          const bcrypt = await import('bcryptjs');
+          upgrades.passwordHash = await bcrypt.hash(defaultPassword, 10);
+        }
+
         if (Object.keys(upgrades).length > 0) {
           await User.findByIdAndUpdate(existingUser._id, upgrades, { session });
         }
@@ -491,7 +506,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     await session.commitTransaction();
     // Notify after commit (non-critical, mock-email included)
     notify({ userId: guestUser._id.toString(), type: 'CHECKIN_CONFIRMED', title: '🏠 Check-In Confirmed!', message: `Welcome! Your check-in at bed ${bed.bedNumber} is complete.`, linkUrl: '/account/bookings' }).catch(() => {});
-    res.status(201).json({ success: true, data: { student: student[0], booking, message: `Check-In complete for ${guestUser.name ?? name}` } });
+    res.status(201).json({ success: true, data: { student: student[0], booking, hostelCode: ownerHostel?.hostelCode, message: `Check-In complete for ${guestUser.name ?? name}` } });
   } catch (err) {
     await session.abortTransaction();
     console.error('[erp] checkIn:', err);
