@@ -373,23 +373,12 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
         // Also check by email to avoid duplicate email accounts
         const existingByEmail = await User.findOne({ email: email.toLowerCase() }).lean();
         if (existingByEmail) {
-          // Email already taken by a different phone — use that user account
-          // Upgrade to STUDENT role and link hostel if needed
-          const upgrades: any = {};
-          if (existingByEmail.role === 'GUEST') upgrades.role = 'STUDENT';
-          if (!existingByEmail.hostelId && ownerHostelId) upgrades.hostelId = ownerHostelId;
-          if (!existingByEmail.studentId) upgrades.studentId = phone;
-          if (existingByEmail.status === 'PENDING') upgrades.status = 'ACTIVE';
-          
-          if (existingByEmail.role === 'GUEST' || existingByEmail.status === 'PENDING') {
-            const bcrypt = await import('bcryptjs');
-            upgrades.passwordHash = await bcrypt.hash(defaultPassword, 10);
-          }
-
-          if (Object.keys(upgrades).length > 0) {
-            await User.findByIdAndUpdate(existingByEmail._id, upgrades, { session });
-          }
-          guestUser = { ...existingByEmail, ...upgrades };
+          await session.abortTransaction();
+          res.status(409).json({
+            success: false,
+            message: `The email ${email} is already registered with another account. Please use a different email address.`,
+          });
+          return;
         } else {
           // Brand new student — create proper STUDENT account with login credentials
           const bcrypt = await import('bcryptjs');
