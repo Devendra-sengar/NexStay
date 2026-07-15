@@ -31,6 +31,7 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
   const updateMutation = useUpdateProperty(propertyId);
 
   const [form, setForm] = useState<any>(null);
+  const [customFacilityInput, setCustomFacilityInput] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,6 +50,7 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
         latitude: property.latitude ?? '',
         longitude: property.longitude ?? '',
         amenities: property.amenities ?? [],
+        customFacilities: property.customFacilities ?? [],
         rules: property.rules ?? '',
         foodIncluded: property.foodIncluded ?? false,
         images: property.images ?? [],
@@ -67,9 +69,10 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
     try {
       const result = await updateMutation.mutateAsync(form);
       setSaveSuccess(true);
-      if (result.pendingReview) {
-        setTimeout(() => setSaveSuccess(false), 2000);
-      }
+      setTimeout(() => {
+        onClose();
+        if (result.pendingReview) setSaveSuccess(false);
+      }, 1500);
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'Update failed. Please try again.');
     }
@@ -181,6 +184,50 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Custom Facilities — tag input */}
+                <div className="mt-5">
+                  <label className="form-label">Additional Facilities <span className="text-text-muted font-normal">(e.g. Gym, Library, Hot Water)</span></label>
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      className="input-field flex-1"
+                      value={customFacilityInput}
+                      onChange={e => setCustomFacilityInput(e.target.value)}
+                      onKeyDown={e => {
+                        if ((e.key === 'Enter' || e.key === ',') && customFacilityInput.trim()) {
+                          e.preventDefault();
+                          const tag = customFacilityInput.trim();
+                          if (!form.customFacilities.includes(tag)) set({ customFacilities: [...form.customFacilities, tag] });
+                          setCustomFacilityInput('');
+                        }
+                      }}
+                      placeholder="Type a facility and press Enter…"
+                    />
+                    <button type="button"
+                      onClick={() => {
+                        const tag = customFacilityInput.trim();
+                        if (tag && !form.customFacilities.includes(tag)) {
+                          set({ customFacilities: [...form.customFacilities, tag] });
+                          setCustomFacilityInput('');
+                        }
+                      }}
+                      className="btn-secondary flex items-center gap-1 px-3 whitespace-nowrap text-sm">
+                      Add
+                    </button>
+                  </div>
+                  {form.customFacilities.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {form.customFacilities.map((f: string) => (
+                        <span key={f} className="flex items-center gap-1 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
+                          {f}
+                          <button type="button" onClick={() => set({ customFacilities: form.customFacilities.filter((x: string) => x !== f) })}>
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </section>
 

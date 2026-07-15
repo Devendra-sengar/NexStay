@@ -86,10 +86,10 @@ body {
   .skeleton { @apply bg-surface-border rounded animate-skeleton; }
 
   /* Data table */
-  .data-table { @apply w-full text-sm; }
-  .data-table th { @apply text-left text-text-muted font-medium py-3 px-4 border-b border-surface-border; background-color: rgba(248,250,252,0.5); }
-  .data-table td { @apply py-3 px-4 border-b border-surface-border text-text-primary; }
-  .data-table tr:hover td { background-color: rgba(241,245,249,0.5); }
+  .data-table { @apply w-full text-[13px]; }
+  .data-table th { @apply text-left text-text-muted font-semibold py-2.5 px-4 border-b border-surface-border bg-slate-50 uppercase tracking-wider text-[11px]; }
+  .data-table td { @apply py-2.5 px-4 border-b border-surface-border text-text-primary; }
+  .data-table tr:hover td { background-color: rgba(241,245,249,0.7); }
 
   /* Form label */
   .form-label { @apply block text-xs font-semibold text-text-secondary mb-1.5; }
@@ -99,6 +99,15 @@ body {
 @layer utilities {
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
+  
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .animate-slide-in {
+    animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
   .text-balance { text-wrap: balance; }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
 }

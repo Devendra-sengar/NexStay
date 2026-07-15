@@ -23,8 +23,12 @@ export default function StudentDashboardPage() {
     queryKey: ['student-dashboard'],
     queryFn: () => api.get('/student/dashboard').then(r => r.data.data),
   });
+  const { data: txsData, isLoading: txsLoading } = useQuery({
+    queryKey: ['student-transactions'],
+    queryFn: () => api.get('/student/transactions').then(r => r.data.data),
+  });
 
-  if (isLoading) return (
+  if (isLoading || txsLoading) return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
       <div style={{ width: 32, height: 32, border: '3px solid #e2e8f0', borderTopColor: '#1d4ed8', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
     </div>
@@ -34,6 +38,7 @@ export default function StudentDashboardPage() {
   const todayMenu = d?.todayMenu;
   const currentRent = d?.currentRent;
   const rentStatus = currentRent?.status || 'UNPAID';
+  const pendingCashReceipts = txsData?.filter((tx: any) => tx.status === 'PENDING_RESIDENT') || [];
 
   return (
     <div>
@@ -48,6 +53,20 @@ export default function StudentDashboardPage() {
         </div>
       </div>
 
+      {pendingCashReceipts.length > 0 && (
+        <div style={{ background: '#fef3c7', borderRadius: 12, padding: '16px', border: '1px solid #fde68a', marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ background: '#f59e0b', color: 'white', padding: 8, borderRadius: 10, flexShrink: 0 }}>
+            <AlertCircle size={20} />
+          </div>
+          <div>
+            <h3 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 700, color: '#92400e' }}>Action Required</h3>
+            <p style={{ margin: 0, fontSize: 13, color: '#92400e', opacity: 0.9 }}>
+              You have {pendingCashReceipts.length} pending cash receipt(s) to confirm. <a href="/student/rent" style={{ color: '#b45309', fontWeight: 600, textDecoration: 'underline' }}>Go to Rent page</a>.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
         <StatCard icon={IndianRupee} label="This Month Rent" color="#1d4ed8"
@@ -61,12 +80,14 @@ export default function StudentDashboardPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 4px' }}>Rent — {currentRent.month}</p>
-              <p style={{ color: '#0f172a', fontSize: 20, fontWeight: 700, margin: 0 }}>₹{currentRent.amount?.toLocaleString('en-IN')}</p>
+              <p style={{ color: '#0f172a', fontSize: 20, fontWeight: 700, margin: 0 }}>
+                {rentStatus === 'PARTIAL' ? `Due: ₹${Math.max(0, currentRent.amount + (currentRent.fine || 0) - (currentRent.paidAmount || 0)).toLocaleString('en-IN')}` : `₹${currentRent.amount?.toLocaleString('en-IN')}`}
+              </p>
             </div>
             <span style={{
               padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700,
-              background: rentStatus === 'PAID' ? '#dcfce7' : '#fee2e2',
-              color: rentStatus === 'PAID' ? '#16a34a' : '#dc2626',
+              background: rentStatus === 'PAID' ? '#dcfce7' : rentStatus === 'PARTIAL' ? '#fef3c7' : '#fee2e2',
+              color: rentStatus === 'PAID' ? '#16a34a' : rentStatus === 'PARTIAL' ? '#d97706' : '#dc2626',
             }}>{rentStatus}</span>
           </div>
           {rentStatus !== 'PAID' && (

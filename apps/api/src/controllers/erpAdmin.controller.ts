@@ -12,6 +12,10 @@ import { Complaint } from '../models/Complaint.model';
 import { Notification } from '../models/Notification.model';
 import { User } from '../models/User.model';
 import { GuestProfile } from '../models/GuestProfile.model';
+import { PaymentSubmission } from '../models/PaymentSubmission.model';
+import { PaymentTransaction } from '../models/PaymentTransaction.model';
+import { LedgerEntry } from '../models/LedgerEntry.model';
+import { AuditLog } from '../models/AuditLog.model';
 import { notify } from '../services/notification.service';
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -286,18 +290,49 @@ export const recordRentPayment = async (req: AuthRequest, res: Response): Promis
   try {
     const tenantId = req.user!.id;
     const { amount, paymentMethod, notes } = req.body;
-    const record = await RentRecord.findOne({ _id: req.params.id, tenantId });
+    const record = await RentRecord.findOne({ _id: req.params.id, tenantId }).populate('hostelStudentId', 'guestId name');
     if (!record) { res.status(404).json({ success: false, message: 'Rent record not found' }); return; }
 
-    const paid = (record.paidAmount ?? 0) + Number(amount);
-    const total = record.amount + (record.fine ?? 0);
-    record.paidAmount = paid;
-    record.status = paid >= total ? 'PAID' : paid > 0 ? 'PARTIAL' : 'UNPAID';
-    if (paid >= total) record.paidAt = new Date();
-    if (paymentMethod) record.paymentMethod = paymentMethod;
-    if (notes) record.notes = notes;
-    await record.save();
-    res.json({ success: true, data: record });
+    const numAmount = Number(amount);
+    
+    // ── Payment Layer (Draft Mode) ──
+    const submissionId = `SUB-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    const submission = await PaymentSubmission.create({
+      submissionId,
+      tenantId,
+      propertyId: record.propertyId,
+      invoiceId: record._id,
+      residentId: record.hostelStudentId._id,
+      claimedAmount: numAmount,
+      paymentMode: (paymentMethod === 'CASH' ? 'CASH' : 'ONLINE') as 'CASH' | 'ONLINE' | 'ADJUSTMENT',
+      remark: notes || 'Manually added by Admin - Pending Resident Confirmation',
+      status: 'PENDING_RESIDENT'
+    });
+
+    await AuditLog.create({
+      tenantId,
+      propertyId: record.propertyId,
+      action: 'PAYMENT_DRAFT_CREATED',
+      actorId: req.user!.id,
+      actorType: 'Admin',
+      entityId: submission._id,
+      entityType: 'PaymentSubmission',
+      details: `Admin created draft payment of ₹${numAmount} via ${paymentMethod || 'CASH'} awaiting resident confirmation.`
+    });
+
+    const student = record.hostelStudentId as any;
+    if (student?.guestId) {
+      notify({
+        userId: student.guestId,
+        type: 'RENT',
+        title: '⏳ Confirm Your Payment',
+        message: `Owner says you paid ₹${numAmount.toLocaleString('en-IN')} via ${paymentMethod || 'CASH'}. Please confirm this receipt in your dashboard.`,
+        linkUrl: '/student/rent',
+      }).catch(() => {});
+    }
+
+    res.json({ success: true, message: 'Payment draft sent to resident for confirmation.', data: submission });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
@@ -327,7 +362,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     // ── Look up the owner's hostel so we can link it on the student/user ──────
     const ownerHostel = await (await import('../models/Hostel.model')).Hostel
-      .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId), propertyId: new mongoose.Types.ObjectId(finalPropertyId) })
+      .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId) })
       .select('_id hostelCode name')
       .lean();
     const ownerHostelId = ownerHostel?._id ?? null;

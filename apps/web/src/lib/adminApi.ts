@@ -18,6 +18,9 @@ export function useAdminDashboard(propertyId?: string) {
 }
 
 // ─── Properties ───────────────────────────────────────────────────────────────
+
+
+
 export function useAdminProperties(params?: { q?: string; page?: number }) {
   return useQuery({
     queryKey: ['admin-properties', params],
@@ -243,6 +246,54 @@ export function useRecordRentPayment() {
       qc.invalidateQueries({ queryKey: ['student-rent'] });
       qc.invalidateQueries({ queryKey: ['student-dues'] });
       qc.invalidateQueries({ queryKey: ['erp-student', studentId] });
+      qc.invalidateQueries({ queryKey: ['rent-records'] });
+      qc.invalidateQueries({ queryKey: ['rent-dashboard'] });
+      qc.invalidateQueries({ queryKey: ['erp-transactions'] });
+    },
+  });
+}
+
+export function useTransactions(params?: { propertyId?: string; status?: string }) {
+  return useQuery({
+    queryKey: ['erp-transactions', params],
+    queryFn: async () => {
+      const { data } = await erp('/transactions', { params });
+      return data.data as any[];
+    },
+  });
+}
+
+export function useVerifyTransaction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, action, note }: { id: string; action: 'APPROVE' | 'REJECT'; note?: string }) => {
+      const { data } = await erp(`/transactions/${id}/verify`, { method: 'POST', data: { action, note } });
+      return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['erp-transactions'] });
+      qc.invalidateQueries({ queryKey: ['rent-records'] });
+      qc.invalidateQueries({ queryKey: ['rent-dashboard'] });
+    },
+  });
+}
+
+export function useLedgerEntries(params?: { propertyId?: string; invoiceId?: string }) {
+  return useQuery({
+    queryKey: ['erp-ledger', params],
+    queryFn: async () => {
+      const { data } = await erp('/ledger', { params });
+      return data.data as any[];
+    },
+  });
+}
+
+export function useAuditLogs(params?: { propertyId?: string; entityId?: string }) {
+  return useQuery({
+    queryKey: ['erp-audit-logs', params],
+    queryFn: async () => {
+      const { data } = await erp('/audit-logs', { params });
+      return data.data as any[];
     },
   });
 }

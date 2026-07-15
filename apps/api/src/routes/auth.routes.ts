@@ -27,16 +27,16 @@ const loginLimiter = rateLimit({
 const router = Router();
 
 // Public routes (with rate limiting only on mutation endpoints)
-router.post('/register',       register);          // Only GUEST self-signup allowed
-router.post('/login',          loginLimiter, login);
+router.post('/register', register);          // Only GUEST self-signup allowed
+router.post('/login', loginLimiter, login);
 router.post('/forgot-password', loginLimiter, forgotPassword);
-router.post('/verify-otp',     verifyOtp);
-router.post('/refresh',        refreshToken);
+router.post('/verify-otp', verifyOtp);
+router.post('/refresh', refreshToken);
 router.post('/reset-password', resetPassword);
 
 // Protected routes — no rate limiting
-router.post('/logout',   protect, logout);
-router.get('/me',        protect, getMe);
+router.post('/logout', protect, logout);
+router.get('/me', protect, getMe);
 router.patch('/profile', protect, updateProfile);
 router.patch('/password', protect, changePassword);
 

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useStaffById, useToggleStaffStatus } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
-const ROLE_ICONS: Record<string,string> = { WARDEN:'■', COOK:'◆', CLEANER:'✦', SECURITY:'●', MANAGER:'◊', OTHER:'◎' };
+const ROLE_ICONS: Record<string,string> = { WARDEN:'■', COOK:'◆', CLEANER:'✦', SECURITY:'●', MESS_MANAGER:'◊', OTHER:'◎' };
 
 function InfoRow({ label, value, icon: Icon }: { label: string; value?: string; icon?: any }) {
   return (

@@ -58,7 +58,7 @@ export const createStaff = async (req: AuthRequest, res: Response): Promise<void
     if (!prop) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
     
     // Find associated hostel (if any) to link staff directly to the hostel
-    const hostel = await Hostel.findOne({ propertyId: prop._id, ownerId: tenantId }).lean();
+    const hostel = await Hostel.findOne({ ownerId: tenantId }).lean();
 
     const staff = await Staff.create({
       tenantId, propertyId, hostelId: hostel?._id || null, name, phone, email: email || '', role,

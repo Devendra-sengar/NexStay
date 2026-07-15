@@ -6,9 +6,9 @@ import { useStaff, useCreateStaff, useUpdateStaff, useToggleStaffStatus, useDele
 import { cn } from '@/lib/utils';
 import CloudinaryUpload from '@/components/ui/CloudinaryUpload';
 
-const ROLES = ['WARDEN','COOK','CLEANER','SECURITY','MANAGER','OTHER'];
-const ROLE_COLORS: Record<string,string> = { WARDEN:'badge-primary', COOK:'badge-warning', CLEANER:'badge-success', SECURITY:'badge-danger', MANAGER:'badge-gray', OTHER:'badge-gray' };
-const ROLE_LABEL: Record<string,string> = { WARDEN:'Warden', COOK:'Cook', CLEANER:'Cleaner', SECURITY:'Security', MANAGER:'Manager', OTHER:'Other' };
+const ROLES = ['WARDEN','COOK','CLEANER','SECURITY','MESS_MANAGER','OTHER'];
+const ROLE_COLORS: Record<string,string> = { WARDEN:'badge-primary', COOK:'badge-warning', CLEANER:'badge-success', SECURITY:'badge-danger', MESS_MANAGER:'badge-gray', OTHER:'badge-gray' };
+const ROLE_LABEL: Record<string,string> = { WARDEN:'Warden', COOK:'Cook', CLEANER:'Cleaner', SECURITY:'Security', MESS_MANAGER:'Mess Manager', OTHER:'Other' };
 
 // ── Password Reveal Modal ───────────────────────────────────────────────────────────────
 function PasswordRevealModal({ name, role, email, phone, password, onClose }: {

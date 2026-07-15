@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import {
   useRentDashboard, useRentRecords, usePreviewGenerateRent, useGenerateRent,
   useAddFine, useSendReminders, useRecordRentPayment, useAdminProperties, useErpStudents,
-  useCreateFee, useSecurityDeposits, useProofAction,
+  useCreateFee, useSecurityDeposits, useProofAction, useTransactions, useVerifyTransaction
 } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
@@ -39,13 +39,12 @@ function printReceipt(r: any) {
 // ── StatCard ───────────────────────────────────────────────────────────────────
 function StatCard({ label, value, color, onClick }: { label: string; value: string; color: string; onClick?: () => void }) {
   return (
-    <div className={cn('card p-4', onClick && 'cursor-pointer hover:shadow-md hover:border-primary/30 transition-all group')} onClick={onClick}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs text-text-muted font-medium">{label}</p>
-        {onClick && <ChevronRight className="w-3.5 h-3.5 text-text-muted group-hover:text-primary transition-colors" />}
+    <div className={cn('bg-white rounded-lg border border-surface-border p-4 shadow-sm', onClick && 'cursor-pointer hover:shadow-md hover:border-primary/40 transition-all group')} onClick={onClick}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-text-muted font-semibold uppercase tracking-wider">{label}</p>
+        {onClick && <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-colors" />}
       </div>
-      <p className={cn('text-2xl font-bold', color)}>{value}</p>
-      {onClick && <p className="text-[10px] text-text-muted mt-1">Click to view details</p>}
+      <p className={cn('text-xl font-bold tracking-tight', color)}>{value}</p>
     </div>
   );
 }
@@ -335,7 +334,7 @@ function ProofReviewModal({ record, onClose }: { record: any; onClose: () => voi
   const [amount, setAmount]  = useState(balance);
   const [method, setMethod]  = useState('UPI');
   const [note, setNote]      = useState('');
-  const [imgEnlarged, setImgEnlarged] = useState(false);
+  const [imgEnlarged, setImgEnlarged] = useState<string | null>(null);
   const proofAction = useProofAction();
 
   const handle = async (action: 'APPROVE' | 'REJECT') => {
@@ -349,8 +348,8 @@ function ProofReviewModal({ record, onClose }: { record: any; onClose: () => voi
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[95vh] overflow-hidden">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end">
+      <div className="bg-white shadow-2xl w-full max-w-md h-full flex flex-col animate-slide-in">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-surface-border">
           <div className="flex items-center gap-3">
@@ -373,11 +372,11 @@ function ProofReviewModal({ record, onClose }: { record: any; onClose: () => voi
                 <img
                   src={record.paymentProofUrl}
                   alt="Payment proof"
-                  onClick={() => setImgEnlarged(true)}
+                  onClick={() => setImgEnlarged(record.paymentProofUrl)}
                   className="w-full rounded-xl border border-surface-border object-contain cursor-zoom-in"
                   style={{ maxHeight: 300 }}
                 />
-                <button onClick={() => setImgEnlarged(true)}
+                <button onClick={() => setImgEnlarged(record.paymentProofUrl)}
                   className="absolute top-2 right-2 bg-white/90 rounded-lg p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow">
                   <Eye className="w-4 h-4 text-text-secondary" />
                 </button>
@@ -385,6 +384,26 @@ function ProofReviewModal({ record, onClose }: { record: any; onClose: () => voi
             ) : (
               <div className="h-40 bg-surface-input rounded-xl flex items-center justify-center">
                 <p className="text-text-muted text-sm">No proof image</p>
+              </div>
+            )}
+
+            {/* Previous Proofs */}
+            {record.previousProofs && record.previousProofs.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-text-muted mb-2">Previous Uploads</p>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {record.previousProofs.map((url: string, idx: number) => (
+                    <img
+                      key={idx}
+                      src={url}
+                      alt={`Previous proof ${idx + 1}`}
+                      onClick={() => {
+                        setImgEnlarged(url);
+                      }}
+                      className="w-16 h-16 rounded-lg border border-surface-border object-cover cursor-zoom-in flex-shrink-0"
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
@@ -432,13 +451,151 @@ function ProofReviewModal({ record, onClose }: { record: any; onClose: () => voi
 
       {/* Enlarged image lightbox */}
       {imgEnlarged && (
-        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center" onClick={() => setImgEnlarged(false)}>
-          <img src={record.paymentProofUrl} alt="proof" className="max-w-[95vw] max-h-[92vh] rounded-xl" />
-          <button onClick={() => setImgEnlarged(false)} className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center" onClick={() => setImgEnlarged(null)}>
+          <img src={imgEnlarged} alt="proof" className="max-w-[95vw] max-h-[92vh] rounded-xl" />
+          <button onClick={() => setImgEnlarged(null)} className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Transaction Proof Review Modal ─────────────────────────────────────────────
+function TxProofModal({ tx, onClose }: { tx: any; onClose: () => void }) {
+  const [note, setNote] = useState('');
+  const [imgEnlarged, setImgEnlarged] = useState(false);
+  const verify = useVerifyTransaction();
+
+  const handle = async (action: 'APPROVE' | 'REJECT') => {
+    if (action === 'REJECT' && !note.trim()) { toast.error('Rejection reason is required'); return; }
+    try {
+      await verify.mutateAsync({ id: tx._id, action, note });
+      toast.success(`Transaction ${action.toLowerCase()}d!`);
+      onClose();
+    } catch (e: any) { toast.error(e.response?.data?.message || 'Error processing transaction'); }
+  };
+
+  const student = tx.residentId;
+  const url = tx.paymentProof?.screenshotUrl;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end">
+      <div className="bg-white shadow-2xl w-full max-w-md h-full flex flex-col animate-slide-in">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-surface-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-text-primary">Verify Transaction</h3>
+              <p className="text-xs text-text-muted">{student?.name} · Invoice: {tx.invoiceId?.month}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-surface-input flex items-center justify-center"><X className="w-4 h-4" /></button>
+        </div>
+
+        {/* Screenshot */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            {url ? (
+              <div className="relative group">
+                <img
+                  src={url}
+                  alt="Payment proof"
+                  onClick={() => setImgEnlarged(true)}
+                  className="w-full rounded-xl border border-surface-border object-contain cursor-zoom-in"
+                  style={{ maxHeight: 300 }}
+                />
+                <button onClick={() => setImgEnlarged(true)} className="absolute top-2 right-2 bg-white/90 rounded-lg p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow"><Eye className="w-4 h-4 text-text-secondary" /></button>
+              </div>
+            ) : (
+              <div className="h-40 bg-surface-input rounded-xl flex items-center justify-center"><p className="text-text-muted text-sm">No proof image</p></div>
+            )}
+
+            {/* Info row */}
+            <div className="grid grid-cols-2 gap-2 mt-4 mb-4">
+              <div className="bg-surface-input rounded-lg p-3 text-center">
+                <p className="text-[10px] text-text-muted mb-0.5">Amount Submitted</p>
+                <p className="text-lg font-bold text-emerald-600">{FMT(tx.amountSubmitted)}</p>
+              </div>
+              <div className="bg-surface-input rounded-lg p-3 text-center">
+                <p className="text-[10px] text-text-muted mb-0.5">Transaction ID / UTR</p>
+                <p className="text-sm font-semibold text-text-primary mt-1">{tx.paymentProof?.transactionId || '—'}</p>
+              </div>
+            </div>
+
+            {tx.status === 'PENDING_VERIFICATION' && (
+              <div className="flex flex-col gap-3">
+                <button className="btn-primary w-full flex justify-center gap-2" onClick={() => handle('APPROVE')} disabled={verify.isPending}>
+                  <Check className="w-4 h-4" /> Approve Amount
+                </button>
+                <div className="flex gap-2">
+                  <input className="input-field flex-1 text-sm" placeholder="Reason for rejection…" value={note} onChange={e => setNote(e.target.value)} />
+                  <button className="btn-danger whitespace-nowrap text-sm" onClick={() => handle('REJECT')} disabled={verify.isPending}>Reject</button>
+                </div>
+              </div>
+            )}
+            {tx.status !== 'PENDING_VERIFICATION' && (
+              <div className={`p-3 rounded-lg text-center font-bold text-sm ${tx.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : tx.status === 'PENDING_RESIDENT' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                Status: {tx.status.replace('_', ' ')}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {imgEnlarged && (
+        <div className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center" onClick={() => setImgEnlarged(false)}>
+          <img src={url} alt="proof" className="max-w-[95vw] max-h-[92vh] rounded-xl" />
+          <button onClick={() => setImgEnlarged(false)} className="absolute top-4 right-4 w-10 h-10 bg-white rounded-full flex items-center justify-center"><X className="w-5 h-5" /></button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Transaction Ledger Table ───────────────────────────────────────────────────
+function TransactionsLedger({ rows, isLoading, onReview }: { rows: any[]; isLoading: boolean; onReview: (tx: any) => void }) {
+  if (isLoading) return <div className="p-8 space-y-3">{[1,2,3].map(i=><div key={i} className="skeleton h-12 rounded-lg"/>)}</div>;
+  if (rows.length === 0) return <div className="p-10 text-center"><p className="text-text-muted">No transactions found.</p></div>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Student</th>
+            <th>Invoice</th>
+            <th>Amount</th>
+            <th>Mode</th>
+            <th>UTR</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(tx => (
+            <tr key={tx._id}>
+              <td className="py-3 px-4 border-b border-surface-border text-xs">{new Date(tx.createdAt).toLocaleString('en-IN')}</td>
+              <td className="py-3 px-4 border-b border-surface-border"><p className="text-sm font-medium">{tx.residentId?.name}</p><p className="text-xs text-text-muted">{tx.residentId?.roomNumber}</p></td>
+              <td className="py-3 px-4 border-b border-surface-border text-xs">{tx.invoiceId?.month}</td>
+              <td className="py-3 px-4 border-b border-surface-border font-bold text-emerald-600">{FMT(tx.amountSubmitted)}</td>
+              <td className="py-3 px-4 border-b border-surface-border text-xs">{tx.paymentMode}</td>
+              <td className="py-3 px-4 border-b border-surface-border text-xs font-mono">{tx.paymentProof?.transactionId || '—'}</td>
+              <td className="py-3 px-4 border-b border-surface-border">
+                <span className={cn('badge text-[10px]', tx.status==='APPROVED'?'badge-success':tx.status==='REJECTED'?'badge-danger':'badge-warning')}>{tx.status.replace('_',' ')}</span>
+              </td>
+              <td className="py-3 px-4 border-b border-surface-border">
+                <button onClick={() => onReview(tx)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5" /> Review
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -452,17 +609,19 @@ export default function RentFeesPage() {
   const [month, setMonth] = useState(ym());
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [tab, setTab] = useState<'RENT'|'FEE'>('RENT');
+  const [tab, setTab] = useState<'RENT'|'FEE'|'TRANSACTIONS'>('RENT');
   const [selected, setSelected] = useState<string[]>([]);
   const [modal, setModal] = useState<{type:string;record?:any}|null>(null);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const sendReminders = useSendReminders();
 
   const { data: dash } = useRentDashboard(propId||undefined);
-  const { data: records, isLoading } = useRentRecords({ propertyId:propId||undefined, status:status==='ALL'?undefined:status, month:month||undefined, search:search||undefined, page, type:tab });
+  const { data: records, isLoading } = useRentRecords({ propertyId:propId||undefined, status:status==='ALL'?undefined:status, month:month||undefined, search:search||undefined, page, type:tab==='TRANSACTIONS'?'RENT':tab });
+  const { data: txData, isLoading: txsLoading } = useTransactions({ propertyId:propId||undefined });
 
   const rows = records?.data ?? [];
   const total = records?.total ?? 0;
+  const txRows = txData ?? [];
 
   const toggleSelect = (id: string) => setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id]);
   const allSelected = rows.length > 0 && rows.every((r:any) => selected.includes(r._id));
@@ -502,31 +661,37 @@ export default function RentFeesPage() {
       )}
 
       {/* Filters */}
-      <div className="card p-4 mb-4 flex flex-wrap gap-3 items-center">
-        <div className="flex rounded-lg border border-surface-border overflow-hidden">
-          {(['RENT','FEE'] as const).map(t=>(
-            <button key={t} onClick={()=>{setTab(t);setPage(1);}} className={cn('px-4 py-2 text-xs font-medium',tab===t?'bg-primary text-white':'bg-white text-text-secondary hover:bg-surface-input')}>{t==='RENT'?'Rent':'Fees'}</button>
+      <div className="bg-white border border-surface-border rounded-lg p-3 mb-4 flex flex-wrap gap-3 items-center shadow-sm">
+        <div className="flex bg-surface-input p-1 rounded-md">
+          {(['RENT','FEE','TRANSACTIONS'] as const).map(t=>(
+            <button key={t} onClick={()=>{setTab(t);setPage(1);}} className={cn('px-3 py-1.5 text-xs font-semibold rounded',tab===t?'bg-white text-primary shadow-sm':'text-text-secondary hover:text-text-primary')}>{t==='RENT'?'Rent':t==='FEE'?'Fees':'Ledger'}</button>
           ))}
         </div>
-        <select className="input-field w-40" value={propId} onChange={e=>{setPropId(e.target.value);setPage(1);}}>
+        <div className="h-6 w-px bg-surface-border mx-1"></div>
+        <select className="input-field w-40 h-9 py-1.5 text-xs" value={propId} onChange={e=>{setPropId(e.target.value);setPage(1);}}>
           <option value="">All Properties</option>
           {properties.map((p:any)=><option key={p._id} value={p._id}>{p.name}</option>)}
         </select>
-        <input type="month" className="input-field w-36" value={month} onChange={e=>{setMonth(e.target.value);setPage(1);}} />
-        <div className="flex rounded-lg border border-surface-border overflow-hidden">
+        <input type="month" className="input-field w-32 h-9 py-1.5 text-xs" value={month} onChange={e=>{setMonth(e.target.value);setPage(1);}} />
+        <div className="flex bg-surface-input p-1 rounded-md">
           {STATUS_OPTS.map(s=>(
-            <button key={s} onClick={()=>{setStatus(s);setPage(1);}} className={cn('px-2.5 py-2 text-xs font-medium',status===s?'bg-primary text-white':'bg-white text-text-secondary hover:bg-surface-input')}>{s}</button>
+            <button key={s} onClick={()=>{setStatus(s);setPage(1);}} className={cn('px-2.5 py-1.5 text-[11px] font-semibold rounded',status===s?'bg-white text-primary shadow-sm':'text-text-secondary hover:text-text-primary')}>{s}</button>
           ))}
         </div>
-        <input className="input-field flex-1 min-w-36" placeholder="Search student…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} />
+        <input className="input-field flex-1 min-w-36 h-9 py-1.5 text-xs" placeholder="Search student…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} />
         {selected.length > 0 && (
-          <button className="btn-secondary flex items-center gap-2 text-xs" onClick={handleBulkReminder} disabled={sendReminders.isPending}>
-            <Bell className="w-3.5 h-3.5"/>Send Reminders ({selected.length})
+          <button className="btn-secondary h-9 py-1.5 flex items-center gap-2 text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={handleBulkReminder} disabled={sendReminders.isPending}>
+            <Bell className="w-3.5 h-3.5"/>Remind ({selected.length})
           </button>
         )}
       </div>
 
-      {/* Table */}
+      {/* Table & Ledger */}
+      {tab === 'TRANSACTIONS' ? (
+        <div className="card overflow-hidden">
+          <TransactionsLedger rows={txRows} isLoading={txsLoading} onReview={(tx) => setModal({ type: 'tx-proof', record: tx })} />
+        </div>
+      ) : (
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           {isLoading ? (
@@ -607,12 +772,14 @@ export default function RentFeesPage() {
           </div>
         )}
       </div>
+      )}
 
       {modal?.type==='pay'    && <PayModal      record={modal.record} onClose={()=>setModal(null)} />}
       {modal?.type==='fine'   && <FineModal     record={modal.record} onClose={()=>setModal(null)} />}
       {modal?.type==='generate' && <GenerateModal onClose={()=>setModal(null)} />}
       {modal?.type==='fee'    && <AddFeeModal   onClose={()=>setModal(null)} />}
       {modal?.type==='proof'  && <ProofReviewModal record={modal.record} onClose={()=>setModal(null)} />}
+      {modal?.type==='tx-proof' && <TxProofModal tx={modal.record} onClose={()=>setModal(null)} />}
       {showDepositModal && <SecurityDepositModal propertyId={propId||undefined} onClose={()=>setShowDepositModal(false)} />}
     </div>
   );

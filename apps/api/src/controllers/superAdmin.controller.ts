@@ -1,10 +1,11 @@
-﻿import { Response } from 'express';
+import { Response } from 'express';
 import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { User } from '../models/User.model';
 import { Property } from '../models/Property.model';
 import { Booking } from '../models/Booking.model';
 import { RentRecord } from '../models/RentRecord.model';
+import { Counter } from '../models/Counter.model';
 import { notify } from '../services/notification.service';
 
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -464,9 +465,34 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
       );
 
       // Step 3 — Generate unique hostel code (counted within the session)
-      const count = await Hostel.countDocuments({}).session(session);
-      hostelCode = `NST-${String(count + 1).padStart(3, '0')}`;
+      let counter = await Counter.findById('hostelCode').session(session);
+      if (!counter) {
+        // Find the highest existing hostel code to avoid conflicts if a hostel was deleted
+        const lastHostel = await Hostel.findOne().sort({ hostelCode: -1 }).select('hostelCode').session(session).lean();
+        let startingSeq = 0;
+        if (lastHostel && lastHostel.hostelCode) {
+          const match = lastHostel.hostelCode.match(/\d+$/);
+          if (match) {
+            startingSeq = parseInt(match[0], 10) || 0;
+          }
+        }
 
+        try {
+          await Counter.create([{ _id: 'hostelCode', seq: startingSeq }], { session });
+        } catch (e: any) {
+          if (e.code !== 11000) throw e; // Ignore duplicate key if another request just created it
+        }
+      }
+
+      counter = await Counter.findByIdAndUpdate(
+        'hostelCode',
+        { $inc: { seq: 1 } },
+        { new: true, session }
+      );
+      
+      if (!counter) throw new Error('Failed to generate hostel code');
+      hostelCode = `NST-${String(counter.seq).padStart(3, '0')}`;
+      console.log("hostelcode ", hostelCode);
       // Step 4 — Create hostel linked to the new owner and property
       [hostel] = await Hostel.create(
         [{
@@ -554,11 +580,28 @@ export const toggleHostelActive = async (req: AuthRequest, res: Response): Promi
 
 export const deleteHostel = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const hostel = await Hostel.findById(req.params.id).lean();
+    if (!hostel) {
+      res.status(404).json({ success: false, message: 'Hostel not found' });
+      return;
+    }
+
     const students = await HostelStudent.countDocuments({ hostelId: req.params.id, status: 'ACTIVE' });
-    if (students > 0) { res.status(400).json({ success: false, message: `Cannot delete: ${students} active student(s)` }); return; }
+    if (students > 0) {
+      res.status(400).json({ success: false, message: `Cannot delete: ${students} active student(s)` });
+      return;
+    }
+
+    // Cascade delete: Owner, Staff, and Properties associated with this Hostel
+    await User.deleteMany({ $or: [{ _id: hostel.ownerId }, { hostelId: hostel._id }] });
+    await Property.deleteMany({ tenantId: hostel.ownerId });
+    try { await mongoose.model('Staff').deleteMany({ tenantId: hostel.ownerId }); } catch (e) {}
+
     await Hostel.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Hostel deleted' });
-  } catch { res.status(500).json({ success: false, message: 'Server error' }); }
+    res.json({ success: true, message: 'Hostel, Owner account, and Properties deleted successfully' });
+  } catch (e: any) { 
+    res.status(500).json({ success: false, message: 'Server error', error: e.message }); 
+  }
 };
 
 // ── All Owners (dropdown) ──────────────────────────────────────────────────────

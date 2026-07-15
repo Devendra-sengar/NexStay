@@ -12,6 +12,7 @@ import {
   getRentDashboard, getRentRecords, generateMonthlyRent, previewGenerateRent,
   addFine, sendReminders, createFee, getSecurityDeposits,
   getExpenses, createExpense, updateExpense, deleteExpense, proofAction,
+  getTransactions, verifyTransaction, getLedgerEntries, getAuditLogs
 } from '../controllers/erpRent.controller';
 import {
   getStaff, getStaffById, createStaff, updateStaff, toggleStaffStatus, deleteStaff,
@@ -56,6 +57,12 @@ router.post('/rent/generate', generateMonthlyRent);
 router.patch('/rent/:id/fine', addFine);
 router.patch('/rent/:id/proof-action', proofAction);
 router.post('/rent/send-reminders', sendReminders);
+
+// ── Ledger Transactions ──────────────────────────────────────────
+router.get('/transactions', getTransactions); // Mapped to PaymentSubmission
+router.post('/transactions/:id/verify', verifyTransaction);
+router.get('/ledger', getLedgerEntries);
+router.get('/audit-logs', getAuditLogs);
 
 // ── Additional Fees ──────────────────────────────────────────────
 router.post('/fees', createFee);

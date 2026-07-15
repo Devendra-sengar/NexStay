@@ -18,7 +18,7 @@ import { notify } from '../services/notification.service';
 function currentMonthRange() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
   return { start, end };
 }
 
@@ -83,14 +83,14 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
       .lean();
 
     // Occupancy trend: last 6 months
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const occupancyTrend: { month: string; occupancy: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
       const label = months[d.getMonth()];
       const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-      const monthEnd   = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       const checkedIn = await Booking.countDocuments({
         tenantId,
         propertyId: { $in: filteredPropertyIds },
@@ -111,10 +111,10 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
       const mS = new Date(d.getFullYear(), d.getMonth(), 1);
       const mE = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
       const [rentDocs, expDocs] = await Promise.all([
-        RentRecord.find({ tenantId, propertyId: { $in: filteredPropertyIds }, status: { $in: ['PAID','PARTIAL'] }, paidAt: { $gte: mS, $lte: mE } }).lean(),
+        RentRecord.find({ tenantId, propertyId: { $in: filteredPropertyIds }, status: { $in: ['PAID', 'PARTIAL'] }, paidAt: { $gte: mS, $lte: mE } }).lean(),
         Expense.find({ tenantId, propertyId: { $in: filteredPropertyIds }, date: { $gte: mS.toISOString().split('T')[0], $lte: mE.toISOString().split('T')[0] } }).lean(),
       ]);
-      const revenue  = rentDocs.reduce((s, r) => s + (r.paidAmount ?? 0), 0);
+      const revenue = rentDocs.reduce((s, r) => s + (r.paidAmount ?? 0), 0);
       const expenses = expDocs.reduce((s, e) => s + (e.amount ?? 0), 0);
       revenueTrend.push({ month: label, revenue, expenses });
     }
@@ -160,7 +160,7 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
     if (q) filter.name = { $regex: q, $options: 'i' };
 
     const [properties, total] = await Promise.all([
-      Property.find(filter).sort({ createdAt: -1 }).skip((pageNum-1)*limitNum).limit(limitNum).lean(),
+      Property.find(filter).sort({ createdAt: -1 }).skip((pageNum - 1) * limitNum).limit(limitNum).lean(),
       Property.countDocuments(filter),
     ]);
 
@@ -172,7 +172,7 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
 
       const [totalBeds, occupiedBeds, monthRent] = await Promise.all([
         Bed.countDocuments({ roomId: { $in: roomIds } }),
-        Bed.countDocuments({ roomId: { $in: roomIds }, status: { $in: ['OCCUPIED','RESERVED'] } }),
+        Bed.countDocuments({ roomId: { $in: roomIds }, status: { $in: ['OCCUPIED', 'RESERVED'] } }),
         RentRecord.aggregate([
           {
             $match: {
@@ -261,7 +261,7 @@ export const createAdminProperty = async (req: AuthRequest, res: Response): Prom
         for (let ri = 1; ri <= count; ri++) {
           const room = await Room.create({
             tenantId, propertyId: property._id, floorId: floor._id,
-            roomNumber: `${si+1}0${ri}`, capacity, roomType,
+            roomNumber: `${si + 1}0${ri}`, capacity, roomType,
             status: 'AVAILABLE', pricePerBed: pricePerBed ?? 6000,
           });
           for (let bi = 1; bi <= capacity; bi++) {
@@ -301,16 +301,16 @@ export const updateAdminProperty = async (req: AuthRequest, res: Response): Prom
     const property = await Property.findOne({ _id: req.params.id, tenantId });
     if (!property) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
 
-    const { name, description, images, amenities, rules, foodIncluded, address, city, locality, state, pincode, latitude, longitude, gender, videoUrl } = req.body;
+    const { name, description, images, amenities, customFacilities, rules, foodIncluded, address, city, locality, state, pincode, latitude, longitude, gender, videoUrl } = req.body;
 
     // Changes to key fields reset to PENDING
     const needsReview = (name && name !== property.name) ||
-                        (description && description !== property.description) ||
-                        (images && JSON.stringify(images) !== JSON.stringify(property.images));
+      (description && description !== property.description) ||
+      (images && JSON.stringify(images) !== JSON.stringify(property.images));
 
     Object.assign(property, {
       ...(name && { name }), ...(description !== undefined && { description }),
-      ...(images && { images }), ...(amenities && { amenities }),
+      ...(images && { images }), ...(amenities && { amenities }), ...(customFacilities && { customFacilities }),
       ...(rules !== undefined && { rules }), ...(foodIncluded !== undefined && { foodIncluded }),
       ...(address && { address }), ...(city && { city }), ...(locality !== undefined && { locality }),
       ...(state && { state }), ...(pincode && { pincode }),
@@ -335,7 +335,7 @@ export const deleteAdminProperty = async (req: AuthRequest, res: Response): Prom
 
     // Bug #2: Block delete if active bookings exist
     const activeBookings = await Booking.countDocuments({
-      propertyId: property._id, status: { $in: ['PENDING','CONFIRMED','CHECKED_IN'] },
+      propertyId: property._id, status: { $in: ['PENDING', 'CONFIRMED', 'CHECKED_IN'] },
     });
     if (activeBookings > 0) {
       res.status(400).json({ success: false, message: `Cannot delete — ${activeBookings} active booking(s) exist.` });
@@ -450,7 +450,7 @@ export const getAdminBookings = async (req: AuthRequest, res: Response): Promise
         .populate('roomId', 'roomNumber roomType')
         .populate('bedId', 'bedNumber')
         .sort({ createdAt: -1 })
-        .skip((pageNum-1)*limitNum)
+        .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .lean(),
       Booking.countDocuments(filter),
@@ -479,7 +479,7 @@ export const acceptBooking = async (req: AuthRequest, res: Response): Promise<vo
       title: '✅ Booking Confirmed!',
       message: 'Your booking has been confirmed by the property owner. You can now proceed with check-in.',
       linkUrl: '/account/bookings',
-    }).catch(() => {});
+    }).catch(() => { });
     res.json({ success: true, data: booking });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -506,7 +506,7 @@ export const rejectBooking = async (req: AuthRequest, res: Response): Promise<vo
       title: '❌ Booking Not Accepted',
       message: reason ? `Your booking was not accepted. Reason: ${reason}` : 'Your booking was not accepted by the property.',
       linkUrl: '/account/bookings',
-    }).catch(() => {});
+    }).catch(() => { });
     res.json({ success: true, data: booking });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });

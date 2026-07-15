@@ -84,9 +84,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 // Body: { identifier, password, role, hostelCode? }
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { identifier, password, role, email, hostelCode } = req.body;
+    const { identifier, password, role, email, phone, hostelCode } = req.body;
 
-    const loginId = identifier || email;
+    const rawLoginId = identifier || email || phone;
+    const loginId = String(rawLoginId || '').trim();
     const loginRole = role || null;
 
     if (!loginId || !password) {

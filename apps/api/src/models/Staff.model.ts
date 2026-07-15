@@ -28,7 +28,7 @@ const StaffSchema = new Schema<IStaffDoc>(
     email: { type: String, default: '', lowercase: true, trim: true },
     role: {
       type: String,
-      enum: ['WARDEN', 'COOK', 'CLEANER', 'SECURITY', 'MANAGER', 'OTHER'],
+      enum: ['WARDEN', 'COOK', 'CLEANER', 'SECURITY', 'MESS_MANAGER', 'OTHER'],
       required: true,
     },
     salary: { type: Number, required: true, default: 0 },

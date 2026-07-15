@@ -5,6 +5,12 @@ import { HostelStudent } from '../models/HostelStudent.model';
 import { RentRecord } from '../models/RentRecord.model';
 import { Expense } from '../models/Expense.model';
 import { Property } from '../models/Property.model';
+import { Room } from '../models/Room.model';
+
+import { PaymentSubmission } from '../models/PaymentSubmission.model';
+import { PaymentTransaction } from '../models/PaymentTransaction.model';
+import { LedgerEntry } from '../models/LedgerEntry.model';
+import { AuditLog } from '../models/AuditLog.model';
 import { Notification } from '../models/Notification.model';
 import { notify } from '../services/notification.service';
 
@@ -406,8 +412,53 @@ export const proofAction = async (req: AuthRequest, res: Response): Promise<void
       record.status = record.paidAmount >= total ? 'PAID' : 'PARTIAL';
       record.paidAt = new Date();
       record.paymentMethod = paymentMethod || record.paymentMethod || 'UPI';
-      record.paymentProofStatus = 'APPROVED';
+      
+      if (record.status === 'PARTIAL') {
+        record.paymentProofStatus = 'NONE';
+        if (record.paymentProofUrl) {
+          if (!record.previousProofs) record.previousProofs = [];
+          record.previousProofs.push(record.paymentProofUrl);
+          record.paymentProofUrl = '';
+        }
+        record.paymentProofNote = '';
+      } else {
+        record.paymentProofStatus = 'APPROVED';
+      }
       await record.save();
+
+      // Find and process pending PaymentSubmission for this record to sync Ledger
+      const pendingSub = await PaymentSubmission.findOne({ invoiceId: record._id, tenantId, status: 'PENDING' });
+      if (pendingSub) {
+        pendingSub.status = 'VERIFIED';
+        pendingSub.claimedAmount = paidAmt;
+        pendingSub.paymentMode = (record.paymentMethod === 'CASH' ? 'CASH' : 'ONLINE') as 'CASH' | 'ONLINE' | 'ADJUSTMENT';
+        await pendingSub.save();
+
+        const pTx = await PaymentTransaction.create({
+          transactionId: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          tenantId,
+          propertyId: pendingSub.propertyId,
+          submissionId: pendingSub._id,
+          invoiceId: record._id,
+          residentId: record.hostelStudentId,
+          settledAmount: paidAmt,
+          paymentMode: (record.paymentMethod === 'CASH' ? 'CASH' : 'ONLINE') as 'CASH' | 'ONLINE' | 'ADJUSTMENT',
+          status: 'SUCCESS'
+        });
+
+        await LedgerEntry.create({
+          tenantId,
+          propertyId: pendingSub.propertyId,
+          invoiceId: record._id,
+          residentId: record.hostelStudentId,
+          transactionId: pTx._id,
+          credit: paidAmt,
+          debit: 0,
+          balance: total - record.paidAmount,
+          source: (record.paymentMethod === 'CASH') ? 'CASH' : (record.paymentMethod === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'UPI'),
+          verifiedBy: req.user!.id
+        });
+      }
 
       if (guestUserId) {
         notify({
@@ -423,6 +474,13 @@ export const proofAction = async (req: AuthRequest, res: Response): Promise<void
       record.paymentProofStatus = 'REJECTED';
       record.paymentProofNote = note || 'Payment proof was rejected by admin.';
       await record.save();
+
+      const pendingSub = await PaymentSubmission.findOne({ invoiceId: record._id, tenantId, status: 'PENDING' });
+      if (pendingSub) {
+        pendingSub.status = 'REJECTED';
+        pendingSub.remark = record.paymentProofNote;
+        await pendingSub.save();
+      }
 
       if (guestUserId) {
         notify({
@@ -443,4 +501,223 @@ export const proofAction = async (req: AuthRequest, res: Response): Promise<void
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// ─── TRANSACTIONS (LEDGER) ──────────────────────────────────────────────────
+
+// GET /api/erp/transactions
+export const getTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.id;
+    const { propertyId, status } = req.query as Record<string, string>;
+
+    const filter: any = { tenantId };
+    if (status) filter.status = status;
+
+    let invoiceIds: any[] = [];
+    if (propertyId) {
+      const records = await RentRecord.find({ propertyId, tenantId }).select('_id').lean();
+      invoiceIds = records.map(r => r._id);
+      filter.invoiceId = { $in: invoiceIds };
+    }
+
+    const txs = await PaymentSubmission.find(filter)
+      .populate('invoiceId', 'month amount paidAmount fine status')
+      .populate('residentId', 'name roomNumber guestId')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Temporarily map to old frontend fields to avoid breaking the frontend until it's refactored
+    const mappedTxs = txs.map(tx => ({
+      ...tx,
+      amountSubmitted: tx.claimedAmount,
+      paymentProof: { screenshotUrl: tx.proofUrl, transactionId: tx.referenceNumber },
+      rejectionReason: tx.remark,
+      status: tx.status === 'PENDING' ? 'PENDING_VERIFICATION' : tx.status === 'VERIFIED' ? 'APPROVED' : tx.status === 'PENDING_RESIDENT' ? 'PENDING_RESIDENT' : 'REJECTED'
+    }));
+
+    res.json({ success: true, data: mappedTxs });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// POST /api/erp/transactions/:id/verify (Verify Payment Submission)
+export const verifyTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.id;
+    const { id } = req.params;
+    const { action, note } = req.body as { action: 'APPROVE' | 'REJECT'; note?: string };
+
+    if (!['APPROVE', 'REJECT'].includes(action)) {
+      res.status(400).json({ success: false, message: 'Action must be APPROVE or REJECT' }); return;
+    }
+
+    const submission = await PaymentSubmission.findOneAndUpdate(
+      { _id: id, tenantId, status: 'PENDING' },
+      { 
+        $set: { 
+          status: action === 'APPROVE' ? 'VERIFIED' : 'REJECTED',
+          remark: action === 'REJECT' ? (note || 'Rejected by admin') : ''
+        } 
+      },
+      { new: true }
+    );
+
+    if (!submission) {
+      res.status(400).json({ success: false, message: 'Submission not found or already processed.' }); return;
+    }
+
+    const record = await RentRecord.findById(submission.invoiceId);
+    if (!record) { res.status(404).json({ success: false, message: 'Invoice not found' }); return; }
+
+    const student = await HostelStudent.findById(submission.residentId);
+    const guestUserId = student?.guestId?.toString();
+
+    if (action === 'APPROVE') {
+      // 1. Create Payment Transaction
+      const pTx = await PaymentTransaction.create({
+        transactionId: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        tenantId,
+        propertyId: submission.propertyId,
+        submissionId: submission._id,
+        invoiceId: record._id,
+        residentId: student!._id,
+        settledAmount: submission.claimedAmount,
+        paymentMode: submission.paymentMode,
+        status: 'SUCCESS'
+      });
+
+      // 2. Create Ledger Entry
+      const oldPaidAmount = record.paidAmount || 0;
+      const totalAmount = record.amount + (record.fine || 0);
+      const newPaidAmount = oldPaidAmount + submission.claimedAmount;
+      
+      await LedgerEntry.create({
+        tenantId,
+        propertyId: submission.propertyId,
+        invoiceId: record._id,
+        residentId: student!._id,
+        transactionId: pTx._id,
+        credit: submission.claimedAmount,
+        debit: 0,
+        balance: totalAmount - newPaidAmount,
+        source: submission.paymentMode === 'CASH' ? 'CASH' : (submission.paymentMode === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'UPI'),
+        verifiedBy: req.user!.id
+      });
+
+      // 3. Update Invoice (derived from ledger conceptually, but cached here)
+      record.paidAmount = newPaidAmount;
+      record.status = record.paidAmount >= totalAmount ? 'PAID' : 'PARTIAL';
+      if (record.status === 'PARTIAL') {
+        record.paymentProofStatus = 'NONE';
+        if (record.paymentProofUrl) {
+          if (!record.previousProofs) record.previousProofs = [];
+          record.previousProofs.push(record.paymentProofUrl);
+          record.paymentProofUrl = '';
+        }
+        record.paymentProofNote = '';
+      } else {
+        record.paymentProofStatus = 'APPROVED';
+      }
+      if (record.status === 'PAID') record.paidAt = new Date();
+      await record.save();
+
+      // 4. Audit Log
+      await AuditLog.create({
+        tenantId,
+        propertyId: submission.propertyId,
+        action: 'PAYMENT_VERIFIED_ACCEPT',
+        actorId: req.user!.id,
+        actorType: 'Admin',
+        entityId: submission._id,
+        entityType: 'PaymentSubmission',
+        details: `Admin accepted payment of ₹${submission.claimedAmount}`
+      });
+
+      if (guestUserId) {
+        notify({
+          userId: guestUserId,
+          type: 'RENT',
+          title: '✅ Payment Confirmed!',
+          message: `Your payment of ₹${submission.claimedAmount.toLocaleString('en-IN')} has been confirmed.`,
+          linkUrl: '/student/rent',
+        }).catch(() => {});
+      }
+    } else {
+      record.paymentProofStatus = 'REJECTED';
+      record.paymentProofNote = submission.remark;
+      await record.save();
+
+      await AuditLog.create({
+        tenantId,
+        propertyId: submission.propertyId,
+        action: 'PAYMENT_VERIFIED_REJECT',
+        actorId: req.user!.id,
+        actorType: 'Admin',
+        entityId: submission._id,
+        entityType: 'PaymentSubmission',
+        details: `Admin rejected payment. Reason: ${submission.remark}`
+      });
+
+      if (guestUserId) {
+        notify({
+          userId: guestUserId,
+          type: 'RENT',
+          title: '❌ Payment Rejected',
+          message: `Your payment proof was rejected. Reason: ${submission.remark}`,
+          linkUrl: '/student/rent',
+        }).catch(() => {});
+      }
+    }
+
+    res.json({ success: true, message: `Payment ${action === 'APPROVE' ? 'Approved' : 'Rejected'}`, data: submission });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// GET /api/erp/ledger
+export const getLedgerEntries = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.id;
+    const { propertyId, invoiceId } = req.query as Record<string, string>;
+
+    const filter: any = { tenantId };
+    if (propertyId) filter.propertyId = propertyId;
+    if (invoiceId) filter.invoiceId = invoiceId;
+
+    const entries = await LedgerEntry.find(filter)
+      .populate('invoiceId', 'month amount fine')
+      .populate('residentId', 'name guestId roomNumber')
+      .populate('verifiedBy', 'name')
+      .sort({ date: -1, createdAt: -1 })
+      .lean();
+
+    res.json({ success: true, data: entries });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// GET /api/erp/audit-logs
+export const getAuditLogs = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.id;
+    const { propertyId, entityId } = req.query as Record<string, string>;
+
+    const filter: any = { tenantId };
+    if (propertyId) filter.propertyId = propertyId;
+    if (entityId) filter.entityId = entityId;
+
+    const logs = await AuditLog.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    res.json({ success: true, data: logs });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 

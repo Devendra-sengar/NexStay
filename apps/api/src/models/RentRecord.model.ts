@@ -22,6 +22,7 @@ export interface IRentRecordDoc extends Document {
   paymentProofUrl?: string;
   paymentProofStatus?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED';
   paymentProofNote?: string;
+  previousProofs?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +54,7 @@ const RentRecordSchema = new Schema<IRentRecordDoc>(
     paymentProofUrl: { type: String, default: '' },
     paymentProofStatus: { type: String, enum: ['NONE', 'PENDING', 'APPROVED', 'REJECTED'], default: 'NONE' },
     paymentProofNote: { type: String, default: '' },
+    previousProofs: { type: [String], default: [] },
   },
   { timestamps: true }
 );

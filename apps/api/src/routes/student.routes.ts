@@ -16,6 +16,9 @@ import {
   getHostelNotices,
   getMyRoommates,
   submitPaymentProof,
+  getMyTransactions,
+  confirmCashReceipt,
+  rejectCashReceipt,
 } from '../controllers/student.controller';
 
 const router = Router();
@@ -41,6 +44,9 @@ router.get('/booking',          getMyActiveBooking);
 router.get('/rent',             getMyRentHistory);
 router.get('/rent/current',     getCurrentMonthRent);
 router.post('/rent/:id/payment-proof', upload.single('image'), submitPaymentProof);
+router.post('/rent/cash/:id/confirm', confirmCashReceipt);
+router.post('/rent/cash/:id/reject', rejectCashReceipt);
+router.get('/transactions',     getMyTransactions);
 router.get('/complaints',       getMyComplaints);
 router.post('/complaints',      raiseComplaint);
 router.get('/mess/menu',        getTodayMenuForMyHostel);

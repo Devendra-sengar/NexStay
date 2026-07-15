@@ -6,6 +6,11 @@ import { Complaint } from '../models/Complaint.model';
 import { MessMenu } from '../models/MessMenu.model';
 import { Notification } from '../models/Notification.model';
 import { Hostel } from '../models/Hostel.model';
+import { Expense } from '../models/Expense.model';
+import { PaymentSubmission } from '../models/PaymentSubmission.model';
+import { PaymentTransaction } from '../models/PaymentTransaction.model';
+import { LedgerEntry } from '../models/LedgerEntry.model';
+import { AuditLog } from '../models/AuditLog.model';
 import { Bed } from '../models/Bed.model';
 import { Room } from '../models/Room.model';
 import { User } from '../models/User.model';
@@ -161,6 +166,26 @@ export const getMyRentHistory = async (req: AuthRequest, res: Response): Promise
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
 
+// ─── GET /api/student/transactions ───────────────────────────────────────────
+export const getMyTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const studentRecord = await HostelStudent.findOne({ guestId: req.user?.id, status: 'ACTIVE' }).lean();
+    if (!studentRecord) { res.json({ success: true, data: [] }); return; }
+    const txs = await PaymentSubmission.find({ residentId: studentRecord._id })
+      .populate('invoiceId', 'month amount paidAmount fine status')
+      .sort({ createdAt: -1 }).lean();
+    
+    // Map to old frontend fields temporarily until frontend is updated
+    const mappedTxs = txs.map(tx => ({
+      ...tx,
+      amountSubmitted: tx.claimedAmount,
+      paymentProof: { screenshotUrl: tx.proofUrl },
+      rejectionReason: tx.remark
+    }));
+    res.json({ success: true, data: mappedTxs });
+  } catch { res.status(500).json({ success: false, message: 'Server error' }); }
+};
+
 // ─── GET /api/student/rent/current ───────────────────────────────────────────
 export const getCurrentMonthRent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -308,9 +333,12 @@ export const submitPaymentProof = async (req: AuthRequest, res: Response): Promi
     if (record.status === 'PAID') {
       res.status(400).json({ success: false, message: 'This record is already marked as PAID' }); return;
     }
-    if (record.paymentProofStatus === 'PENDING') {
-      res.status(400).json({ success: false, message: 'A proof is already under review. Please wait for admin confirmation.' }); return;
+    const { amount, paymentMode, transactionId } = req.body;
+    
+    if (!amount || isNaN(Number(amount))) {
+      res.status(400).json({ success: false, message: 'Valid amount is required' }); return;
     }
+    const amountSubmitted = Number(amount);
 
     if (!req.file) {
       res.status(400).json({ success: false, message: 'No image file provided' }); return;
@@ -323,15 +351,155 @@ export const submitPaymentProof = async (req: AuthRequest, res: Response): Promi
       overwrite: false,
     });
 
+    const submission = await PaymentSubmission.create({
+      submissionId: `SUB-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      tenantId: record.tenantId,
+      propertyId: record.propertyId,
+      invoiceId: record._id,
+      residentId: studentRecord._id,
+      claimedAmount: amountSubmitted,
+      paymentMode: (paymentMode === 'CASH' ? 'CASH' : 'ONLINE') as 'CASH' | 'ONLINE' | 'ADJUSTMENT',
+      referenceNumber: transactionId || '',
+      proofUrl: result.secure_url,
+      status: 'PENDING'
+    });
+
+    await AuditLog.create({
+      tenantId: record.tenantId,
+      propertyId: record.propertyId,
+      action: 'PAYMENT_SUBMITTED',
+      actorId: studentRecord._id,
+      actorType: 'Resident',
+      entityId: submission._id,
+      entityType: 'PaymentSubmission',
+      details: `Resident submitted payment proof for ₹${amountSubmitted} via ${paymentMode || 'ONLINE'}`
+    });
+
+    // Move old proof to previousProofs if it exists
+    if (record.paymentProofUrl) {
+      if (!record.previousProofs) record.previousProofs = [];
+      record.previousProofs.push(record.paymentProofUrl);
+    }
+
     record.paymentProofUrl = result.secure_url;
     record.paymentProofStatus = 'PENDING';
     record.paymentProofNote = '';
     await record.save();
 
-    res.json({ success: true, message: 'Payment proof submitted. Admin will verify shortly.', data: { paymentProofUrl: record.paymentProofUrl, paymentProofStatus: record.paymentProofStatus } });
+    res.json({ success: true, message: 'Payment proof submitted. Admin will verify shortly.', data: submission });
   } catch (err: any) {
     console.error('submitPaymentProof:', err);
     res.status(500).json({ success: false, message: err?.message || 'Server error' });
   }
 };
 
+// ─── POST /api/student/rent/cash/:id/confirm ─────────────────────────────────
+export const confirmCashReceipt = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const studentRecord = await HostelStudent.findOne({ guestId: req.user?.id, status: 'ACTIVE' }).lean();
+    if (!studentRecord) {
+      res.status(403).json({ success: false, message: 'No active student record found' }); return;
+    }
+
+    const submission = await PaymentSubmission.findOne({ _id: req.params.id, residentId: studentRecord._id, status: 'PENDING_RESIDENT' });
+    if (!submission) {
+      res.status(404).json({ success: false, message: 'Draft receipt not found or already processed' }); return;
+    }
+
+    const record = await RentRecord.findById(submission.invoiceId);
+    if (!record) { res.status(404).json({ success: false, message: 'Rent record not found' }); return; }
+
+    submission.status = 'VERIFIED';
+    await submission.save();
+
+    const pTx = await PaymentTransaction.create({
+      transactionId: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      tenantId: submission.tenantId,
+      propertyId: submission.propertyId,
+      submissionId: submission._id,
+      invoiceId: record._id,
+      residentId: submission.residentId,
+      settledAmount: submission.claimedAmount,
+      paymentMode: submission.paymentMode,
+      status: 'SUCCESS'
+    });
+
+    const paid = (record.paidAmount || 0) + submission.claimedAmount;
+    const total = record.amount + (record.fine || 0);
+
+    await LedgerEntry.create({
+      tenantId: submission.tenantId,
+      propertyId: submission.propertyId,
+      invoiceId: record._id,
+      residentId: submission.residentId,
+      transactionId: pTx._id,
+      credit: submission.claimedAmount,
+      debit: 0,
+      balance: total - paid,
+      source: (submission.paymentMode === 'CASH') ? 'CASH' : (submission.paymentMode === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'UPI'),
+      verifiedBy: null // Confirmed by resident
+    });
+
+    record.paidAmount = paid;
+    record.status = paid >= total ? 'PAID' : 'PARTIAL';
+    if (paid >= total) record.paidAt = new Date();
+    
+    if (record.status === 'PARTIAL') {
+      record.paymentProofStatus = 'NONE';
+      record.paymentProofUrl = '';
+      record.paymentProofNote = '';
+    } else {
+      record.paymentProofStatus = 'APPROVED';
+    }
+    await record.save();
+
+    await AuditLog.create({
+      tenantId: submission.tenantId,
+      propertyId: submission.propertyId,
+      action: 'PAYMENT_CONFIRMED_BY_RESIDENT',
+      actorId: studentRecord._id,
+      actorType: 'Resident',
+      entityId: submission._id,
+      entityType: 'PaymentSubmission',
+      details: `Resident confirmed owner's cash entry of ₹${submission.claimedAmount}.`
+    });
+
+    res.json({ success: true, message: 'Payment confirmed successfully.', data: submission });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ─── POST /api/student/rent/cash/:id/reject ──────────────────────────────────
+export const rejectCashReceipt = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const studentRecord = await HostelStudent.findOne({ guestId: req.user?.id, status: 'ACTIVE' }).lean();
+    if (!studentRecord) {
+      res.status(403).json({ success: false, message: 'No active student record found' }); return;
+    }
+
+    const submission = await PaymentSubmission.findOne({ _id: req.params.id, residentId: studentRecord._id, status: 'PENDING_RESIDENT' });
+    if (!submission) {
+      res.status(404).json({ success: false, message: 'Draft receipt not found or already processed' }); return;
+    }
+
+    submission.status = 'REJECTED';
+    submission.remark = 'Rejected by resident: Did not pay this amount.';
+    await submission.save();
+
+    await AuditLog.create({
+      tenantId: submission.tenantId,
+      propertyId: submission.propertyId,
+      action: 'PAYMENT_REJECTED_BY_RESIDENT',
+      actorId: studentRecord._id,
+      actorType: 'Resident',
+      entityId: submission._id,
+      entityType: 'PaymentSubmission',
+      details: `Resident rejected owner's cash entry of ₹${submission.claimedAmount}.`
+    });
+
+    res.json({ success: true, message: 'Draft receipt rejected.', data: submission });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
