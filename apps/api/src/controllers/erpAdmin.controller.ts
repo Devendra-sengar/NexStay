@@ -340,8 +340,9 @@ export const recordRentPayment = async (req: AuthRequest, res: Response): Promis
 
 // ─── POST /api/hostel-admin/erp/checkin ──────────────────────────────────────
 export const processCheckIn = async (req: AuthRequest, res: Response): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const supportsTx = (mongoose.connection.getClient() as any)?.topology?.description?.type !== 'Single';
+  const session = supportsTx ? await mongoose.startSession() : null;
+  if (session) session.startTransaction();
   try {
     const tenantId = req.user!.id;
     const {
@@ -370,14 +371,14 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     if (bookingId) {
       // ── Booking-linked flow ──
       booking = await Booking.findOne({ _id: bookingId, tenantId, status: 'CONFIRMED' });
-      if (!booking) { await session.abortTransaction(); res.status(404).json({ success: false, message: 'Confirmed booking not found' }); return; }
+      if (!booking) { if (session) await session.abortTransaction(); res.status(404).json({ success: false, message: 'Confirmed booking not found' }); return; }
       finalBedId = finalBedId || String(booking.bedId);
       finalPropertyId = finalPropertyId || String(booking.propertyId);
       guestUser = await User.findById(booking.guestId).lean();
     } else {
       // ── Walk-in flow: lookup or create guest user ──
       if (!name || !phone || !email || !finalBedId || !finalPropertyId) {
-        await session.abortTransaction();
+        if (session) await session.abortTransaction();
         res.status(400).json({ success: false, message: 'name, phone, email, propertyId, bedId required for walk-in' });
         return;
       }
@@ -390,7 +391,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
         status: 'ACTIVE',
       }).lean();
       if (existingStudent) {
-        await session.abortTransaction();
+        if (session) await session.abortTransaction();
         res.status(409).json({
           success: false,
           message: `Phone number ${phone} is already registered as an active student in this property. Each phone number can only be registered once per property.`,
@@ -408,7 +409,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
         // Also check by email to avoid duplicate email accounts
         const existingByEmail = await User.findOne({ email: email.toLowerCase() }).lean();
         if (existingByEmail) {
-          await session.abortTransaction();
+          if (session) await session.abortTransaction();
           res.status(409).json({
             success: false,
             message: `The email ${email} is already registered with another account. Please use a different email address.`,
@@ -429,6 +430,16 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
           guestUser = created[0];
         }
       } else {
+        // Prevent using a staff or admin account phone number for a student
+        if (['SUPER_ADMIN', 'HOSTEL_ADMIN', 'WARDEN', 'MESS_MANAGER'].includes(existingUser.role)) {
+          if (session) await session.abortTransaction();
+          res.status(409).json({
+            success: false,
+            message: `Phone number ${phone} is already registered to a staff or admin account. Please use a different phone number for the student.`,
+          });
+          return;
+        }
+
         // Existing user — ensure role and hostelId are set correctly
         const upgrades: any = {};
         if (existingUser.role === 'GUEST') upgrades.role = 'STUDENT';
@@ -451,8 +462,8 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     // Verify bed is available (or was RESERVED for this booking)
     const bed = await Bed.findOne({ _id: finalBedId, tenantId });
-    if (!bed) { await session.abortTransaction(); res.status(404).json({ success: false, message: 'Bed not found' }); return; }
-    if (bed.status === 'OCCUPIED') { await session.abortTransaction(); res.status(400).json({ success: false, message: 'Bed is already occupied' }); return; }
+    if (!bed) { if (session) await session.abortTransaction(); res.status(404).json({ success: false, message: 'Bed not found' }); return; }
+    if (bed.status === 'OCCUPIED') { if (session) await session.abortTransaction(); res.status(400).json({ success: false, message: 'Bed is already occupied' }); return; }
 
     const moveIn = moveInDate ? new Date(moveInDate) : new Date();
     const noticeDays = noticePeriodDays ?? 30;
@@ -527,29 +538,30 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       paidAmount: 0, fine: 0, dueDate, status: 'UNPAID',
     }], { session });
 
-    await session.commitTransaction();
+    if (session) await session.commitTransaction();
     // Notify after commit (non-critical, mock-email included)
     notify({ userId: guestUser._id.toString(), type: 'CHECKIN_CONFIRMED', title: '🏠 Check-In Confirmed!', message: `Welcome! Your check-in at bed ${bed.bedNumber} is complete.`, linkUrl: '/account/bookings' }).catch(() => {});
     res.status(201).json({ success: true, data: { student: student[0], booking, hostelCode: ownerHostel?.hostelCode, hostelName: ownerHostel?.name, message: `Check-In complete for ${guestUser.name ?? name}` } });
   } catch (err) {
-    await session.abortTransaction();
+    if (session) await session.abortTransaction();
     console.error('[erp] checkIn:', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   } finally {
-    session.endSession();
+    if (session) session.endSession();
   }
 };
 
 // ─── POST /api/hostel-admin/erp/checkout/:studentId ──────────────────────────
 export const processCheckOut = async (req: AuthRequest, res: Response): Promise<void> => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const supportsTx = (mongoose.connection.getClient() as any)?.topology?.description?.type !== 'Single';
+  const session = supportsTx ? await mongoose.startSession() : null;
+  if (session) session.startTransaction();
   try {
     const tenantId = req.user!.id;
     const { checkoutDate, depositReturn, notes, overrideReason } = req.body;
 
     const student = await HostelStudent.findOne({ _id: req.params.studentId, tenantId, status: 'ACTIVE' });
-    if (!student) { await session.abortTransaction(); res.status(404).json({ success: false, message: 'Active student not found' }); return; }
+    if (!student) { if (session) await session.abortTransaction(); res.status(404).json({ success: false, message: 'Active student not found' }); return; }
 
     // Check dues
     const unpaidRecords = await RentRecord.find({
@@ -559,7 +571,7 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
     const totalDue = unpaidRecords.reduce((s, r) => s + Math.max(0, (r.amount + (r.fine ?? 0)) - (r.paidAmount ?? 0)), 0);
 
     if (totalDue > 0 && !overrideReason) {
-      await session.abortTransaction();
+      if (session) await session.abortTransaction();
       res.status(400).json({
         success: false,
         message: `Student has ₹${totalDue.toLocaleString('en-IN')} in unpaid dues. Provide overrideReason to proceed.`,
@@ -569,7 +581,7 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
     }
 
     if (overrideReason && overrideReason.trim().length < 20) {
-      await session.abortTransaction();
+      if (session) await session.abortTransaction();
       res.status(400).json({ success: false, message: 'Override reason must be at least 20 characters.' });
       return;
     }
@@ -598,15 +610,15 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
       );
     }
 
-    await session.commitTransaction();
+    if (session) await session.commitTransaction();
     notify({ userId: student.guestId.toString(), type: 'CHECKOUT_CONFIRMED', title: '👋 Check-Out Confirmed', message: `Your check-out has been processed. Deposit return: ₹${depositReturn ?? 0}. Thank you for staying with us!`, linkUrl: '/account/bookings' }).catch(() => {});
     res.json({ success: true, message: 'Check-Out complete. Bed is now available.' });
   } catch (err) {
-    await session.abortTransaction();
+    if (session) await session.abortTransaction();
     console.error('[erp] checkOut:', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   } finally {
-    session.endSession();
+    if (session) session.endSession();
   }
 };
 

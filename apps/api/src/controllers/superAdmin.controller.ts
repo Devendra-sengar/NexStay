@@ -416,9 +416,10 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
     // Hash password before the transaction (CPU-bound, outside the DB lock)
     const passwordHash = await bcrypt.hash(ownerPassword, 12);
 
-    // Open a MongoDB session and start a transaction
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Open a MongoDB session and start a transaction if supported
+    const supportsTx = (mongoose.connection.getClient() as any)?.topology?.description?.type !== 'Single';
+    const session = supportsTx ? await mongoose.startSession() : null;
+    if (session) session.startTransaction();
 
     let owner: any;
     let property: any;
@@ -514,10 +515,10 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
       await User.findByIdAndUpdate(owner._id, { hostelId: hostel._id }, { session });
 
       // All writes succeeded — commit atomically
-      await session.commitTransaction();
+      if (session) await session.commitTransaction();
     } catch (txError: any) {
       // Any failure aborts ALL writes above; the DB is left completely unchanged
-      await session.abortTransaction();
+      if (session) await session.abortTransaction();
       console.error('[createHostelWithOwner] Transaction aborted:', txError);
       res.status(500).json({
         success: false,
@@ -525,7 +526,7 @@ export const createHostelWithOwner = async (req: AuthRequest, res: Response): Pr
       });
       return;
     } finally {
-      session.endSession();
+      if (session) session.endSession();
     }
 
     // Return everything including plain-text credentials for the admin to share
