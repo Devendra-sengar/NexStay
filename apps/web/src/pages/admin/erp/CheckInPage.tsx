@@ -1,6 +1,6 @@
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Check, ChevronRight, BedDouble, Upload, Loader2, CheckCircle2, AlertCircle, X, FileImage, QrCode } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, BedDouble, Upload, Loader2, CheckCircle2, AlertCircle, X, FileImage, QrCode, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -212,8 +212,16 @@ export default function CheckInPage() {
   const [docVerified, setDocVerified] = useState({ aadhaar: false, studentId: false, photo: false });
 
   // Walk-in fields
-  const [walkin, setWalkin] = useState({ name: '', phone: '', email: '', college: '', guardianName: '', guardianPhone: '' });
+  const [walkin, setWalkin] = useState({
+    name: '', phone: '', email: '', college: '',
+    guardianName: '', guardianPhone: '', guardianAddress: '',
+    fatherName: '', fatherOccupation: '', fatherContact: '',
+    motherName: '', dateOfBirth: '', bloodGroup: '', aadhaarNumber: '',
+    maritalStatus: '', education: '', occupation: '', organization: '',
+    permanentAddress: '', vehicleNumber: '', medicalHistory: '',
+  });
   const [walkinDocs, setWalkinDocs] = useState({ aadhaarUrl: '', studentIdUrl: '', photoUrl: '' });
+  const [stayingPeriod, setStayingPeriod] = useState('');
   const [selectedBedId, setSelectedBedId] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -246,8 +254,8 @@ export default function CheckInPage() {
   const handleComplete = async () => {
     try {
       const payload = isBookingFlow
-        ? { bookingId: booking._id, bedId: String(booking.bedId?._id ?? booking.bedId), propertyId: String(booking.propertyId?._id ?? booking.propertyId), ...stayDetails }
-        : { ...walkin, ...walkinDocs, bedId: selectedBedId, propertyId: selectedPropertyId, ...stayDetails };
+        ? { bookingId: booking._id, bedId: String(booking.bedId?._id ?? booking.bedId), propertyId: String(booking.propertyId?._id ?? booking.propertyId), ...stayDetails, stayingPeriod }
+        : { ...walkin, ...walkinDocs, bedId: selectedBedId, propertyId: selectedPropertyId, ...stayDetails, stayingPeriod };
 
       const res = await checkIn.mutateAsync(payload);
       setSuccessData(res.data?.data);
@@ -306,9 +314,17 @@ export default function CheckInPage() {
           </div>
         )}
 
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-3 justify-center flex-wrap">
           <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Students</button>
           <button className="btn-primary" onClick={() => navigate('/admin/rooms')}>View BedGrid</button>
+          {successData?.student?._id && (
+            <button
+              onClick={() => navigate(`/admin/print-preview/${successData.student._id}`)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+            >
+              <Printer className="w-4 h-4" /> Print Registration Form
+            </button>
+          )}
         </div>
       </div>
     );
@@ -477,6 +493,61 @@ export default function CheckInPage() {
                 </p>
               )}
             </div>
+
+            {/* ── Extended Registration Fields ── */}
+            <div className="mt-4 pt-4 border-t border-surface-border">
+              <h3 className="text-sm font-semibold text-text-primary mb-3">Registration Details <span className="text-xs font-normal text-text-muted">(for printed form)</span></h3>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ['fatherName', "Father's Name", 'text'],
+                  ['fatherOccupation', "Father's Occupation", 'text'],
+                  ['fatherContact', "Father's Contact", 'tel'],
+                  ['motherName', "Mother's Name", 'text'],
+                  ['dateOfBirth', 'Date of Birth', 'date'],
+                  ['aadhaarNumber', 'Aadhaar Card No.', 'text'],
+                  ['education', 'Education', 'text'],
+                  ['occupation', 'Occupation', 'text'],
+                  ['organization', 'Organization', 'text'],
+                  ['vehicleNumber', 'Vehicle No.', 'text'],
+                ] as [string, string, string][]).map(([field, lbl, type]) => (
+                  <div key={field}>
+                    <label className="form-label text-[11px]">{lbl}</label>
+                    <input type={type} className="input-field text-sm py-2" value={(walkin as any)[field]}
+                      onChange={e => setWalkin(w => ({ ...w, [field]: e.target.value }))} />
+                  </div>
+                ))}
+              </div>
+              {/* Blood group */}
+              <div className="mt-3">
+                <label className="form-label text-[11px]">Blood Group</label>
+                <select className="input-field text-sm py-2" value={walkin.bloodGroup}
+                  onChange={e => setWalkin(w => ({ ...w, bloodGroup: e.target.value }))}>
+                  <option value="">Select…</option>
+                  {['A+','A-','B+','B-','O+','O-','AB+','AB-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                </select>
+              </div>
+              {/* Marital Status */}
+              <div className="mt-3">
+                <label className="form-label text-[11px]">Marital Status</label>
+                <select className="input-field text-sm py-2" value={walkin.maritalStatus}
+                  onChange={e => setWalkin(w => ({ ...w, maritalStatus: e.target.value }))}>
+                  <option value="">Select…</option>
+                  {['Single','Married','Divorced','Widowed'].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              {/* Full-width fields */}
+              {([
+                ['permanentAddress', 'Permanent Address'],
+                ['guardianAddress', 'Guardian Address'],
+                ['medicalHistory', 'Medical History (If Any)'],
+              ] as [string, string][]).map(([field, lbl]) => (
+                <div key={field} className="mt-3">
+                  <label className="form-label text-[11px]">{lbl}</label>
+                  <input type="text" className="input-field text-sm py-2" value={(walkin as any)[field]}
+                    onChange={e => setWalkin(w => ({ ...w, [field]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -523,6 +594,20 @@ export default function CheckInPage() {
             <div><label className="form-label">Monthly Rent (₹)</label><input type="number" className="input-field" value={stayDetails.monthlyRent} onChange={e => setStayDetails(s => ({ ...s, monthlyRent: +e.target.value }))} /></div>
             <div><label className="form-label">Security Deposit (₹)</label><input type="number" className="input-field" value={stayDetails.securityDeposit} onChange={e => setStayDetails(s => ({ ...s, securityDeposit: +e.target.value }))} /></div>
             <div><label className="form-label">Notice Period (days)</label><input type="number" className="input-field" value={stayDetails.noticePeriodDays} onChange={e => setStayDetails(s => ({ ...s, noticePeriodDays: +e.target.value }))} /></div>
+            {/* Staying Period */}
+            <div>
+              <label className="form-label">Staying Period</label>
+              <div className="flex gap-3 flex-wrap">
+                {[['6_MONTHS','6 Months'],['12_MONTHS','12 Months'],['OTHER','Other']].map(([val,lbl]) => (
+                  <label key={val} className={cn('flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium',
+                    stayingPeriod === val ? 'border-primary bg-primary/5 text-primary' : 'border-surface-border text-text-secondary hover:border-primary/40')}>
+                    <input type="radio" name="stayingPeriod" value={val} checked={stayingPeriod === val}
+                      onChange={() => setStayingPeriod(val)} className="hidden" />
+                    {lbl}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

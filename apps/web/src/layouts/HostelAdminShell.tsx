@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, BedDouble, Users, BookOpen,
   CreditCard, Receipt, MessageSquare, BarChart3, Settings,
-  LogOut, Menu, X,
+  LogOut, Menu, X, UserPlus,
   Package, UserCheck, Database, UtensilsCrossed
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +29,8 @@ import StudentProfilePage from '@/pages/admin/erp/StudentProfilePage';
 import CheckInPage from '@/pages/admin/erp/CheckInPage';
 import CheckOutPage from '@/pages/admin/erp/CheckOutPage';
 import StaffProfilePage from '@/pages/admin/erp/StaffProfilePage';
+import PrintPreviewPage from '@/pages/admin/erp/PrintPreviewPage';
+import AdminLeadsPage from '@/pages/admin/erp/AdminLeadsPage';
 // Pages — Settings
 import AdminProfilePage from '@/pages/admin/settings/ProfilePage';
 import DevEmailsPage from '@/pages/admin/dev/DevEmailsPage';
@@ -39,6 +41,7 @@ const NAV = [
   { section: 'OVERVIEW', items: [{ label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' }] },
   { section: 'MARKETPLACE', items: [
     { label: 'My Properties', icon: Building2, path: '/admin/properties', permKey: 'canManageMarketplace' },
+    { label: 'Leads',         icon: UserPlus,  path: '/admin/leads',      permKey: 'canManageMarketplace' },
     { label: 'Bookings',      icon: BookOpen,  path: '/admin/bookings',   permKey: 'canManageMarketplace' },
   ]},
   { section: 'HOSTEL ERP', items: [
@@ -215,6 +218,8 @@ export default function HostelAdminShell() {
             <Route path="profile" element={<AdminProfilePage />} />
             <Route path="checkin" element={<CheckInPage />} />
             <Route path="checkout/:studentId" element={<CheckOutPage />} />
+            <Route path="leads" element={<AdminLeadsPage />} />
+            <Route path="print-preview/:studentId" element={<PrintPreviewPage />} />
             <Route path="dev/emails" element={<DevEmailsPage />} />
             <Route path="*" element={<AdminDashboard />} />
           </Routes>

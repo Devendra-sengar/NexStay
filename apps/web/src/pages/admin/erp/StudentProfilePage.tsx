@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, User, FileText, Users, Home, Receipt, MessageSquare,
   Phone, Mail, GraduationCap, MapPin, Calendar, ShieldCheck, ShieldAlert,
-  Upload, Building2, BedDouble, LogOut, CreditCard, CheckCircle2, Clock
+  Upload, Building2, BedDouble, LogOut, CreditCard, CheckCircle2, Clock, Printer
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useErpStudentById, useStudentRent, useRecordRentPayment } from '@/lib/adminApi';
@@ -268,14 +268,22 @@ export default function StudentProfilePage() {
             <span className={cn('badge mt-1 text-xs', student.status === 'ACTIVE' ? 'badge-success' : 'badge-gray')}>{student.status}</span>
           </div>
         </div>
-        {student.status === 'ACTIVE' && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate(`/admin/checkout/${student._id}`)}
-            className="btn-danger flex items-center gap-2"
+            onClick={() => navigate(`/admin/print-preview/${student._id}`)}
+            className="btn-secondary flex items-center gap-2 bg-surface text-text-primary hover:bg-surface-input"
           >
-            <LogOut className="w-4 h-4" />Process Check-Out
+            <Printer className="w-4 h-4" />Print Registration
           </button>
-        )}
+          {student.status === 'ACTIVE' && (
+            <button
+              onClick={() => navigate(`/admin/checkout/${student._id}`)}
+              className="btn-danger flex items-center gap-2"
+            >
+              <LogOut className="w-4 h-4" />Process Check-Out
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tab navigation */}

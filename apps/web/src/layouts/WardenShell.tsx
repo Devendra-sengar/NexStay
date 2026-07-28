@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, DoorOpen, MessageSquare, IndianRupee, Wallet,
-  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock,
+  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock, UserPlus
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StaffPermissions } from '@/types/shared';
@@ -16,6 +16,7 @@ import WardenComplaintsPage from '@/pages/warden/ComplaintsPage';
 import WardenRentPage       from '@/pages/warden/RentPage';
 import WardenSalaryPage     from '@/pages/warden/SalaryPage';
 import WardenMenuPage       from '@/pages/warden/MenuPage';
+import WardenLeadsPage      from '@/pages/warden/WardenLeadsPage';
 
 const perm = (p: keyof StaffPermissions) => (perms?: StaffPermissions | null) => perms?.[p] ?? false;
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -28,6 +29,7 @@ export default function WardenShell() {
 
   const navItems = [
     { to: '/warden/dashboard',   label: 'Dashboard',    icon: LayoutDashboard, allowed: true },
+    { to: '/warden/leads',       label: 'Enquiries',    icon: UserPlus,        allowed: true },
     { to: '/warden/students',    label: 'Students',     icon: Users,           allowed: perm('canViewStudents')(perms) },
     { to: '/warden/rooms',       label: 'Rooms',        icon: DoorOpen,        allowed: perm('canManageRooms')(perms) },
     { to: '/warden/complaints',  label: 'Complaints',   icon: MessageSquare,   allowed: perm('canManageComplaints')(perms) },
@@ -135,6 +137,7 @@ export default function WardenShell() {
             <Routes>
               <Route index           element={<WardenDashboardPage />} />
               <Route path="dashboard"  element={<WardenDashboardPage />} />
+              <Route path="leads"      element={<WardenLeadsPage />} />
               <Route path="students"   element={perms?.canViewStudents     ? <WardenStudentsPage />   : <AccessRestricted permission="canViewStudents" />} />
               <Route path="rooms"      element={perms?.canManageRooms      ? <WardenRoomsPage />      : <AccessRestricted permission="canManageRooms" />} />
               <Route path="complaints" element={perms?.canManageComplaints ? <WardenComplaintsPage /> : <AccessRestricted permission="canManageComplaints" />} />

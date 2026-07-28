@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import {
   Building2, Plus, Search, ToggleLeft, ToggleRight, Trash2, Users,
-  X, Loader2, Eye, EyeOff, Copy, CheckCheck, KeyRound, RefreshCw, ShieldCheck,
+  X, Loader2, Eye, EyeOff, Copy, CheckCheck, KeyRound, RefreshCw, ShieldCheck, Palette, Check as CheckIcon,
 } from 'lucide-react';
 import {
-  useSuperHostels, useCreateHostelWithOwner, useToggleHostelActive, useDeleteHostel, useUpdateHostel
+  useSuperHostels, useCreateHostelWithOwner, useToggleHostelActive, useDeleteHostel, useUpdateHostel,
+  useSetHostelTemplate
 } from '@/lib/superAdminApi';
 import toast from 'react-hot-toast';
 import OwnerPermissionsModal from './OwnerPermissionsModal';
@@ -277,6 +278,62 @@ function CreateHostelModal({ onClose, onCreated }: {
   );
 }
 
+// ── Template Assignment Modal ──────────────────────────────────────────────────
+function TemplateModal({ hostel, onClose, onSelect, isPending }: { hostel: any; onClose: () => void; onSelect: (tpl: string) => void; isPending: boolean }) {
+  const templates = [
+    { id: 'classic', name: 'Classic', desc: 'Formal look with dotted lines and decorative border.', previewColor: '#000' },
+    { id: 'modern', name: 'Modern', desc: 'Clean, professional grid layout with colored accents.', previewColor: '#1d4ed8' },
+    { id: 'minimal', name: 'Minimal', desc: 'Simple rows and clean typography, no distractions.', previewColor: '#333' },
+    { id: 'elegant', name: 'Elegant', desc: 'Gold ornamental border and classic serif typography.', previewColor: '#b8860b' },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+      <div style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 700, padding: 32, position: 'relative', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={24} /></button>
+        <h2 style={{ margin: '0 0 4px', fontSize: 24, fontWeight: 800, color: '#0f172a' }}>Assign Print Template</h2>
+        <p style={{ margin: '0 0 24px', color: '#64748b' }}>Select the registration form style for <strong>{hostel.name}</strong>.</p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+          {templates.map(t => {
+            const isSelected = hostel.printTemplate === t.id || (!hostel.printTemplate && t.id === 'classic');
+            return (
+              <button
+                key={t.id}
+                onClick={() => onSelect(t.id)}
+                disabled={isPending}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left',
+                  padding: 16, borderRadius: 12, border: `2px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}`,
+                  background: isSelected ? '#eff6ff' : 'white',
+                  cursor: isPending ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  position: 'relative',
+                  opacity: isPending ? 0.7 : 1,
+                }}
+              >
+                {isSelected && <div style={{ position: 'absolute', top: 12, right: 12, color: '#3b82f6' }}><CheckIcon size={20} strokeWidth={3} /></div>}
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: t.previewColor, opacity: 0.15 }} />
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{t.name}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{t.desc}</p>
+                
+                {isSelected && (
+                  <div style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: '#3b82f6', background: '#dbeafe', padding: '4px 10px', borderRadius: 100 }}>
+                    Currently Active
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function HostelsPage() {
   const [search, setSearch] = useState('');
@@ -284,6 +341,7 @@ export default function HostelsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [credentials, setCredentials] = useState<{ creds: any; hostelName: string } | null>(null);
   const [permOwner, setPermOwner] = useState<any>(null); // owner for permissions modal
+  const [templateTarget, setTemplateTarget] = useState<any>(null); // hostel for template assignment
 
   const { data, isLoading } = useSuperHostels({
     ...(search ? { search } : {}),
@@ -319,6 +377,15 @@ export default function HostelsPage() {
     } catch {
       toast.error('Failed to update mess module');
     }
+  };
+
+  const setTemplate = useSetHostelTemplate();
+  const handleSetTemplate = async (hostelId: string, template: string) => {
+    try {
+      await setTemplate.mutateAsync({ hostelId, printTemplate: template });
+      toast.success(`Template set to "${template}"`);
+      setTemplateTarget(null);
+    } catch { toast.error('Failed to set template'); }
   };
 
   return (
@@ -399,6 +466,10 @@ export default function HostelsPage() {
                     <ShieldCheck size={17} />
                   </button>
                 )}
+                <button onClick={() => setTemplateTarget(h)} title="Set print template"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0891b2', padding: 4 }}>
+                  <Palette size={17} />
+                </button>
                 <button onClick={() => handleToggle(h._id)} title={h.isActive ? 'Deactivate' : 'Activate'}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: h.isActive ? '#22c55e' : '#94a3b8' }}>
                   {h.isActive ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
@@ -437,6 +508,16 @@ export default function HostelsPage() {
         <OwnerPermissionsModal
           owner={permOwner}
           onClose={() => setPermOwner(null)}
+        />
+      )}
+
+      {/* Template Assignment Modal */}
+      {templateTarget && (
+        <TemplateModal
+          hostel={templateTarget}
+          onClose={() => setTemplateTarget(null)}
+          onSelect={(tpl: string) => handleSetTemplate(templateTarget._id, tpl)}
+          isPending={setTemplate.isPending}
         />
       )}
 

@@ -208,3 +208,19 @@ export function useUpdateStaffPermissions() {
   });
 }
 
+// ── Print Template Assignment ─────────────────────────────────────────────────
+export function useSetHostelTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hostelId, printTemplate }: { hostelId: string; printTemplate: string }) => {
+      const { data } = await sa(`/hostels/${hostelId}/template`, {
+        method: 'PATCH',
+        data: { printTemplate },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['super-hostels'] });
+    },
+  });
+}

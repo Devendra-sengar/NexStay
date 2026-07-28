@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Search, UserCheck, LogOut, CreditCard, Filter, UserPlus } from 'lucide-react';
+import { Users, Search, UserCheck, LogOut, CreditCard, Filter, UserPlus, Printer } from 'lucide-react';
 import { useErpStudents, useAdminProperties } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
@@ -132,6 +132,11 @@ export default function StudentsPage() {
                             className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-text-muted"
                             title="View Profile"
                           ><UserCheck className="w-3.5 h-3.5" /></button>
+                          <button
+                            onClick={() => navigate(`/admin/print-preview/${s._id}`)}
+                            className="p-1.5 rounded-lg hover:bg-secondary/10 hover:text-secondary transition-colors text-text-muted"
+                            title="Print Registration"
+                          ><Printer className="w-3.5 h-3.5" /></button>
                           {s.status === 'ACTIVE' && (
                             <button
                               onClick={() => navigate(`/admin/checkout/${s._id}`)}

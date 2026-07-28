@@ -596,3 +596,72 @@ export function useMarkAllRead() {
 export function useDevEmails() {
   return useQuery({ queryKey: ['dev-emails'], queryFn: async () => { const { data } = await apiClient.get('/dev/emails'); return data.data as any[]; }, staleTime: 5000 });
 }
+
+// ── Print Preview ─────────────────────────────────────────────────────────────
+export function useGetStudentForPrint(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ['student-for-print', studentId],
+    queryFn: async () => {
+      const { data } = await api(`/erp/students/${studentId}`);
+      return data.data as any;
+    },
+    enabled: !!studentId,
+    staleTime: 30000,
+  });
+}
+
+// Fetch hostel info for print (admin's own hostel)
+export function useAdminHostelInfo() {
+  return useQuery({
+    queryKey: ['admin-hostel-info'],
+    queryFn: async () => {
+      const { data } = await api('/hostel');
+      return data.data as any;
+    },
+    staleTime: 60000,
+  });
+}
+
+// ── Leads / Enquiries ─────────────────────────────────────────────────────────
+export function useGetLeads(params?: { propertyId?: string; status?: string; search?: string; hostelId?: string }) {
+  return useQuery({
+    queryKey: ['leads', params],
+    queryFn: async () => {
+      const { data } = await api('/erp/leads', { params });
+      return data.data as any[];
+    }
+  });
+}
+
+export function useCreateLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const { data } = await api('/erp/leads', { method: 'POST', data: body });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] })
+  });
+}
+
+export function useUpdateLeadStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data } = await api(`/erp/leads/${id}/status`, { method: 'PATCH', data: { status } });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] })
+  });
+}
+
+export function useDeleteLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api(`/erp/leads/${id}`, { method: 'DELETE' });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] })
+  });
+}
