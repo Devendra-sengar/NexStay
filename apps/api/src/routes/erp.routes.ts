@@ -19,7 +19,9 @@ import {
   getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem,
   getAdminComplaints, getAdminComplaintById, updateComplaintStatus, addInternalNote,
 } from '../controllers/erpStaff.controller';
-
+import {
+  createLead, getLeads, updateLeadStatus, deleteLead
+} from '../controllers/lead.controller';
 
 const router = Router();
 router.use(protect);
@@ -99,5 +101,11 @@ router.post('/complaints/:id/notes', addInternalNote);
 
 // ── Receipt (Bug #5) ──────────────────────────────────────────────
 router.get('/rent/:id/receipt', getRentReceipt);
+
+// ── Leads / Enquiries ─────────────────────────────────────────────
+router.get('/leads', getLeads);
+router.post('/leads', createLead);
+router.patch('/leads/:id/status', updateLeadStatus);
+router.delete('/leads/:id', deleteLead);
 
 export default router;

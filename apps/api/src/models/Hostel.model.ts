@@ -21,6 +21,7 @@ export interface IHostelDoc extends Document {
     lunch: string;
     dinner: string;
   };
+  printTemplate?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +65,11 @@ const HostelSchema = new Schema<IHostelDoc>(
       breakfast: { type: String, default: '8:00 AM - 9:30 AM' },
       lunch: { type: String, default: '12:30 PM - 2:00 PM' },
       dinner: { type: String, default: '7:30 PM - 9:00 PM' },
+    },
+    printTemplate: {
+      type: String,
+      enum: ['classic', 'modern', 'minimal', 'elegant'],
+      default: 'classic',
     },
   },
   { timestamps: true }

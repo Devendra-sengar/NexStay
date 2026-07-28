@@ -13,7 +13,7 @@ import {
   fixStudentOwnerConflict,
 } from '../controllers/superAdmin.controller';
 
-import { setOwnerPermissions } from '../controllers/hostelManagement.controller';
+import { setOwnerPermissions, setHostelTemplate } from '../controllers/hostelManagement.controller';
 
 const router = Router();
 router.use(protect);
@@ -43,6 +43,7 @@ router.get('/hostels/:id/staff', getHostelStaff);
 router.get('/owners', getAllOwners);
 router.post('/owners', createOwner);
 router.patch('/owners/:id/permissions', setOwnerPermissions);   // 🔒 SuperAdmin controls owner modules
+router.patch('/hostels/:id/template', setHostelTemplate);         // 🎨 Assign print template to hostel
 
 // ── Staff ─────────────────────────────────────────────────────────────────────
 router.post('/staff', createStaffUser);

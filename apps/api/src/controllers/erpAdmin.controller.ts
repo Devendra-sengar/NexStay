@@ -349,11 +349,17 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       bookingId,          // for booking-linked flow
       // Walk-in fields
       name, phone, email, college, guardianName, guardianPhone,
-      aadhaarUrl, studentIdUrl, photoUrl,
+      aadhaarUrl, aadhaarNumber, studentIdUrl, photoUrl,
       // Common
       propertyId, bedId,
       moveInDate, monthlyRent, securityDeposit, noticePeriodDays,
       internalNote,
+      // ── Extended Registration Form Fields ────────────────────────────────────
+      fatherName, fatherOccupation, fatherContact,
+      motherName, dateOfBirth, bloodGroup, maritalStatus,
+      education, occupation, organization,
+      permanentAddress, guardianAddress, vehicleNumber,
+      medicalHistory, stayingPeriod,
     } = req.body;
 
     let booking: any;
@@ -507,7 +513,9 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       email: studentEmail,
       college: college ?? booking?.college ?? '',
       guardianName: guardianName ?? '', guardianPhone: guardianPhone ?? '',
+      guardianAddress: guardianAddress ?? '',
       aadhaarUrl: aadhaarUrl ?? booking?.aadhaarUrl ?? '',
+      aadhaarNumber: aadhaarNumber ?? '',
       studentIdUrl: studentIdUrl ?? booking?.studentIdUrl ?? '',
       photoUrl: photoUrl ?? booking?.photoUrl ?? '',
       admissionDate: moveIn,
@@ -515,6 +523,21 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       monthlyRent: monthlyRent ?? booking?.monthlyRent ?? 6000,
       securityDeposit: securityDeposit ?? booking?.advancePaid ?? 0,
       status: 'ACTIVE',
+      // ── Extended Registration Form Fields ───────────────────────────────────
+      fatherName: fatherName ?? '',
+      fatherOccupation: fatherOccupation ?? '',
+      fatherContact: fatherContact ?? '',
+      motherName: motherName ?? '',
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      bloodGroup: bloodGroup ?? '',
+      maritalStatus: maritalStatus ?? '',
+      education: education ?? '',
+      occupation: occupation ?? '',
+      organization: organization ?? '',
+      permanentAddress: permanentAddress ?? '',
+      vehicleNumber: vehicleNumber ?? '',
+      medicalHistory: medicalHistory ?? '',
+      stayingPeriod: stayingPeriod ?? '',
     }], { session });
 
     // Set bed OCCUPIED

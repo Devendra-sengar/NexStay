@@ -468,3 +468,32 @@ export const getHostelStudents = async (req: AuthRequest, res: Response): Promis
     res.json({ success: true, data: students, total, hasNextPage: p * lim < total });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
+
+// ── PATCH /api/superadmin/hostels/:id/template ─────────────────────────────────
+export const setHostelTemplate = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { printTemplate } = req.body;
+
+    const VALID = ['classic', 'modern', 'minimal', 'elegant'];
+    if (!printTemplate || !VALID.includes(printTemplate)) {
+      res.status(400).json({ success: false, message: `printTemplate must be one of: ${VALID.join(', ')}` });
+      return;
+    }
+
+    const hostel = await Hostel.findByIdAndUpdate(
+      id,
+      { printTemplate },
+      { new: true }
+    ).lean();
+
+    if (!hostel) {
+      res.status(404).json({ success: false, message: 'Hostel not found' });
+      return;
+    }
+
+    res.json({ success: true, message: 'Print template updated', data: hostel });
+  } catch {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};

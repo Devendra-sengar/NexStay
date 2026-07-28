@@ -13,7 +13,9 @@ export interface IHostelStudentDoc extends Document {
   college?: string;
   guardianName?: string;
   guardianPhone?: string;
+  guardianAddress?: string;
   aadhaarUrl?: string;
+  aadhaarNumber?: string;
   studentIdUrl?: string;
   photoUrl?: string;
   admissionDate: Date;
@@ -22,6 +24,21 @@ export interface IHostelStudentDoc extends Document {
   monthlyRent: number;
   securityDeposit: number;
   status: string;
+  // ── Registration Form Fields ───────────────────────────────────────────────
+  fatherName?: string;
+  fatherOccupation?: string;
+  fatherContact?: string;
+  motherName?: string;
+  dateOfBirth?: Date;
+  bloodGroup?: string;
+  maritalStatus?: string;
+  education?: string;
+  occupation?: string;
+  organization?: string;
+  permanentAddress?: string;
+  vehicleNumber?: string;
+  medicalHistory?: string;
+  stayingPeriod?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,7 +57,9 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
     college: { type: String, default: '' },
     guardianName: { type: String, default: '' },
     guardianPhone: { type: String, default: '', match: [/^(?:\d{10})?$/, 'Guardian phone number must be exactly 10 digits'] },
+    guardianAddress: { type: String, default: '' },
     aadhaarUrl: { type: String, default: '' },
+    aadhaarNumber: { type: String, default: '' },
     studentIdUrl: { type: String, default: '' },
     photoUrl: { type: String, default: '' },
     admissionDate: { type: Date, required: true },
@@ -52,6 +71,33 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
       type: String,
       enum: ['ACTIVE', 'CHECKED_OUT'],
       default: 'ACTIVE',
+    },
+    // ── Registration Form Fields ─────────────────────────────────────────────
+    fatherName: { type: String, default: '' },
+    fatherOccupation: { type: String, default: '' },
+    fatherContact: { type: String, default: '' },
+    motherName: { type: String, default: '' },
+    dateOfBirth: { type: Date },
+    bloodGroup: {
+      type: String,
+      enum: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', ''],
+      default: '',
+    },
+    maritalStatus: {
+      type: String,
+      enum: ['Single', 'Married', 'Divorced', 'Widowed', ''],
+      default: '',
+    },
+    education: { type: String, default: '' },
+    occupation: { type: String, default: '' },
+    organization: { type: String, default: '' },
+    permanentAddress: { type: String, default: '' },
+    vehicleNumber: { type: String, default: '' },
+    medicalHistory: { type: String, default: '' },
+    stayingPeriod: {
+      type: String,
+      enum: ['6_MONTHS', '12_MONTHS', 'OTHER', ''],
+      default: '',
     },
   },
   { timestamps: true }
