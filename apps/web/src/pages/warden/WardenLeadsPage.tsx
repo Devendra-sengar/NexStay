@@ -251,7 +251,7 @@ function WardenLeadModal({ open, onClose }: { open: boolean; onClose: () => void
               <label className="form-label">Notes</label>
               <textarea className="input-field resize-none h-20" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Any specific requirements..." />
             </div>
-            
+
             <div className="pt-2">
               <button type="submit" disabled={createLead.isPending} className="btn-primary w-full flex justify-center">
                 {createLead.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Save Enquiry'}
