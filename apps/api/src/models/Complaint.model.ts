@@ -14,6 +14,7 @@ export interface IComplaintDoc extends Document {
   statusHistory: Array<{ status: string; note?: string; changedBy?: string; changedAt: Date }>;
   internalNotes: Array<{ note: string; addedBy: string; addedAt: Date }>;
   resolvedAt?: Date;
+  raisedBy: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,7 +30,7 @@ const ComplaintSchema = new Schema<IComplaintDoc>(
     description: { type: String, required: true },
     category: {
       type: String,
-      enum: ['ELECTRICITY', 'FOOD', 'INTERNET', 'WATER', 'CLEANING', 'OTHER'],
+      enum: ['ELECTRICITY', 'FOOD', 'INTERNET', 'WATER', 'CLEANING', 'DISCIPLINARY', 'WARNING', 'RULE_VIOLATION', 'OTHER'],
       required: true,
     },
     status: {
@@ -54,6 +55,11 @@ const ComplaintSchema = new Schema<IComplaintDoc>(
       },
     ],
     resolvedAt: { type: Date },
+    raisedBy: { 
+      type: String, 
+      enum: ['STUDENT', 'ADMIN', 'WARDEN'], 
+      default: 'STUDENT' 
+    },
   },
   { timestamps: true }
 );

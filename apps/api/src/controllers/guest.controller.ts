@@ -185,9 +185,10 @@ export const createGuestComplaint = async (req: AuthRequest, res: Response): Pro
     // Find an active/confirmed booking to get tenantId
     let targetPropertyId = propertyId;
     let tenantId: any;
+    let prop: any = null;
 
     if (targetPropertyId) {
-      const prop = await Property.findById(targetPropertyId).lean();
+      prop = await Property.findById(targetPropertyId).lean();
       tenantId = prop ? (prop as any).tenantId : undefined;
     } else {
       const activeBooking = await Booking.findOne({
@@ -200,8 +201,13 @@ export const createGuestComplaint = async (req: AuthRequest, res: Response): Pro
         return;
       }
       targetPropertyId = activeBooking.propertyId;
-      const prop = await Property.findById(targetPropertyId).lean();
+      prop = await Property.findById(targetPropertyId).lean();
       tenantId = prop ? (prop as any).tenantId : undefined;
+    }
+
+    if (prop && prop.isComplaintFeatureEnabled === false) {
+      res.status(403).json({ success: false, message: 'Complaints are currently disabled for this property.' });
+      return;
     }
 
     if (!tenantId) {

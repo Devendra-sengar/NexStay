@@ -91,7 +91,14 @@ function BedPopover({ bed, onClose, anchorRect }: { bed: any; onClose: () => voi
         </div>
       )}
       {bed.status === 'AVAILABLE' && (
-        <p className="text-sm text-text-secondary">This bed is available.</p>
+        <div className="space-y-1.5 mt-2">
+          <p className="text-sm text-text-secondary">This bed is available.</p>
+          {bed.price && (
+            <p className="text-xs font-medium text-text-primary bg-surface-input p-2 rounded-lg inline-block">
+              Price: ₹{bed.price.toLocaleString('en-IN')}/mo
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -187,12 +194,23 @@ function RoomModal({ propertyId, floors, room, onClose }: { propertyId: string; 
   const update = useUpdateRoom();
 
   const capacity = CAPACITY_MAP[roomType] ?? 1;
+  const [isSamePrice, setIsSamePrice] = useState(true);
+  const [individualPrices, setIndividualPrices] = useState<number[]>(Array(capacity).fill(room?.pricePerBed ?? 6000));
+
+  useEffect(() => {
+    setIndividualPrices(prev => {
+      const next = [...prev];
+      while (next.length < capacity) next.push(pricePerBed);
+      return next.slice(0, capacity);
+    });
+  }, [capacity, pricePerBed]);
 
   const submit = async () => {
     if (!roomNumber.trim()) { toast.error('Room number required'); return; }
+    const bedPrices = isSamePrice ? Array(capacity).fill(pricePerBed) : individualPrices;
     try {
-      if (room) { await update.mutateAsync({ id: room._id, roomNumber, floorId, roomType, pricePerBed }); toast.success('Room updated'); }
-      else { await create.mutateAsync({ propertyId, floorId, roomNumber, roomType, capacity, pricePerBed }); toast.success(`Room created with ${capacity} bed(s)`); }
+      if (room) { await update.mutateAsync({ id: room._id, roomNumber, floorId, roomType, pricePerBed, bedPrices }); toast.success('Room updated'); }
+      else { await create.mutateAsync({ propertyId, floorId, roomNumber, roomType, capacity, pricePerBed, bedPrices }); toast.success(`Room created with ${capacity} bed(s)`); }
       onClose();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
   };
@@ -217,7 +235,31 @@ function RoomModal({ propertyId, floors, room, onClose }: { propertyId: string; 
             </select>
           </div>
           {!room && <p className="text-xs text-text-muted">Capacity: {capacity} bed(s) will be auto-generated (B1–B{capacity})</p>}
-          <div><label className="form-label">Price per Bed (₹/month)</label><input type="number" className="input-field" value={pricePerBed} onChange={e => setPricePerBed(+e.target.value)} /></div>
+          
+          <div className="flex items-center gap-2 mt-2">
+            <input type="checkbox" id="samePrice" className="rounded border-surface-border text-primary focus:ring-primary w-4 h-4" checked={isSamePrice} onChange={e => setIsSamePrice(e.target.checked)} />
+            <label htmlFor="samePrice" className="text-sm font-medium text-text-primary cursor-pointer">Same price for all beds</label>
+          </div>
+
+          {isSamePrice ? (
+            <div><label className="form-label">Price per Bed (₹/month)</label><input type="number" className="input-field" value={pricePerBed} onChange={e => setPricePerBed(+e.target.value)} /></div>
+          ) : (
+            <div className="space-y-2 border border-surface-border p-3 rounded-xl bg-surface-input/30">
+              <label className="form-label mb-1">Individual Bed Prices (₹/month)</label>
+              <div className="grid grid-cols-2 gap-3">
+                {individualPrices.map((price, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-xs font-bold w-6 text-text-muted">B{idx + 1}</span>
+                    <input type="number" className="input-field py-1.5 px-2 text-sm" value={price} onChange={e => {
+                      const next = [...individualPrices];
+                      next[idx] = +e.target.value;
+                      setIndividualPrices(next);
+                    }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex gap-3 mt-5">
           <button className="btn-secondary flex-1" onClick={onClose}>Cancel</button>

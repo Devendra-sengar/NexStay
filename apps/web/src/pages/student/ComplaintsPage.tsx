@@ -70,13 +70,25 @@ export default function StudentComplaintsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {complaints.map((c: any) => {
             const sc = statusColor(c.status);
+            const isAdminAction = c.raisedBy && c.raisedBy !== 'STUDENT';
             return (
-              <div key={c._id} style={{ background: 'white', borderRadius: 12, padding: '14px 16px', border: '1px solid #f1f5f9' }}>
+              <div key={c._id} style={{ background: isAdminAction ? '#fff1f2' : 'white', borderRadius: 12, padding: '14px 16px', border: `1px solid ${isAdminAction ? '#fecdd3' : '#f1f5f9'}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 600, margin: 0 }}>{c.title}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {isAdminAction && <AlertCircle size={16} color="#e11d48" />}
+                    <p style={{ color: isAdminAction ? '#be123c' : '#0f172a', fontSize: 14, fontWeight: 600, margin: 0 }}>{c.title}</p>
+                  </div>
                   <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: sc.bg, color: sc.color, flexShrink: 0, marginLeft: 8 }}>{c.status}</span>
                 </div>
-                <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 4px' }}>{c.category} · {new Date(c.createdAt).toLocaleDateString('en-IN')}</p>
+                {isAdminAction && (
+                  <div style={{ padding: '4px 8px', background: '#ffe4e6', color: '#be123c', fontSize: 11, fontWeight: 600, borderRadius: 6, display: 'inline-block', marginBottom: 6 }}>
+                    Action taken by {c.raisedBy}
+                  </div>
+                )}
+                <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 4px' }}>
+                  {c.category} · {new Date(c.createdAt).toLocaleDateString('en-IN')}
+                  {c.propertyId?.name && ` · ${c.propertyId.name}`}
+                </p>
                 <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>{c.description}</p>
               </div>
             );

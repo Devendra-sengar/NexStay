@@ -13,6 +13,8 @@ import StudentMessPage       from '@/pages/student/MessPage';
 import StudentComplaintsPage from '@/pages/student/ComplaintsPage';
 import StudentNoticesPage    from '@/pages/student/NoticesPage';
 import StudentProfilePage    from '@/pages/student/ProfilePage';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/api';
 
 const NAV = [
   { to: '/student/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
@@ -30,6 +32,17 @@ export default function StudentShell() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const handleLogout = async () => { await logout(); navigate('/login'); };
+
+  const { data: dashboardData } = useQuery({
+    queryKey: ['student-dashboard'],
+    queryFn: () => api.get('/student/dashboard').then(r => r.data.data),
+  });
+
+  const isComplaintFeatureEnabled = dashboardData?.isComplaintFeatureEnabled ?? true;
+  const filteredNav = NAV.filter(item => {
+    if (item.to === '/student/complaints' && !isComplaintFeatureEnabled) return false;
+    return true;
+  });
 
   return (
     <div className="h-screen overflow-hidden bg-surface flex">
@@ -63,7 +76,7 @@ export default function StudentShell() {
 
         {/* Nav */}
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-          {NAV.map(item => (
+          {filteredNav.map(item => (
             <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => cn(
                 'nav-item',

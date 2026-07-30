@@ -24,7 +24,7 @@ const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
 // ─── GET /api/hostel-admin/erp/rooms?propertyId=... ──────────────────────────
 export const getErpRooms = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     if (!propertyId) { res.status(400).json({ success: false, message: 'propertyId required' }); return; }
 
@@ -54,7 +54,7 @@ export const getErpRooms = async (req: AuthRequest, res: Response): Promise<void
 // ─── GET /api/hostel-admin/erp/rooms/:roomId/beds ────────────────────────────
 export const getRoomBeds = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { roomId } = req.params;
 
     const room = await Room.findOne({ _id: roomId, tenantId }).lean();
@@ -85,7 +85,7 @@ export const getRoomBeds = async (req: AuthRequest, res: Response): Promise<void
 // ─── POST /api/hostel-admin/erp/floors ───────────────────────────────────────
 export const createFloor = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, name, order } = req.body;
     if (!propertyId || !name) { res.status(400).json({ success: false, message: 'propertyId and name required' }); return; }
     const prop = await Property.findOne({ _id: propertyId, tenantId }).lean();
@@ -113,7 +113,7 @@ export const createFloor = async (req: AuthRequest, res: Response): Promise<void
 // ─── PUT /api/hostel-admin/erp/floors/:id ────────────────────────────────────
 export const updateFloor = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const floor = await Floor.findOne({ _id: req.params.id, tenantId });
     if (!floor) { res.status(404).json({ success: false, message: 'Floor not found' }); return; }
     const { name, order } = req.body;
@@ -129,7 +129,7 @@ export const updateFloor = async (req: AuthRequest, res: Response): Promise<void
 // ─── DELETE /api/hostel-admin/erp/floors/:id ─────────────────────────────────
 export const deleteFloor = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const floor = await Floor.findOne({ _id: req.params.id, tenantId });
     if (!floor) { res.status(404).json({ success: false, message: 'Floor not found' }); return; }
     const hasRooms = await Room.countDocuments({ floorId: floor._id });
@@ -144,8 +144,8 @@ export const deleteFloor = async (req: AuthRequest, res: Response): Promise<void
 // ─── POST /api/hostel-admin/erp/rooms ────────────────────────────────────────
 export const createRoom = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
-    const { propertyId, floorId, roomNumber, roomType, capacity, pricePerBed } = req.body;
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { propertyId, floorId, roomNumber, roomType, capacity, pricePerBed, bedPrices } = req.body;
     if (!propertyId || !floorId || !roomNumber || !roomType || !capacity) {
       res.status(400).json({ success: false, message: 'propertyId, floorId, roomNumber, roomType, capacity required' }); return;
     }
@@ -157,7 +157,8 @@ export const createRoom = async (req: AuthRequest, res: Response): Promise<void>
     const room = await Room.create({ tenantId, propertyId, floorId, roomNumber, roomType, capacity, pricePerBed: pricePerBed ?? 6000, status: 'AVAILABLE' });
     // Auto-generate beds
     for (let i = 1; i <= capacity; i++) {
-      await Bed.create({ tenantId, propertyId, roomId: room._id, bedNumber: `B${i}`, status: 'AVAILABLE' });
+      const price = bedPrices && Array.isArray(bedPrices) && bedPrices.length >= i ? bedPrices[i - 1] : (pricePerBed ?? 6000);
+      await Bed.create({ tenantId, propertyId, roomId: room._id, bedNumber: `B${i}`, status: 'AVAILABLE', price });
     }
 
     // Notify Super Admins
@@ -182,15 +183,26 @@ export const createRoom = async (req: AuthRequest, res: Response): Promise<void>
 // ─── PUT /api/hostel-admin/erp/rooms/:id ─────────────────────────────────────
 export const updateRoom = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const room = await Room.findOne({ _id: req.params.id, tenantId });
     if (!room) { res.status(404).json({ success: false, message: 'Room not found' }); return; }
-    const { roomNumber, roomType, pricePerBed, floorId } = req.body;
+    const { roomNumber, roomType, pricePerBed, floorId, bedPrices } = req.body;
     if (roomNumber) room.roomNumber = roomNumber;
     if (roomType) room.roomType = roomType;
     if (pricePerBed !== undefined) room.pricePerBed = pricePerBed;
     if (floorId) room.floorId = floorId;
     await room.save();
+
+    if (bedPrices && Array.isArray(bedPrices)) {
+      const beds = await Bed.find({ roomId: room._id }).sort({ bedNumber: 1 });
+      for (let i = 0; i < beds.length; i++) {
+        if (bedPrices[i] !== undefined) {
+          beds[i].price = bedPrices[i];
+          await beds[i].save();
+        }
+      }
+    }
+
     res.json({ success: true, data: room });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -200,7 +212,7 @@ export const updateRoom = async (req: AuthRequest, res: Response): Promise<void>
 // ─── DELETE /api/hostel-admin/erp/rooms/:id ──────────────────────────────────
 export const deleteRoom = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const room = await Room.findOne({ _id: req.params.id, tenantId });
     if (!room) { res.status(404).json({ success: false, message: 'Room not found' }); return; }
     const activeBed = await Bed.findOne({ roomId: room._id, status: { $in: ['OCCUPIED', 'RESERVED'] } });
@@ -216,7 +228,7 @@ export const deleteRoom = async (req: AuthRequest, res: Response): Promise<void>
 // ─── GET /api/hostel-admin/erp/students ──────────────────────────────────────
 export const getErpStudents = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, status, search, page = '1', limit = '20' } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, parseInt(limit));
@@ -254,7 +266,7 @@ export const getErpStudents = async (req: AuthRequest, res: Response): Promise<v
 // ─── GET /api/hostel-admin/erp/students/:id ──────────────────────────────────
 export const getErpStudentById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const student = await HostelStudent.findOne({ _id: req.params.id, tenantId })
       .populate('propertyId', 'name city address')
       .populate('bedId', 'bedNumber roomId')
@@ -277,7 +289,7 @@ export const getErpStudentById = async (req: AuthRequest, res: Response): Promis
 // ─── GET /api/hostel-admin/erp/students/:id/rent ─────────────────────────────
 export const getStudentRent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const records = await RentRecord.find({ tenantId, hostelStudentId: req.params.id }).sort({ month: -1 }).lean();
     res.json({ success: true, data: records });
   } catch (err) {
@@ -288,7 +300,7 @@ export const getStudentRent = async (req: AuthRequest, res: Response): Promise<v
 // ─── POST /api/hostel-admin/erp/rent/:id/pay ─────────────────────────────────
 export const recordRentPayment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { amount, paymentMethod, notes } = req.body;
     const record = await RentRecord.findOne({ _id: req.params.id, tenantId }).populate('hostelStudentId', 'guestId name');
     if (!record) { res.status(404).json({ success: false, message: 'Rent record not found' }); return; }
@@ -344,7 +356,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
   const session = supportsTx ? await mongoose.startSession() : null;
   if (session) session.startTransaction();
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const {
       bookingId,          // for booking-linked flow
       // Walk-in fields
@@ -372,7 +384,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId) })
       .select('_id hostelCode name')
       .lean();
-    const ownerHostelId = ownerHostel?._id ?? null;
+    const ownerHostelId = req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER' ? req.user.hostelId : (ownerHostel?._id ?? null);
 
     if (bookingId) {
       // ── Booking-linked flow ──
@@ -580,7 +592,7 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
   const session = supportsTx ? await mongoose.startSession() : null;
   if (session) session.startTransaction();
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { checkoutDate, depositReturn, notes, overrideReason } = req.body;
 
     const student = await HostelStudent.findOne({ _id: req.params.studentId, tenantId, status: 'ACTIVE' });
@@ -648,7 +660,7 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
 // ─── GET /api/hostel-admin/erp/dues/:studentId ───────────────────────────────
 export const getStudentDues = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const records = await RentRecord.find({
       tenantId, hostelStudentId: req.params.studentId,
       status: { $in: ['UNPAID', 'PARTIAL'] },

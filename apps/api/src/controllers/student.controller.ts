@@ -11,9 +11,12 @@ import { PaymentSubmission } from '../models/PaymentSubmission.model';
 import { PaymentTransaction } from '../models/PaymentTransaction.model';
 import { LedgerEntry } from '../models/LedgerEntry.model';
 import { AuditLog } from '../models/AuditLog.model';
+
+import { calculateDynamicFine } from '../utils/penalty';
 import { Bed } from '../models/Bed.model';
 import { Room } from '../models/Room.model';
 import { User } from '../models/User.model';
+import { Property } from '../models/Property.model';
 import bcrypt from 'bcryptjs';
 import cloudinary from '../config/cloudinary';
 
@@ -41,8 +44,10 @@ export const getStudentDashboard = async (req: AuthRequest, res: Response): Prom
     let room: any = null;
     let currentRent: any = null;
     let todayMenu: any = null;
+    let property: any = null;
 
     if (studentRecord) {
+      property = await Property.findById(studentRecord.propertyId).select('isComplaintFeatureEnabled').lean();
       hostel = await Hostel.findById(studentRecord.hostelId || (user as any)?.hostelId)
         .select('name hostelCode messEnabled messTimings').lean();
 
@@ -94,6 +99,7 @@ export const getStudentDashboard = async (req: AuthRequest, res: Response): Prom
           stayDays,
         },
         currentRent: currentRent || null,
+        isComplaintFeatureEnabled: property?.isComplaintFeatureEnabled ?? true,
         pendingComplaints,
         todayMenu: todayMenu || null,
         recentNotices,
@@ -191,16 +197,32 @@ export const getCurrentMonthRent = async (req: AuthRequest, res: Response): Prom
   try {
     const studentRecord = await HostelStudent.findOne({ guestId: req.user?.id, status: 'ACTIVE' }).lean();
     if (!studentRecord) { res.json({ success: true, data: null }); return; }
+    
     const thisMonth = new Date().toISOString().slice(0, 7);
-    const rent = await RentRecord.findOne({ hostelStudentId: studentRecord._id, month: thisMonth }).lean();
-    res.json({ success: true, data: rent || null });
-  } catch { res.status(500).json({ success: false, message: 'Server error' }); }
+    const rent = await RentRecord.findOne({ hostelStudentId: studentRecord._id, month: thisMonth });
+    const property = await Property.findById(studentRecord.propertyId).select('allowCustomPaymentAmount latePenaltyType latePenaltyAmount gracePeriodDays').lean();
+    
+    if (rent && property) {
+      const computedFine = calculateDynamicFine(rent, property);
+      if (computedFine !== (rent.fine || 0) && rent.status !== 'PAID') {
+        rent.fine = computedFine;
+        await rent.save();
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      data: rent ? rent.toObject() : null,
+      allowCustomPaymentAmount: property?.allowCustomPaymentAmount ?? true 
+    });
+  } catch (err) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
 
 // ─── GET /api/student/complaints ─────────────────────────────────────────────
 export const getMyComplaints = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const complaints = await Complaint.find({ guestId: req.user?.id })
+      .populate('propertyId', 'name')
       .sort({ createdAt: -1 }).lean();
     res.json({ success: true, data: complaints });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
@@ -217,6 +239,11 @@ export const raiseComplaint = async (req: AuthRequest, res: Response): Promise<v
     const studentRecord = await HostelStudent.findOne({ guestId: req.user?.id, status: 'ACTIVE' }).lean();
     if (!studentRecord) {
       res.status(400).json({ success: false, message: 'No active hostel record found' }); return;
+    }
+
+    const property = await Property.findById(studentRecord.propertyId).select('isComplaintFeatureEnabled').lean();
+    if (property && property.isComplaintFeatureEnabled === false) {
+      res.status(403).json({ success: false, message: 'Complaints are currently disabled for this property.' }); return;
     }
 
     const complaint = await Complaint.create({

@@ -7,6 +7,7 @@ export interface IBedDoc extends Document {
   bedNumber: string;
   status: string;
   currentBookingId?: mongoose.Types.ObjectId;
+  price?: number;
   createdAt: Date;
 }
 
@@ -22,6 +23,7 @@ const BedSchema = new Schema<IBedDoc>(
       default: 'AVAILABLE',
     },
     currentBookingId: { type: Schema.Types.ObjectId, ref: 'Booking', default: null },
+    price: { type: Number },
   },
   { timestamps: true }
 );

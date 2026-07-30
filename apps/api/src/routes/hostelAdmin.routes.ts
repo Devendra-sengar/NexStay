@@ -23,13 +23,16 @@ import { Response } from 'express';
 
 const router = Router();
 router.use(protect);
+
+// Allowed for all staff (filtered by controller scope)
+router.get('/properties', requireRoles('HOSTEL_ADMIN', 'SUPER_ADMIN', 'WARDEN', 'MESS_MANAGER'), getAdminProperties);
+
 router.use(requireRoles('HOSTEL_ADMIN'));
 
 // Dashboard
 router.get('/dashboard', getAdminDashboard);
 
 // Properties
-router.get('/properties', getAdminProperties);
 router.post('/properties', createAdminProperty);
 router.get('/properties/:id', getAdminPropertyById);
 router.put('/properties/:id', updateAdminProperty);

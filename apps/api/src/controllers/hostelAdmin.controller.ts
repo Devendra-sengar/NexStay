@@ -25,7 +25,7 @@ function currentMonthRange() {
 // ─── GET /api/hostel-admin/dashboard ─────────────────────────────────────────
 export const getAdminDashboard = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query;
 
     // Fetch all properties for the dropdown to prevent it from disappearing
@@ -151,13 +151,21 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
 // ─── GET /api/hostel-admin/properties ─────────────────────────────────────────
 export const getAdminProperties = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { q, page = '1', limit = '20' } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, parseInt(limit));
 
     const filter: any = { tenantId };
     if (q) filter.name = { $regex: q, $options: 'i' };
+
+    if ((req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER') && req.user?.hostelId) {
+      const { Hostel } = await import('../models/Hostel.model');
+      const h = await Hostel.findById(req.user.hostelId).lean();
+      if (h && h.propertyId) {
+        filter._id = h.propertyId;
+      }
+    }
 
     const [properties, total] = await Promise.all([
       Property.find(filter).sort({ createdAt: -1 }).skip((pageNum - 1) * limitNum).limit(limitNum).lean(),
@@ -205,7 +213,7 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
 // ─── POST /api/hostel-admin/properties ───────────────────────────────────────
 export const createAdminProperty = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
 
     // Note: We allow PENDING owners to submit properties.
     // The property itself gets verificationStatus: 'PENDING' and won't appear on the
@@ -284,7 +292,7 @@ export const createAdminProperty = async (req: AuthRequest, res: Response): Prom
 // ─── GET /api/hostel-admin/properties/:id ────────────────────────────────────
 export const getAdminPropertyById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const property = await Property.findOne({ _id: req.params.id, tenantId }).lean();
     if (!property) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
     const rooms = await Room.find({ propertyId: property._id }).lean();
@@ -297,7 +305,7 @@ export const getAdminPropertyById = async (req: AuthRequest, res: Response): Pro
 // ─── PUT /api/hostel-admin/properties/:id ────────────────────────────────────
 export const updateAdminProperty = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const property = await Property.findOne({ _id: req.params.id, tenantId });
     if (!property) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
 
@@ -329,7 +337,7 @@ export const updateAdminProperty = async (req: AuthRequest, res: Response): Prom
 // ─── DELETE /api/hostel-admin/properties/:id ─────────────────────────────────
 export const deleteAdminProperty = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const property = await Property.findOne({ _id: req.params.id, tenantId });
     if (!property) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
 
@@ -362,7 +370,7 @@ export const deleteAdminProperty = async (req: AuthRequest, res: Response): Prom
 // Bug #5 fix: returns printable HTML receipt
 export const getRentReceipt = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const record = await RentRecord.findOne({ _id: req.params.id, tenantId })
       .populate({ path: 'hostelStudentId', select: 'name phone email admissionDate' })
       .populate({ path: 'propertyId', select: 'name address city' })
@@ -420,7 +428,7 @@ export const getRentReceipt = async (req: AuthRequest, res: Response): Promise<v
 // ─── PATCH /api/hostel-admin/properties/:id/pause ────────────────────────────
 export const togglePauseProperty = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const property = await Property.findOne({ _id: req.params.id, tenantId });
     if (!property) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
     property.isPaused = !property.isPaused;
@@ -434,7 +442,7 @@ export const togglePauseProperty = async (req: AuthRequest, res: Response): Prom
 // ─── GET /api/hostel-admin/bookings ──────────────────────────────────────────
 export const getAdminBookings = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { status, propertyId, page = '1', limit = '20' } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = parseInt(limit);
@@ -465,7 +473,7 @@ export const getAdminBookings = async (req: AuthRequest, res: Response): Promise
 // ─── PATCH /api/hostel-admin/bookings/:id/accept ─────────────────────────────
 export const acceptBooking = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const booking = await Booking.findOne({ _id: req.params.id, tenantId });
     if (!booking) { res.status(404).json({ success: false, message: 'Booking not found' }); return; }
     if (booking.status !== 'PENDING') {
@@ -489,7 +497,7 @@ export const acceptBooking = async (req: AuthRequest, res: Response): Promise<vo
 // ─── PATCH /api/hostel-admin/bookings/:id/reject ─────────────────────────────
 export const rejectBooking = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { reason } = req.body;
     const booking = await Booking.findOne({ _id: req.params.id, tenantId });
     if (!booking) { res.status(404).json({ success: false, message: 'Booking not found' }); return; }

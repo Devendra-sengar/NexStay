@@ -10,13 +10,18 @@ import { cn } from '@/lib/utils';
 
 // Pages
 import WardenDashboardPage  from '@/pages/warden/DashboardPage';
-import WardenStudentsPage   from '@/pages/warden/StudentsPage';
-import WardenRoomsPage      from '@/pages/warden/RoomsPage';
-import WardenComplaintsPage from '@/pages/warden/ComplaintsPage';
-import WardenRentPage       from '@/pages/warden/RentPage';
+import AdminTenantsPage from '@/pages/admin/erp/TenantsPage';
+import AdminRoomsBedsPage from '@/pages/admin/erp/RoomsBedsPage';
+import AdminRentFeesPage from '@/pages/admin/erp/RentFeesPage';
+import AdminComplaintsPage from '@/pages/admin/erp/ComplaintsPage';
 import WardenSalaryPage     from '@/pages/warden/SalaryPage';
-import WardenMenuPage       from '@/pages/warden/MenuPage';
+import MessMenuPage from '@/pages/mess/MenuPage';
 import WardenLeadsPage      from '@/pages/warden/WardenLeadsPage';
+import StudentProfilePage from '@/pages/admin/erp/StudentProfilePage';
+import CheckInPage from '@/pages/admin/erp/CheckInPage';
+import CheckOutPage from '@/pages/admin/erp/CheckOutPage';
+import PrintPreviewPage from '@/pages/admin/erp/PrintPreviewPage';
+import ProfilePage from '@/pages/account/ProfilePage';
 
 const perm = (p: keyof StaffPermissions) => (perms?: StaffPermissions | null) => perms?.[p] ?? false;
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -36,6 +41,7 @@ export default function WardenShell() {
     { to: '/warden/rent',        label: 'Rent Records', icon: IndianRupee,     allowed: perm('canViewRentRecords')(perms) },
     { to: '/warden/salary',      label: 'My Salary',    icon: Wallet,          allowed: perm('canViewSalary')(perms) },
     { to: '/warden/menu',        label: "Today's Menu", icon: UtensilsCrossed, allowed: true },
+    { to: '/warden/profile',     label: 'My Profile',   icon: UserCircle,      allowed: true },
   ];
 
   const handleLogout = async () => { await logout(); navigate('/login'); };
@@ -95,15 +101,15 @@ export default function WardenShell() {
 
         {/* User footer */}
         <div className="px-2 py-3 border-t border-surface-border">
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-surface transition-colors">
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-surface transition-colors cursor-pointer" onClick={() => { setSidebarOpen(false); navigate('/warden/profile'); }}>
             <div className="w-8 h-8 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
               {getInitials(user?.name || 'W')}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-text-primary truncate">{user?.name}</p>
-              <p className="text-xs text-text-muted">Warden</p>
+              <p className="text-xs text-text-muted hover:text-indigo-600 transition-colors">Edit Profile</p>
             </div>
-            <button onClick={handleLogout} className="text-text-muted hover:text-danger transition-colors">
+            <button onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="text-text-muted hover:text-danger transition-colors p-1" title="Logout">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -126,7 +132,7 @@ export default function WardenShell() {
             Warden — <span className="text-indigo-600">{hostel?.hostelCode}</span>
           </span>
           <div className="ml-auto flex items-center gap-3">
-            <div className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center">
+            <div className="w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center cursor-pointer hover:bg-indigo-700 transition-colors" onClick={() => navigate('/warden/profile')} title="My Profile">
               {getInitials(user?.name || 'W')}
             </div>
           </div>
@@ -135,15 +141,20 @@ export default function WardenShell() {
         <main className="flex-1 overflow-y-auto">
           <div className="p-6">
             <Routes>
-              <Route index           element={<WardenDashboardPage />} />
-              <Route path="dashboard"  element={<WardenDashboardPage />} />
-              <Route path="leads"      element={<WardenLeadsPage />} />
-              <Route path="students"   element={perms?.canViewStudents     ? <WardenStudentsPage />   : <AccessRestricted permission="canViewStudents" />} />
-              <Route path="rooms"      element={perms?.canManageRooms      ? <WardenRoomsPage />      : <AccessRestricted permission="canManageRooms" />} />
-              <Route path="complaints" element={perms?.canManageComplaints ? <WardenComplaintsPage /> : <AccessRestricted permission="canManageComplaints" />} />
-              <Route path="rent"       element={perms?.canViewRentRecords  ? <WardenRentPage />       : <AccessRestricted permission="canViewRentRecords" />} />
-              <Route path="salary"     element={perms?.canViewSalary       ? <WardenSalaryPage />     : <AccessRestricted permission="canViewSalary" />} />
-              <Route path="menu"       element={<WardenMenuPage />} />
+              <Route path="/" element={<WardenDashboardPage />} />
+              <Route path="/dashboard" element={<WardenDashboardPage />} />
+              <Route path="/leads" element={<WardenLeadsPage />} />
+              <Route path="/students" element={<AdminTenantsPage />} />
+              <Route path="/students/:id" element={<StudentProfilePage />} />
+              <Route path="/students/checkin" element={<CheckInPage />} />
+              <Route path="/students/checkout/:id" element={<CheckOutPage />} />
+              <Route path="/print/:id" element={<PrintPreviewPage />} />
+              <Route path="/rooms" element={<AdminRoomsBedsPage />} />
+              <Route path="/complaints" element={<AdminComplaintsPage />} />
+              <Route path="/rent" element={<AdminRentFeesPage />} />
+              <Route path="/salary" element={<WardenSalaryPage />} />
+              <Route path="/menu" element={<MessMenuPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Routes>
           </div>
         </main>

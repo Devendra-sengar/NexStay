@@ -35,7 +35,7 @@ function lastNMonths(n: number): string[] {
 // ═══════════════════════════════════════════════════════════════════════════════
 export const getOccupancyReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const filter: any = { tenantId };
     if (propertyId) filter._id = new mongoose.Types.ObjectId(propertyId);
@@ -67,7 +67,7 @@ export const getOccupancyReport = async (req: AuthRequest, res: Response): Promi
 
 export const exportOccupancyCsv = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const filter: any = { tenantId };
     if (propertyId) filter._id = new mongoose.Types.ObjectId(propertyId);
@@ -90,7 +90,7 @@ export const exportOccupancyCsv = async (req: AuthRequest, res: Response): Promi
 // ═══════════════════════════════════════════════════════════════════════════════
 export const getRevenueReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const propFilter: any = { tenantId };
     if (propertyId) propFilter.propertyId = new mongoose.Types.ObjectId(propertyId);
@@ -118,7 +118,7 @@ export const getRevenueReport = async (req: AuthRequest, res: Response): Promise
 
 export const exportRevenueCsv = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const monthList = lastNMonths(12);
     const rows = [csvRow(['Month','Rent Due','Collected','Pending','Expenses','Net Surplus'])];
@@ -140,7 +140,7 @@ export const exportRevenueCsv = async (req: AuthRequest, res: Response): Promise
 // ═══════════════════════════════════════════════════════════════════════════════
 export const getCollectionReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, month = ym(new Date()) } = req.query as Record<string, string>;
     const filter: any = { tenantId, month, isFee: { $ne: true } };
     if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
@@ -161,7 +161,7 @@ export const getCollectionReport = async (req: AuthRequest, res: Response): Prom
 
 export const exportCollectionCsv = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, month = ym(new Date()) } = req.query as Record<string, string>;
     const filter: any = { tenantId, month };
     if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
@@ -180,7 +180,7 @@ export const exportCollectionCsv = async (req: AuthRequest, res: Response): Prom
 // ═══════════════════════════════════════════════════════════════════════════════
 export const getExpenseReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, month = ym(new Date()) } = req.query as Record<string, string>;
     const buildFilter = (m: string) => {
       const [yr, mo] = m.split('-').map(Number);
@@ -218,7 +218,7 @@ export const getExpenseReport = async (req: AuthRequest, res: Response): Promise
 
 export const exportExpenseCsv = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, month = ym(new Date()) } = req.query as Record<string, string>;
     const [yr, mo] = month.split('-').map(Number);
     const start = new Date(yr, mo - 1, 1); const end = new Date(yr, mo, 0, 23, 59, 59);
@@ -236,7 +236,7 @@ export const exportExpenseCsv = async (req: AuthRequest, res: Response): Promise
 // ═══════════════════════════════════════════════════════════════════════════════
 export const getProfitReport = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const monthList = lastNMonths(12);
     const table: any[] = [];
@@ -257,7 +257,7 @@ export const getProfitReport = async (req: AuthRequest, res: Response): Promise<
 
 export const exportProfitCsv = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const monthList = lastNMonths(12);
     const rows = [csvRow(['Month','Revenue','Expenses','Net','Status'])];

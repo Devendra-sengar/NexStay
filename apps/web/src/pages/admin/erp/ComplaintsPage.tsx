@@ -5,12 +5,13 @@ import toast from 'react-hot-toast';
 import {
   useAdminComplaints, useAdminComplaintById, useUpdateComplaintStatus,
   useAddInternalNote, useAdminProperties, useStaff,
+  useErpStudents, useCreateAdminComplaint
 } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
 const CAT_ICONS: Record<string, string> = { ELECTRICITY: '⚡', FOOD: '◆', INTERNET: '◈', WATER: '●', CLEANING: '✦', OTHER: '◎' };
 const STATUS_OPTS = ['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
-const CATEGORIES = ['ALL', 'ELECTRICITY', 'FOOD', 'INTERNET', 'WATER', 'CLEANING', 'OTHER'];
+const CATEGORIES = ['ALL', 'ELECTRICITY', 'FOOD', 'INTERNET', 'WATER', 'CLEANING', 'DISCIPLINARY', 'WARNING', 'RULE_VIOLATION', 'OTHER'];
 const STATUS_COLORS: Record<string, string> = { OPEN: 'badge-danger', IN_PROGRESS: 'badge-warning', RESOLVED: 'badge-success', CLOSED: 'badge-gray' };
 const NEXT_STATUSES: Record<string, string[]> = { OPEN: ['IN_PROGRESS', 'RESOLVED', 'CLOSED'], IN_PROGRESS: ['RESOLVED', 'CLOSED'], RESOLVED: ['CLOSED'], CLOSED: [] };
 
@@ -154,6 +155,77 @@ function ComplaintDrawer({ id, onClose }: { id: string; onClose: () => void }) {
   );
 }
 
+// ── Raise Complaint Modal ───────────────────────────────────────────────────────
+function RaiseComplaintModal({ properties, onClose }: { properties: any[]; onClose: () => void }) {
+  const createComplaint = useCreateAdminComplaint();
+  const [propertyId, setPropertyId] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [category, setCategory] = useState('DISCIPLINARY');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+
+  const { data: studentsData, isLoading: loadingStudents } = useErpStudents({ propertyId: propertyId || undefined });
+  const students = studentsData?.data ?? [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!propertyId || !studentId || !title || !description) { toast.error('All fields are required'); return; }
+    try {
+      await createComplaint.mutateAsync({ propertyId, hostelStudentId: studentId, category, title, description });
+      toast.success('Complaint raised successfully');
+      onClose();
+    } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to raise complaint'); }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b border-surface-border flex items-center justify-between">
+          <h2 className="text-lg font-bold text-text-primary">Raise Action / Complaint</h2>
+          <button onClick={onClose} className="p-2 hover:bg-surface-input rounded-full transition-colors"><X className="w-5 h-5 text-text-muted" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+          <div>
+            <label className="form-label">Select Property</label>
+            <select className="input-field" value={propertyId} onChange={e => { setPropertyId(e.target.value); setStudentId(''); }} required>
+              <option value="">Choose property...</option>
+              {properties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Select Student</label>
+            <select className="input-field" value={studentId} onChange={e => setStudentId(e.target.value)} disabled={!propertyId || loadingStudents} required>
+              <option value="">{loadingStudents ? 'Loading students...' : !propertyId ? 'Select property first' : 'Choose student...'}</option>
+              {students.map((s: any) => <option key={s._id} value={s._id}>{s.name} ({s.phone})</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Category</label>
+            <select className="input-field" value={category} onChange={e => setCategory(e.target.value)}>
+              <option value="DISCIPLINARY">Disciplinary</option>
+              <option value="WARNING">Warning</option>
+              <option value="RULE_VIOLATION">Rule Violation</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Title</label>
+            <input className="input-field" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Late rent payment warning" required />
+          </div>
+          <div>
+            <label className="form-label">Description</label>
+            <textarea className="input-field min-h-[100px]" value={description} onChange={e => setDescription(e.target.value)} placeholder="Details..." required />
+          </div>
+          <div className="pt-4 flex gap-3">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" className="btn-primary flex-1" disabled={createComplaint.isPending}>{createComplaint.isPending ? 'Submitting...' : 'Submit'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function AdminComplaintsPage() {
   const { data: propsData } = useAdminProperties();
@@ -163,14 +235,23 @@ export default function AdminComplaintsPage() {
   const [category, setCategory] = useState('ALL');
   const [page, setPage] = useState(1);
   const [drawerComplaintId, setDrawerComplaintId] = useState<string | null>(null);
+  const [isRaiseModalOpen, setIsRaiseModalOpen] = useState(false);
 
   const { data, isLoading } = useAdminComplaints({ propertyId: propId || undefined, status: status === 'ALL' ? undefined : status, category: category === 'ALL' ? undefined : category, page });
   const complaints = data?.data ?? [];
 
   return (
     <div className="page-container">
-      <div className="mb-6"><h1 className="text-2xl font-bold text-text-primary">Complaints</h1>
-        <p className="text-sm text-text-secondary mt-0.5">Manage and resolve student & guest complaints</p></div>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Complaints</h1>
+          <p className="text-sm text-text-secondary mt-0.5">Manage and resolve student & guest complaints</p>
+        </div>
+        <button onClick={() => setIsRaiseModalOpen(true)} className="btn-primary py-2 px-4">
+          <MessageSquare className="w-4 h-4 mr-2" />
+          Raise Complaint
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="card p-4 mb-5 flex flex-wrap gap-3 items-center">
@@ -206,7 +287,10 @@ export default function AdminComplaintsPage() {
                     <td className="py-3 px-4 border-b border-surface-border text-sm">{CAT_ICONS[c.category]} {c.category}</td>
                     <td className="py-3 px-4 border-b border-surface-border"><span className={cn('badge', STATUS_COLORS[c.status] || 'badge-gray')}>{c.status.replace('_', ' ')}</span></td>
                     <td className="py-3 px-4 border-b border-surface-border text-xs text-text-muted">{(c.assignedToStaffId as any)?.name || '—'}</td>
-                    <td className="py-3 px-4 border-b border-surface-border text-xs text-text-muted">{new Date(c.createdAt).toLocaleDateString('en-IN')}</td>
+                    <td className="py-3 px-4 border-b border-surface-border">
+                      {c.raisedBy !== 'STUDENT' && <span className="badge badge-warning text-[10px] px-1.5 py-0.5 mb-1 leading-none block w-max">By {c.raisedBy}</span>}
+                      <span className="text-xs text-text-muted">{new Date(c.createdAt).toLocaleDateString('en-IN')}</span>
+                    </td>
                     <td className="py-3 px-4 border-b border-surface-border"><button className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg text-text-muted"><ChevronRight className="w-4 h-4" /></button></td>
                   </tr>
                 );
@@ -226,6 +310,7 @@ export default function AdminComplaintsPage() {
       </div>
 
       {drawerComplaintId && <ComplaintDrawer id={drawerComplaintId} onClose={() => setDrawerComplaintId(null)} />}
+      {isRaiseModalOpen && <RaiseComplaintModal properties={properties} onClose={() => setIsRaiseModalOpen(false)} />}
     </div>
   );
 }

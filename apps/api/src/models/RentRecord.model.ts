@@ -11,6 +11,7 @@ export interface IRentRecordDoc extends Document {
   amount: number;
   paidAmount: number;
   fine: number;
+  discount: number;
   dueDate: Date;
   status: string;
   paidAt?: Date;
@@ -39,6 +40,7 @@ const RentRecordSchema = new Schema<IRentRecordDoc>(
     amount: { type: Number, required: true },
     paidAmount: { type: Number, default: 0 },
     fine: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
     dueDate: { type: Date, required: true },
     status: {
       type: String,

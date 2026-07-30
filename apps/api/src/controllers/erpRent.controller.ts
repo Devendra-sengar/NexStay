@@ -13,13 +13,14 @@ import { LedgerEntry } from '../models/LedgerEntry.model';
 import { AuditLog } from '../models/AuditLog.model';
 import { Notification } from '../models/Notification.model';
 import { notify } from '../services/notification.service';
+import { calculateDynamicFine } from '../utils/penalty';
 
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
 // ─── GET /api/hostel-admin/erp/rent/dashboard ─────────────────────────────────
 export const getRentDashboard = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
 
     const filter: any = { tenantId };
@@ -70,7 +71,7 @@ export const getRentDashboard = async (req: AuthRequest, res: Response): Promise
 // ─── GET /api/hostel-admin/erp/rent/security-deposits ─────────────────────────
 export const getSecurityDeposits = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
 
     const filter: any = { tenantId, securityDeposit: { $gt: 0 } };
@@ -114,7 +115,7 @@ export const getSecurityDeposits = async (req: AuthRequest, res: Response): Prom
 // ─── GET /api/hostel-admin/erp/rent/records ───────────────────────────────────
 export const getRentRecords = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, status, month, search, page = '1', limit = '20', type } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, parseInt(limit));
@@ -128,7 +129,7 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
 
     let records = await RentRecord.find(filter)
       .populate('hostelStudentId', 'name phone')
-      .populate('propertyId', 'name')
+      .populate<{ propertyId: any }>('propertyId', 'name latePenaltyType latePenaltyAmount gracePeriodDays')
       .populate('roomId', 'roomNumber')
       .sort({ dueDate: 1 })
       .skip((pageNum - 1) * limitNum)
@@ -141,6 +142,11 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
       );
     }
 
+    records = records.map((r: any) => {
+      const computedFine = calculateDynamicFine(r, r.propertyId || {});
+      return { ...r, fine: r.status === 'PAID' ? r.fine : computedFine };
+    });
+
     const total = await RentRecord.countDocuments(filter);
     res.json({ success: true, data: records, total, page: pageNum, hasNextPage: pageNum * limitNum < total });
   } catch (err) {
@@ -151,7 +157,7 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
 // ─── POST /api/hostel-admin/erp/rent/generate ────────────────────────────────
 export const generateMonthlyRent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { month, dueDate } = req.body; // month = YYYY-MM
     if (!month) { res.status(400).json({ success: false, message: 'month required (YYYY-MM)' }); return; }
 
@@ -193,7 +199,7 @@ export const generateMonthlyRent = async (req: AuthRequest, res: Response): Prom
 // ─── GET /api/hostel-admin/erp/rent/preview-generate ─────────────────────────
 export const previewGenerateRent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { month } = req.query as Record<string, string>;
     const targetMonth = month || ym(new Date());
     const existing = await RentRecord.countDocuments({ tenantId, month: targetMonth, isFee: { $ne: true } });
@@ -208,7 +214,7 @@ export const previewGenerateRent = async (req: AuthRequest, res: Response): Prom
 // ─── PATCH /api/hostel-admin/erp/rent/:id/fine ───────────────────────────────
 export const addFine = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { amount, reason } = req.body;
     if (!amount || !reason) { res.status(400).json({ success: false, message: 'amount and reason required' }); return; }
     const record = await RentRecord.findOne({ _id: req.params.id, tenantId });
@@ -228,7 +234,7 @@ export const addFine = async (req: AuthRequest, res: Response): Promise<void> =>
 // ─── POST /api/hostel-admin/erp/rent/send-reminder ───────────────────────────
 export const sendReminders = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { recordIds } = req.body as { recordIds: string[] };
     if (!Array.isArray(recordIds) || !recordIds.length) {
       res.status(400).json({ success: false, message: 'recordIds array required' }); return;
@@ -262,7 +268,7 @@ export const sendReminders = async (req: AuthRequest, res: Response): Promise<vo
 // ─── POST /api/hostel-admin/erp/fees ─────────────────────────────────────────
 export const createFee = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { hostelStudentId, feeType, amount, dueDate, notes } = req.body;
     if (!hostelStudentId || !feeType || !amount) {
       res.status(400).json({ success: false, message: 'hostelStudentId, feeType, amount required' }); return;
@@ -288,7 +294,7 @@ export const createFee = async (req: AuthRequest, res: Response): Promise<void> 
 // ─── GET /api/hostel-admin/erp/expenses ──────────────────────────────────────
 export const getExpenses = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, month, page = '1', limit = '20' } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, parseInt(limit));
@@ -330,7 +336,7 @@ export const getExpenses = async (req: AuthRequest, res: Response): Promise<void
 // ─── POST /api/hostel-admin/erp/expenses ─────────────────────────────────────
 export const createExpense = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, category, amount, date, description, receiptUrl } = req.body;
     if (!propertyId || !category || !amount || !date) {
       res.status(400).json({ success: false, message: 'propertyId, category, amount, date required' }); return;
@@ -347,7 +353,7 @@ export const createExpense = async (req: AuthRequest, res: Response): Promise<vo
 // ─── PUT /api/hostel-admin/erp/expenses/:id ───────────────────────────────────
 export const updateExpense = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const expense = await Expense.findOne({ _id: req.params.id, tenantId });
     if (!expense) { res.status(404).json({ success: false, message: 'Expense not found' }); return; }
     const { category, amount, date, description, receiptUrl } = req.body;
@@ -366,7 +372,7 @@ export const updateExpense = async (req: AuthRequest, res: Response): Promise<vo
 // ─── DELETE /api/hostel-admin/erp/expenses/:id ───────────────────────────────
 export const deleteExpense = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const expense = await Expense.findOne({ _id: req.params.id, tenantId });
     if (!expense) { res.status(404).json({ success: false, message: 'Expense not found' }); return; }
     await Expense.deleteOne({ _id: expense._id });
@@ -376,11 +382,46 @@ export const deleteExpense = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
+// ─── PATCH /api/hostel-admin/erp/rent/:id/discount ───────────────────────────
+export const applyDiscount = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { discount } = req.body;
+
+    if (typeof discount !== 'number' || discount < 0) {
+      res.status(400).json({ success: false, message: 'Invalid discount amount' }); return;
+    }
+
+    const record = await RentRecord.findOne({ _id: req.params.id, tenantId });
+    if (!record) { res.status(404).json({ success: false, message: 'Record not found' }); return; }
+
+    const oldDiscount = record.discount || 0;
+    record.discount = discount;
+    await record.save();
+
+    await AuditLog.create({
+      tenantId,
+      propertyId: record.propertyId,
+      action: 'APPLY_DISCOUNT',
+      actorId: req.user!.id,
+      actorType: req.user!.role === 'WARDEN' ? 'Resident' : 'Admin', // Adjust according to roles
+      entityId: record._id,
+      entityType: 'RentRecord',
+      details: `${(req.user as any).name || 'Admin'} (${req.user!.role}) changed discount from ₹${oldDiscount} to ₹${discount}.`,
+      metadata: { oldDiscount, newDiscount: discount }
+    });
+
+    res.json({ success: true, data: record });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // ─── PATCH /api/hostel-admin/erp/rent/:id/proof-action ───────────────────────────
 // Admin APPROVE/REJECT a student’s uploaded payment proof
 export const proofAction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { action, amount, paymentMethod, note } = req.body as {
       action: 'APPROVE' | 'REJECT';
       amount?: number;
@@ -460,6 +501,18 @@ export const proofAction = async (req: AuthRequest, res: Response): Promise<void
         });
       }
 
+      await AuditLog.create({
+        tenantId,
+        propertyId: record.propertyId,
+        action: 'PAYMENT_APPROVED',
+        actorId: req.user!.id,
+        actorType: req.user!.role === 'WARDEN' ? 'Resident' : 'Admin',
+        entityId: record._id,
+        entityType: 'RentRecord',
+        details: `${(req.user as any).name || 'Admin'} (${req.user!.role}) APPROVED payment of ₹${paidAmt} via ${record.paymentMethod}.`,
+        metadata: { amount: paidAmt, method: record.paymentMethod }
+      });
+
       if (guestUserId) {
         notify({
           userId: guestUserId,
@@ -481,6 +534,18 @@ export const proofAction = async (req: AuthRequest, res: Response): Promise<void
         pendingSub.remark = record.paymentProofNote;
         await pendingSub.save();
       }
+
+      await AuditLog.create({
+        tenantId,
+        propertyId: record.propertyId,
+        action: 'PAYMENT_REJECTED',
+        actorId: req.user!.id,
+        actorType: req.user!.role === 'WARDEN' ? 'Resident' : 'Admin',
+        entityId: record._id,
+        entityType: 'RentRecord',
+        details: `${(req.user as any).name || 'Admin'} (${req.user!.role}) REJECTED payment proof. Reason: ${record.paymentProofNote}`,
+        metadata: { note: record.paymentProofNote }
+      });
 
       if (guestUserId) {
         notify({
@@ -507,7 +572,7 @@ export const proofAction = async (req: AuthRequest, res: Response): Promise<void
 // GET /api/erp/transactions
 export const getTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, status } = req.query as Record<string, string>;
 
     const filter: any = { tenantId };
@@ -544,7 +609,7 @@ export const getTransactions = async (req: AuthRequest, res: Response): Promise<
 // POST /api/erp/transactions/:id/verify (Verify Payment Submission)
 export const verifyTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { id } = req.params;
     const { action, note } = req.body as { action: 'APPROVE' | 'REJECT'; note?: string };
 
@@ -679,7 +744,7 @@ export const verifyTransaction = async (req: AuthRequest, res: Response): Promis
 // GET /api/erp/ledger
 export const getLedgerEntries = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, invoiceId } = req.query as Record<string, string>;
 
     const filter: any = { tenantId };
@@ -702,7 +767,7 @@ export const getLedgerEntries = async (req: AuthRequest, res: Response): Promise
 // GET /api/erp/audit-logs
 export const getAuditLogs = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, entityId } = req.query as Record<string, string>;
 
     const filter: any = { tenantId };

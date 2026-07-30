@@ -18,7 +18,8 @@ interface FormState {
   // Step 2
   latitude: number | ''; longitude: number | '';
   // Step 3
-  amenities: string[]; customFacilities: string[]; nearbyPlaces: { name: string; distance: string }[]; rules: string; foodIncluded: boolean;
+  amenities: string[]; customFacilities: string[]; nearbyPlaces: { name: string; distance: string }[]; rules: string; foodIncluded: boolean; isComplaintFeatureEnabled: boolean; allowCustomPaymentAmount: boolean;
+  latePenaltyType: 'NONE' | 'FIXED' | 'DAILY'; latePenaltyAmount: number; gracePeriodDays: number;
   // Step 4
   images: string[]; videoUrl: string;
   // Step 5
@@ -50,8 +51,9 @@ const ROOM_LABELS: Record<string, string> = { SINGLE:'Single', DOUBLE:'Double', 
 
 const INITIAL: FormState = {
   name:'', description:'', city:'', locality:'', address:'', state:'', pincode:'', gender:'BOYS', landmark:'',
-  latitude:'', longitude:'', amenities:[], customFacilities:[], nearbyPlaces:[], rules:'', foodIncluded:false,
+  latitude:'', longitude:'', amenities:[], customFacilities:[], nearbyPlaces:[], rules:'', foodIncluded:false, isComplaintFeatureEnabled:true,
   images:[], videoUrl:'', roomSetups:[{ roomType:'DOUBLE', count:1, pricePerBed:6000 }],
+  allowCustomPaymentAmount: true, latePenaltyType: 'NONE', latePenaltyAmount: 0, gracePeriodDays: 0,
 };
 
 // ─── StepBar ──────────────────────────────────────────────────────────────────
@@ -411,8 +413,52 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
               </div>
             )}
           </div>
+          {/* Feature Toggles */}
+          <div className="bg-surface-input/30 border border-surface-border p-4 rounded-xl mt-6">
+            <h3 className="text-sm font-bold text-text-primary mb-3">Feature Settings</h3>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 text-primary rounded border-surface-border focus:ring-primary"
+                  checked={form.isComplaintFeatureEnabled} onChange={e => set({ isComplaintFeatureEnabled: e.target.checked })} />
+                <div>
+                  <span className="text-sm font-semibold text-text-primary block">Enable Complaints</span>
+                  <span className="text-xs text-text-muted">Allow students to raise complaints for this property</span>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 text-primary rounded border-surface-border focus:ring-primary"
+                  checked={form.allowCustomPaymentAmount !== false} onChange={e => set({ allowCustomPaymentAmount: e.target.checked })} />
+                <div>
+                  <span className="text-sm font-semibold text-text-primary block">Allow Custom Rent Amount</span>
+                  <span className="text-xs text-text-muted">Allow students to enter a custom amount when uploading rent payment proof</span>
+                </div>
+              </label>
+            </div>
+          </div>
 
-          <div>
+          <div className="mt-6 p-4 rounded-2xl border border-surface-border bg-surface">
+            <h3 className="text-sm font-semibold text-text-primary mb-3">Financial Settings</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="form-label">Late Penalty Type</label>
+                <select className="input-field" value={form.latePenaltyType || 'NONE'} onChange={e => set({ latePenaltyType: e.target.value })}>
+                  <option value="NONE">None</option>
+                  <option value="FIXED">Fixed Amount</option>
+                  <option value="DAILY">Daily Amount</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label">Penalty Amount (₹)</label>
+                <input type="number" min="0" className="input-field" value={form.latePenaltyAmount || 0} onChange={e => set({ latePenaltyAmount: parseFloat(e.target.value) || 0 })} disabled={form.latePenaltyType === 'NONE'} />
+              </div>
+              <div>
+                <label className="form-label">Grace Period (Days)</label>
+                <input type="number" min="0" className="input-field" value={form.gracePeriodDays || 0} onChange={e => set({ gracePeriodDays: parseInt(e.target.value, 10) || 0 })} disabled={form.latePenaltyType === 'NONE'} />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6">
             <label className="form-label">House Rules</label>
             <textarea className="input-field" rows={4} value={form.rules}
               onChange={e => set({ rules: e.target.value })}

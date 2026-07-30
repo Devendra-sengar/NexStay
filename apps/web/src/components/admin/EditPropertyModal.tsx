@@ -53,6 +53,7 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
         customFacilities: property.customFacilities ?? [],
         rules: property.rules ?? '',
         foodIncluded: property.foodIncluded ?? false,
+        isComplaintFeatureEnabled: property.isComplaintFeatureEnabled ?? true,
         images: property.images ?? [],
         videoUrl: property.videoUrl ?? '',
       });
@@ -185,9 +186,58 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
                     );
                   })}
                 </div>
+              </section>
 
-                {/* Custom Facilities — tag input */}
-                <div className="mt-5">
+              {/* Feature Toggles */}
+              <section>
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-3">Feature Settings</h3>
+                <div className="bg-surface-input/30 border border-surface-border p-4 rounded-xl">
+                  <div className="flex flex-col gap-3">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4 text-primary rounded border-surface-border focus:ring-primary"
+                        checked={form.isComplaintFeatureEnabled} onChange={e => set({ isComplaintFeatureEnabled: e.target.checked })} />
+                      <div>
+                        <span className="text-sm font-semibold text-text-primary block">Enable Complaints</span>
+                        <span className="text-xs text-text-muted">Allow students to raise complaints for this property</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4 text-primary rounded border-surface-border focus:ring-primary"
+                        checked={form.allowCustomPaymentAmount} onChange={e => set({ allowCustomPaymentAmount: e.target.checked })} />
+                      <div>
+                        <span className="text-sm font-semibold text-text-primary block">Allow Custom Rent Amount</span>
+                        <span className="text-xs text-text-muted">Allow students to enter a custom amount when uploading rent payment proof</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </section>
+
+              {/* Financial Settings */}
+              <section>
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-3">Financial Settings</h3>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="form-label">Late Penalty Type</label>
+                    <select className="input-field" value={form.latePenaltyType || 'NONE'} onChange={e => set({ latePenaltyType: e.target.value })}>
+                      <option value="NONE">None</option>
+                      <option value="FIXED">Fixed Amount</option>
+                      <option value="DAILY">Daily Amount</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Penalty Amount (₹)</label>
+                    <input type="number" min="0" className="input-field" value={form.latePenaltyAmount || 0} onChange={e => set({ latePenaltyAmount: parseFloat(e.target.value) || 0 })} disabled={form.latePenaltyType === 'NONE'} />
+                  </div>
+                  <div>
+                    <label className="form-label">Grace Period (Days)</label>
+                    <input type="number" min="0" className="input-field" value={form.gracePeriodDays || 0} onChange={e => set({ gracePeriodDays: parseInt(e.target.value, 10) || 0 })} disabled={form.latePenaltyType === 'NONE'} />
+                  </div>
+                </div>
+              </section>
+
+              {/* Custom Facilities — tag input */}
+              <div className="mt-5">
                   <label className="form-label">Additional Facilities <span className="text-text-muted font-normal">(e.g. Gym, Library, Hot Water)</span></label>
                   <div className="flex gap-2 mt-1">
                     <input
@@ -229,7 +279,6 @@ export default function EditPropertyModal({ propertyId, onClose }: EditPropertyM
                     </div>
                   )}
                 </div>
-              </section>
 
               {/* Rules */}
               <section>

@@ -19,7 +19,7 @@ const proofBadge = (s?: string) => {
 };
 
 // ── Upload Proof Modal (Slide-over) ─────────────────────────────────────────────
-function UploadProofModal({ record, onClose }: { record: any; onClose: () => void }) {
+function UploadProofModal({ record, allowCustomPaymentAmount, onClose }: { record: any; allowCustomPaymentAmount: boolean; onClose: () => void }) {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -113,12 +113,14 @@ function UploadProofModal({ record, onClose }: { record: any; onClose: () => voi
                 <input type="radio" checked={isFullAmount} onChange={() => setIsFullAmount(true)} className="text-primary focus:ring-primary h-4 w-4" />
                 Full (₹{remainingAmount.toLocaleString('en-IN')})
               </label>
-              <label className="flex items-center gap-2 text-sm text-text-primary cursor-pointer">
-                <input type="radio" checked={!isFullAmount} onChange={() => setIsFullAmount(false)} className="text-primary focus:ring-primary h-4 w-4" />
-                Custom
-              </label>
+              {allowCustomPaymentAmount && (
+                <label className="flex items-center gap-2 text-sm text-text-primary cursor-pointer">
+                  <input type="radio" checked={!isFullAmount} onChange={() => setIsFullAmount(false)} className="text-primary focus:ring-primary h-4 w-4" />
+                  Custom
+                </label>
+              )}
             </div>
-            {!isFullAmount && (
+            {!isFullAmount && allowCustomPaymentAmount && (
               <input type="number" className="input-field" value={customAmount} onChange={e => setCustomAmount(e.target.value)} placeholder="Enter amount" />
             )}
           </div>
@@ -245,7 +247,7 @@ export default function StudentRentPage() {
 
       {/* Current month card */}
       {cur && (() => {
-        const total = cur.amount + (cur.fine || 0);
+        const total = cur.amount + (cur.fine || 0) - (cur.discount || 0);
         const paid = cur.paidAmount || 0;
         const remaining = Math.max(0, total - paid);
         return (
@@ -267,18 +269,22 @@ export default function StudentRentPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 rounded-lg border border-surface-border mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg border border-surface-border mb-4">
             <div>
-              <p className="text-xs text-text-muted mb-0.5">Total</p>
-              <p className="font-semibold text-sm">₹{total.toLocaleString('en-IN')}</p>
+              <p className="text-xs text-text-muted mb-0.5">Base Rent</p>
+              <p className="font-semibold text-sm">₹{cur.amount.toLocaleString('en-IN')}</p>
             </div>
-            <div className="border-l border-surface-border pl-4">
+            <div className="md:border-l md:border-surface-border md:pl-4">
+              <p className="text-xs text-text-muted mb-0.5">Late Fine</p>
+              <p className="font-semibold text-sm text-danger">{cur.fine ? `+₹${cur.fine.toLocaleString('en-IN')}` : '₹0'}</p>
+            </div>
+            <div className="md:border-l md:border-surface-border md:pl-4">
+              <p className="text-xs text-text-muted mb-0.5">Discount</p>
+              <p className="font-semibold text-sm text-emerald-600">{cur.discount ? `-₹${cur.discount.toLocaleString('en-IN')}` : '₹0'}</p>
+            </div>
+            <div className="md:border-l md:border-surface-border md:pl-4">
               <p className="text-xs text-text-muted mb-0.5">Paid</p>
-              <p className="font-semibold text-sm">₹{paid.toLocaleString('en-IN')}</p>
-            </div>
-            <div className="border-l border-surface-border pl-4">
-              <p className="text-xs text-text-muted mb-0.5">Due Date</p>
-              <p className="font-semibold text-sm">{cur.dueDate ? new Date(cur.dueDate).toLocaleDateString('en-IN') : 'N/A'}</p>
+              <p className="font-semibold text-sm text-primary">₹{paid.toLocaleString('en-IN')}</p>
             </div>
           </div>
 
@@ -350,7 +356,7 @@ export default function StudentRentPage() {
               <tbody>
                 {records.map((r: any) => {
                   const pb = proofBadge(r.paymentProofStatus);
-                  const total = (r.amount || 0) + (r.fine || 0);
+                  const total = (r.amount || 0) + (r.fine || 0) - (r.discount || 0);
                   const due = Math.max(0, total - (r.paidAmount || 0));
                   return (
                     <tr key={r._id}>
@@ -455,8 +461,16 @@ export default function StudentRentPage() {
       )}
 
       {/* Modals */}
-      {uploadRecord && <UploadProofModal record={uploadRecord} onClose={() => setUploadRecord(null)} />}
-      {viewProofUrl && <ViewProofModal url={viewProofUrl} onClose={() => setViewProofUrl(null)} />}
+      {uploadRecord && (
+        <UploadProofModal 
+          record={uploadRecord} 
+          allowCustomPaymentAmount={cur?.allowCustomPaymentAmount ?? true}
+          onClose={() => setUploadRecord(null)} 
+        />
+      )}
+      {viewProofUrl && (
+        <ViewProofModal url={viewProofUrl} onClose={() => setViewProofUrl(null)} />
+      )}
 
     </div>
   );

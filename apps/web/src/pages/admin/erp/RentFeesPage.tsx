@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { CreditCard, Plus, Bell, RefreshCw, X, Check, Printer, ShieldCheck, ChevronRight, Image as ImageIcon, Eye } from 'lucide-react';
+import { CreditCard, Plus, Bell, RefreshCw, X, Check, Printer, ShieldCheck, ChevronRight, Image as ImageIcon, Eye, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   useRentDashboard, useRentRecords, usePreviewGenerateRent, useGenerateRent,
-  useAddFine, useSendReminders, useRecordRentPayment, useAdminProperties, useErpStudents,
-  useCreateFee, useSecurityDeposits, useProofAction, useTransactions, useVerifyTransaction
+  useAddFine, useApplyDiscount, useSendReminders, useRecordRentPayment, useAdminProperties, useErpStudents,
+  useCreateFee, useSecurityDeposits, useProofAction, useTransactions, useVerifyTransaction, useAuditLogs
 } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
@@ -236,6 +236,67 @@ function FineModal({ record, onClose }: { record: any; onClose: () => void }) {
         <div className="flex gap-3 mt-5">
           <button className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
           <button className="btn-danger flex-1" onClick={submit} disabled={addFine.isPending}>{addFine.isPending?'Saving…':'Add Fine'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Discount Modal ─────────────────────────────────────────────────────────────
+function DiscountModal({ record, onClose }: { record: any; onClose: () => void }) {
+  const [discount, setDiscount] = useState(record.discount || 0);
+  const applyDiscount = useApplyDiscount();
+  const submit = async () => {
+    if (discount < 0) { toast.error('Discount cannot be negative'); return; }
+    try { await applyDiscount.mutateAsync({ id: record._id, discount }); toast.success('Discount applied'); onClose(); }
+    catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="flex justify-between mb-4"><h3 className="font-bold">Apply Discount</h3><button onClick={onClose}><X className="w-4 h-4"/></button></div>
+        <div className="space-y-3">
+          <div><label className="form-label">Discount Amount (₹)</label><input type="number" min="0" className="input-field" value={discount} onChange={e=>setDiscount(+e.target.value)} /></div>
+          <p className="text-xs text-text-muted">This will reduce the total amount due.</p>
+        </div>
+        <div className="flex gap-3 mt-5">
+          <button className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
+          <button className="btn-primary flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={submit} disabled={applyDiscount.isPending}>{applyDiscount.isPending?'Saving…':'Apply Discount'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Audit Logs Modal ───────────────────────────────────────────────────────────
+function AuditLogsModal({ record, onClose }: { record: any; onClose: () => void }) {
+  const { data: logs, isLoading } = useAuditLogs({ entityId: record._id });
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[80vh] flex flex-col">
+        <div className="flex justify-between mb-4 pb-3 border-b border-surface-border">
+          <div className="flex items-center gap-2 text-violet-700">
+            <History className="w-5 h-5" />
+            <h3 className="font-bold text-text-primary">Activity History</h3>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-surface-input rounded"><X className="w-4 h-4 text-text-muted"/></button>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+          {isLoading ? (
+            <div className="text-center py-6 text-sm text-text-muted">Loading history...</div>
+          ) : logs?.length === 0 ? (
+            <div className="text-center py-6 text-sm text-text-muted">No history found for this record.</div>
+          ) : (
+            logs?.map((log: any) => (
+              <div key={log._id} className="text-sm p-3 rounded-lg bg-surface-input border border-surface-border relative">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="font-semibold text-text-primary">{log.action.replace(/_/g, ' ')}</span>
+                  <span className="text-[10px] text-text-muted whitespace-nowrap">{new Date(log.createdAt).toLocaleString('en-IN')}</span>
+                </div>
+                <p className="text-text-secondary text-xs">{log.details}</p>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -702,12 +763,12 @@ export default function RentFeesPage() {
             <table className="data-table">
               <thead><tr>
                 <th><input type="checkbox" checked={allSelected} onChange={()=>allSelected?setSelected([]):setSelected(rows.map((r:any)=>r._id))} /></th>
-                {['Student','Property','Room','Month','Due Date','Rent','Fine','Total','Paid','Balance','Status','Proof','Actions'].map(h=><th key={h}>{h}</th>)}
+                {['Student','Property','Room','Month','Due Date','Rent','Fine','Discount','Total','Paid','Balance','Status','Proof','Actions'].map(h=><th key={h}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {rows.map((r:any)=>{
                   const student = r.hostelStudentId as any;
-                  const total = r.amount + (r.fine||0);
+                  const total = r.amount + (r.fine||0) - (r.discount||0);
                   const bal = Math.max(0, total - (r.paidAmount||0));
                   return (
                     <tr key={r._id} className={cn('hover:bg-surface-input/40', selected.includes(r._id)&&'bg-primary/5')}>
@@ -719,6 +780,7 @@ export default function RentFeesPage() {
                       <td className="py-3 px-4 border-b border-surface-border text-xs">{r.dueDate?new Date(r.dueDate).toLocaleDateString('en-IN'):'—'}</td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm">{FMT(r.amount)}</td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm text-danger">{r.fine?FMT(r.fine):'—'}</td>
+                      <td className="py-3 px-4 border-b border-surface-border text-sm text-emerald-600">{r.discount?FMT(r.discount):'—'}</td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm font-medium">{FMT(total)}</td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm text-emerald-600">{FMT(r.paidAmount||0)}</td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm text-danger">{FMT(bal)}</td>
@@ -751,7 +813,9 @@ export default function RentFeesPage() {
                         <div className="flex gap-1">
                           {r.status!=='PAID'&&<button title="Record Payment" onClick={()=>setModal({type:'pay',record:r})} className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg text-text-muted"><CreditCard className="w-3.5 h-3.5"/></button>}
                           {r.status!=='PAID'&&<button title="Add Fine" onClick={()=>setModal({type:'fine',record:r})} className="p-1.5 hover:bg-danger/10 hover:text-danger rounded-lg text-text-muted text-xs font-bold">+₹</button>}
+                          {r.status!=='PAID'&&<button title="Apply Discount" onClick={()=>setModal({type:'discount',record:r})} className="p-1.5 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg text-text-muted text-xs font-bold">-₹</button>}
                           {r.status==='PAID'&&<button title="Print Receipt" onClick={()=>printReceipt(r)} className="p-1.5 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-text-muted"><Printer className="w-3.5 h-3.5"/></button>}
+                          <button title="View History" onClick={()=>setModal({type:'history',record:r})} className="p-1.5 hover:bg-violet-50 hover:text-violet-700 rounded-lg text-text-muted"><History className="w-3.5 h-3.5"/></button>
                           <button title="Send Reminder" onClick={async()=>{try{await sendReminders.mutateAsync([r._id]);toast.success('Reminder sent');}catch(e:any){toast.error(e.response?.data?.message||'Error');}}} className="p-1.5 hover:bg-amber-50 hover:text-amber-700 rounded-lg text-text-muted"><Bell className="w-3.5 h-3.5"/></button>
                         </div>
                       </td>
@@ -776,6 +840,8 @@ export default function RentFeesPage() {
 
       {modal?.type==='pay'    && <PayModal      record={modal.record} onClose={()=>setModal(null)} />}
       {modal?.type==='fine'   && <FineModal     record={modal.record} onClose={()=>setModal(null)} />}
+      {modal?.type==='discount' && <DiscountModal record={modal.record} onClose={()=>setModal(null)} />}
+      {modal?.type==='history' && <AuditLogsModal record={modal.record} onClose={()=>setModal(null)} />}
       {modal?.type==='generate' && <GenerateModal onClose={()=>setModal(null)} />}
       {modal?.type==='fee'    && <AddFeeModal   onClose={()=>setModal(null)} />}
       {modal?.type==='proof'  && <ProofReviewModal record={modal.record} onClose={()=>setModal(null)} />}

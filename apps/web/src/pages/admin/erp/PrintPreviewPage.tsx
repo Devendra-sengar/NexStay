@@ -10,6 +10,7 @@ const TEMPLATES = [
   { key: "modern",   label: "Modern",   desc: "Clean grid layout" },
   { key: "minimal",  label: "Minimal",  desc: "Simple rows" },
   { key: "elegant",  label: "Elegant",  desc: "Gold ornamental" },
+  { key: "k1",       label: "K1 Template", desc: "Custom format" },
 ];
 
 export default function PrintPreviewPage() {

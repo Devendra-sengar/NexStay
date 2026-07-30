@@ -128,6 +128,17 @@ export function useRejectBooking() {
 const erp = (url: string, options?: any) =>
   apiClient({ url: `/hostel-admin/erp${url}`, ...options });
 
+export function useCreateAdminComplaint() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const { data } = await erp('/complaints', { method: 'POST', data: body });
+      return data.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-complaints'] }),
+  });
+}
+
 export function useErpRooms(propertyId?: string) {
   return useQuery({
     queryKey: ['erp-rooms', propertyId],
@@ -371,6 +382,19 @@ export function useAddFine() {
       const { data } = await erp(`/rent/${id}/fine`, { method: 'PATCH', data: { amount, reason } }); return data.data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rent-records'] }),
+  });
+}
+
+export function useApplyDiscount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, discount }: { id: string; discount: number }) => {
+      const { data } = await erp(`/rent/${id}/discount`, { method: 'PATCH', data: { discount } }); return data.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rent-records'] });
+      qc.invalidateQueries({ queryKey: ['rent-dashboard'] });
+    },
   });
 }
 

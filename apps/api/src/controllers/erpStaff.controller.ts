@@ -24,7 +24,7 @@ function generatePassword(length = 10): string {
 
 export const getStaff = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, role, status, search } = req.query as Record<string, string>;
     const filter: any = { tenantId };
     if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
@@ -40,7 +40,7 @@ export const getStaff = async (req: AuthRequest, res: Response): Promise<void> =
 
 export const getStaffById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const staff = await Staff.findOne({ _id: req.params.id, tenantId }).populate('propertyId', 'name').lean();
     if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
     res.json({ success: true, data: staff });
@@ -49,7 +49,7 @@ export const getStaffById = async (req: AuthRequest, res: Response): Promise<voi
 
 export const createStaff = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, name, phone, email, role, salary, joiningDate, photoUrl, address, notes } = req.body;
     if (!name || !phone || !role || !propertyId) {
       res.status(400).json({ success: false, message: 'name, phone, role, propertyId required' }); return;
@@ -103,7 +103,7 @@ export const createStaff = async (req: AuthRequest, res: Response): Promise<void
 
 export const updateStaff = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const staff = await Staff.findOne({ _id: req.params.id, tenantId });
     if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
     const fields = ['name','phone','email','role','salary','joiningDate','photoUrl','address','notes','propertyId','isActive'];
@@ -125,7 +125,7 @@ export const updateStaff = async (req: AuthRequest, res: Response): Promise<void
 
 export const toggleStaffStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const staff = await Staff.findOne({ _id: req.params.id, tenantId });
     if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
     staff.isActive = !staff.isActive;
@@ -142,7 +142,7 @@ export const toggleStaffStatus = async (req: AuthRequest, res: Response): Promis
 
 export const deleteStaff = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const staff = await Staff.findOne({ _id: req.params.id, tenantId });
     if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
     
@@ -164,7 +164,7 @@ export const deleteStaff = async (req: AuthRequest, res: Response): Promise<void
 
 export const getInventory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query as Record<string, string>;
     const filter: any = { tenantId };
     if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
@@ -177,7 +177,7 @@ export const getInventory = async (req: AuthRequest, res: Response): Promise<voi
 
 export const createInventoryItem = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, itemName, totalCount, workingCount, damagedCount, notes } = req.body;
     if (!propertyId || !itemName || totalCount === undefined) {
       res.status(400).json({ success: false, message: 'propertyId, itemName, totalCount required' }); return;
@@ -198,7 +198,7 @@ export const createInventoryItem = async (req: AuthRequest, res: Response): Prom
 
 export const updateInventoryItem = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const item = await Inventory.findOne({ _id: req.params.id, tenantId });
     if (!item) { res.status(404).json({ success: false, message: 'Item not found' }); return; }
     const { totalCount, workingCount, damagedCount, itemName, notes } = req.body;
@@ -219,7 +219,7 @@ export const updateInventoryItem = async (req: AuthRequest, res: Response): Prom
 
 export const deleteInventoryItem = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const item = await Inventory.findOne({ _id: req.params.id, tenantId });
     if (!item) { res.status(404).json({ success: false, message: 'Item not found' }); return; }
     await Inventory.deleteOne({ _id: item._id });
@@ -231,9 +231,48 @@ export const deleteInventoryItem = async (req: AuthRequest, res: Response): Prom
 // COMPLAINTS — ADMIN
 // ═══════════════════════════════════════════════════════════════════
 
+export const createAdminComplaint = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { propertyId, hostelStudentId, title, category, description } = req.body;
+    
+    if (!propertyId || !hostelStudentId || !title || !category || !description) {
+      res.status(400).json({ success: false, message: 'All fields are required' }); return;
+    }
+
+    const { HostelStudent } = await import('../models/HostelStudent.model');
+    const student = await HostelStudent.findOne({ _id: hostelStudentId, tenantId }).lean();
+    if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
+
+    const complaint = await Complaint.create({
+      tenantId,
+      hostelId: student.hostelId,
+      propertyId,
+      guestId: student.guestId,
+      hostelStudentId: student._id,
+      title,
+      category,
+      description,
+      status: 'OPEN',
+      raisedBy: req.user?.role === 'WARDEN' ? 'WARDEN' : 'ADMIN',
+      statusHistory: [{ 
+        status: 'OPEN', 
+        note: 'Complaint raised by ' + (req.user?.role === 'WARDEN' ? 'Warden' : 'Admin'), 
+        changedBy: (req.user as any)?.name || 'Admin', 
+        changedAt: new Date() 
+      }],
+    });
+
+    res.status(201).json({ success: true, data: complaint });
+  } catch (err) {
+    console.error('createAdminComplaint:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 export const getAdminComplaints = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, status, category, page = '1', limit = '20' } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, parseInt(limit));
@@ -258,7 +297,7 @@ export const getAdminComplaints = async (req: AuthRequest, res: Response): Promi
 
 export const getAdminComplaintById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const complaint = await Complaint.findOne({ _id: req.params.id, tenantId })
       .populate('propertyId', 'name')
       .populate('guestId', 'name phone email')
@@ -272,7 +311,7 @@ export const getAdminComplaintById = async (req: AuthRequest, res: Response): Pr
 
 export const updateComplaintStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { status, note, assignedToStaffId } = req.body;
     if (!status || !note?.trim()) {
       res.status(400).json({ success: false, message: 'status and note are required' }); return;
@@ -290,7 +329,7 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response): Pr
 
 export const addInternalNote = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const tenantId = req.user!.id;
+    const tenantId = req.user!.tenantId || req.user!.id;
     const { note } = req.body;
     if (!note?.trim()) { res.status(400).json({ success: false, message: 'note required' }); return; }
     const complaint = await Complaint.findOne({ _id: req.params.id, tenantId });

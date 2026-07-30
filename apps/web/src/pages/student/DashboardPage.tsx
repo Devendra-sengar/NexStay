@@ -68,10 +68,12 @@ export default function StudentDashboardPage() {
       )}
 
       {/* Stats Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: d?.isComplaintFeatureEnabled !== false ? 'repeat(2, 1fr)' : '1fr', gap: 12, marginBottom: 20 }}>
         <StatCard icon={IndianRupee} label="This Month Rent" color="#1d4ed8"
           value={currentRent ? `₹${currentRent.amount?.toLocaleString('en-IN')}` : '—'} />
-        <StatCard icon={AlertCircle} label="Open Complaints" color="#dc2626" value={d?.pendingComplaints ?? 0} />
+        {d?.isComplaintFeatureEnabled !== false && (
+          <StatCard icon={AlertCircle} label="Open Complaints" color="#dc2626" value={d?.pendingComplaints ?? 0} />
+        )}
       </div>
 
       {/* Rent Status */}

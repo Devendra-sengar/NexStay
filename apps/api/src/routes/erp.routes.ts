@@ -11,13 +11,14 @@ import { getRentReceipt } from '../controllers/hostelAdmin.controller';
 import {
   getRentDashboard, getRentRecords, generateMonthlyRent, previewGenerateRent,
   addFine, sendReminders, createFee, getSecurityDeposits,
-  getExpenses, createExpense, updateExpense, deleteExpense, proofAction,
+  getExpenses, createExpense, updateExpense, deleteExpense, proofAction, applyDiscount,
   getTransactions, verifyTransaction, getLedgerEntries, getAuditLogs
 } from '../controllers/erpRent.controller';
 import {
   getStaff, getStaffById, createStaff, updateStaff, toggleStaffStatus, deleteStaff,
   getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem,
   getAdminComplaints, getAdminComplaintById, updateComplaintStatus, addInternalNote,
+  createAdminComplaint,
 } from '../controllers/erpStaff.controller';
 import {
   createLead, getLeads, updateLeadStatus, deleteLead
@@ -57,6 +58,7 @@ router.get('/rent/preview-generate', previewGenerateRent);
 router.get('/rent/security-deposits', getSecurityDeposits);
 router.post('/rent/generate', generateMonthlyRent);
 router.patch('/rent/:id/fine', addFine);
+router.patch('/rent/:id/discount', applyDiscount);
 router.patch('/rent/:id/proof-action', proofAction);
 router.post('/rent/send-reminders', sendReminders);
 
@@ -95,6 +97,7 @@ router.delete('/inventory/:id', deleteInventoryItem);
 
 // ── Complaints — Admin (Phase 6) ─────────────────────────────────
 router.get('/complaints', getAdminComplaints);
+router.post('/complaints', createAdminComplaint);
 router.get('/complaints/:id', getAdminComplaintById);
 router.patch('/complaints/:id/status', updateComplaintStatus);
 router.post('/complaints/:id/notes', addInternalNote);

@@ -141,15 +141,15 @@ export default function HostelAdminShell() {
       {/* User */}
       <div className={cn('px-2 py-3 border-t border-surface-border', collapsed && !mobile && 'flex justify-center')}>
         {(!collapsed || mobile) ? (
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-surface transition-colors">
+          <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-surface transition-colors cursor-pointer" onClick={() => { setMobileOpen(false); navigate('/admin/profile'); }}>
             <div className="w-8 h-8 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
               {getInitials(user?.name || 'A')}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-text-primary truncate">{user?.name}</p>
-              <p className="text-xs text-text-muted truncate">{user?.email}</p>
+              <p className="text-xs text-text-muted hover:text-primary transition-colors">Edit Profile</p>
             </div>
-            <button onClick={handleLogout} className="text-text-muted hover:text-danger transition-colors flex-shrink-0">
+            <button onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="text-text-muted hover:text-danger transition-colors flex-shrink-0 p-1">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -189,11 +189,11 @@ export default function HostelAdminShell() {
           </button>
           <div className="flex-1" />
           <NotificationBell />
-          <div className="flex items-center gap-2 pl-2 border-l border-surface-border">
-            <div className="w-7 h-7 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
+          <div className="flex items-center gap-2 pl-2 border-l border-surface-border cursor-pointer group" onClick={() => navigate('/admin/profile')}>
+            <div className="w-7 h-7 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center group-hover:bg-indigo-700 transition-colors">
               {getInitials(user?.name || 'A')}
             </div>
-            <span className="text-sm font-medium text-text-primary hidden sm:block">{user?.name?.split(' ')[0]}</span>
+            <span className="text-sm font-medium text-text-primary hidden sm:block group-hover:text-indigo-600 transition-colors">{user?.name?.split(' ')[0]}</span>
           </div>
         </header>
 

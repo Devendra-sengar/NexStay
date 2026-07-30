@@ -17,6 +17,8 @@ export interface IPropertyDoc extends Document {
   nearbyPlaces?: { name: string; distance: string }[];
   rules?: string;
   foodIncluded: boolean;
+  isComplaintFeatureEnabled: boolean;
+  allowCustomPaymentAmount: boolean;
   images: string[];
   videoUrl?: string;
   rentStartingFrom: number;
@@ -26,6 +28,9 @@ export interface IPropertyDoc extends Document {
   isPaused: boolean;
   rating: number;
   reviewCount: number;
+  latePenaltyType: 'NONE' | 'FIXED' | 'DAILY';
+  latePenaltyAmount: number;
+  gracePeriodDays: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +60,8 @@ const PropertySchema = new Schema<IPropertyDoc>(
     }],
     rules: { type: String, default: '' },
     foodIncluded: { type: Boolean, default: false },
+    isComplaintFeatureEnabled: { type: Boolean, default: true },
+    allowCustomPaymentAmount: { type: Boolean, default: true },
     images: [{ type: String }],
     videoUrl: { type: String, default: '' },
     rentStartingFrom: { type: Number, default: 0 },
@@ -68,6 +75,9 @@ const PropertySchema = new Schema<IPropertyDoc>(
     isPaused: { type: Boolean, default: false },
     rating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },
+    latePenaltyType: { type: String, enum: ['NONE', 'FIXED', 'DAILY'], default: 'NONE' },
+    latePenaltyAmount: { type: Number, default: 0 },
+    gracePeriodDays: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import { format } from 'date-fns';
 import { Plus, Search, X, Loader2, Phone, Mail, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
