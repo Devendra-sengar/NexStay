@@ -7,7 +7,7 @@ import { lazy, Suspense } from 'react';
 // Shells
 import MarketplaceLayout from '@/layouts/MarketplaceLayout';
 import GuestPortalLayout from '@/layouts/GuestPortalLayout';
-import HostelAdminShell from '@/layouts/HostelAdminShell';
+import HostelAdminShell from '@/layouts/HostelAdminShell'; 
 import SuperAdminShell from '@/layouts/SuperAdminShell';
 
 // Lazy shells for new portals
