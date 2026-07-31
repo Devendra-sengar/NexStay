@@ -18,7 +18,7 @@ import uploadRoutes from './routes/upload.routes';
 import wardenRoutes from './routes/warden.routes';
 import messManagerRoutes from './routes/messManager.routes';
 import studentRoutes from './routes/student.routes';
-
+ 
 dotenv.config();
 
 const app = express();
