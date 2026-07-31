@@ -307,7 +307,7 @@ export const recordRentPayment = async (req: AuthRequest, res: Response): Promis
 
     const numAmount = Number(amount);
     
-    // ── Payment Layer (Draft Mode) ──
+    // ── Payment Layer (Admin Direct Payment) ──
     const submissionId = `SUB-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     const submission = await PaymentSubmission.create({
@@ -318,19 +318,54 @@ export const recordRentPayment = async (req: AuthRequest, res: Response): Promis
       residentId: record.hostelStudentId._id,
       claimedAmount: numAmount,
       paymentMode: (paymentMethod === 'CASH' ? 'CASH' : 'ONLINE') as 'CASH' | 'ONLINE' | 'ADJUSTMENT',
-      remark: notes || 'Manually added by Admin - Pending Resident Confirmation',
-      status: 'PENDING_RESIDENT'
+      remark: notes || 'Manually added and verified by Admin',
+      status: 'VERIFIED'
     });
+
+    const pTx = await PaymentTransaction.create({
+      transactionId: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      tenantId,
+      propertyId: record.propertyId,
+      submissionId: submission._id,
+      invoiceId: record._id,
+      residentId: record.hostelStudentId._id,
+      settledAmount: numAmount,
+      paymentMode: submission.paymentMode,
+      status: 'SUCCESS'
+    });
+
+    const oldPaidAmount = record.paidAmount || 0;
+    const totalAmount = record.amount + (record.fine || 0);
+    const newPaidAmount = oldPaidAmount + numAmount;
+
+    await LedgerEntry.create({
+      tenantId,
+      propertyId: record.propertyId,
+      invoiceId: record._id,
+      residentId: record.hostelStudentId._id,
+      transactionId: pTx._id,
+      credit: numAmount,
+      debit: 0,
+      balance: totalAmount - newPaidAmount,
+      source: submission.paymentMode === 'CASH' ? 'CASH' : (submission.paymentMode === 'ADJUSTMENT' ? 'ADJUSTMENT' : 'UPI'),
+      verifiedBy: req.user!.id
+    });
+
+    // Update Rent Record immediately
+    record.paidAmount = newPaidAmount;
+    record.status = record.paidAmount >= totalAmount ? 'PAID' : 'PARTIAL';
+    if (record.status === 'PAID') record.paidAt = new Date();
+    await record.save();
 
     await AuditLog.create({
       tenantId,
       propertyId: record.propertyId,
-      action: 'PAYMENT_DRAFT_CREATED',
+      action: 'PAYMENT_VERIFIED_ACCEPT',
       actorId: req.user!.id,
       actorType: 'Admin',
       entityId: submission._id,
       entityType: 'PaymentSubmission',
-      details: `Admin created draft payment of ₹${numAmount} via ${paymentMethod || 'CASH'} awaiting resident confirmation.`
+      details: `Admin directly recorded and verified payment of ₹${numAmount} via ${paymentMethod || 'CASH'}.`
     });
 
     const student = record.hostelStudentId as any;
@@ -338,13 +373,13 @@ export const recordRentPayment = async (req: AuthRequest, res: Response): Promis
       notify({
         userId: student.guestId,
         type: 'RENT',
-        title: '⏳ Confirm Your Payment',
-        message: `Owner says you paid ₹${numAmount.toLocaleString('en-IN')} via ${paymentMethod || 'CASH'}. Please confirm this receipt in your dashboard.`,
+        title: '✅ Payment Confirmed',
+        message: `Admin recorded your payment of ₹${numAmount.toLocaleString('en-IN')} via ${paymentMethod || 'CASH'}.`,
         linkUrl: '/student/rent',
       }).catch(() => {});
     }
 
-    res.json({ success: true, message: 'Payment draft sent to resident for confirmation.', data: submission });
+    res.json({ success: true, message: 'Payment recorded and verified successfully.', data: submission });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
@@ -615,9 +650,9 @@ export const processCheckOut = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    if (overrideReason && overrideReason.trim().length < 20) {
+    if (overrideReason && overrideReason.trim().length < 5) {
       if (session) await session.abortTransaction();
-      res.status(400).json({ success: false, message: 'Override reason must be at least 20 characters.' });
+      res.status(400).json({ success: false, message: 'Override reason must be at least 5 characters.' });
       return;
     }
 

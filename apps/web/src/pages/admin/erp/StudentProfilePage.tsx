@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, User, FileText, Users, Home, Receipt, MessageSquare,
   Phone, Mail, GraduationCap, MapPin, Calendar, ShieldCheck, ShieldAlert,
@@ -231,6 +231,8 @@ function ComplaintsTab({ complaints }: { complaints: any[] }) {
 export default function StudentProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isWarden = pathname.startsWith('/warden');
   const [activeTab, setActiveTab] = useState('personal');
 
   const { data: student, isLoading } = useErpStudentById(id);
@@ -245,14 +247,14 @@ export default function StudentProfilePage() {
   if (!student) return (
     <div className="page-container text-center py-20">
       <p className="text-text-muted">Student not found.</p>
-      <button className="btn-primary mt-4" onClick={() => navigate('/admin/tenants')}>Back to Students</button>
+      <button className="btn-primary mt-4" onClick={() => navigate(isWarden ? '/warden/students' : '/admin/tenants')}>Back to Students</button>
     </div>
   );
 
   return (
     <div className="page-container max-w-5xl">
       {/* Breadcrumb */}
-      <button onClick={() => navigate('/admin/tenants')} className="flex items-center gap-2 text-sm text-text-muted hover:text-primary mb-4 transition-colors">
+      <button onClick={() => navigate(isWarden ? '/warden/students' : '/admin/tenants')} className="flex items-center gap-2 text-sm text-text-muted hover:text-primary mb-4 transition-colors">
         <ArrowLeft className="w-4 h-4" />Back to Students
       </button>
 
@@ -270,14 +272,14 @@ export default function StudentProfilePage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate(`/admin/print-preview/${student._id}`)}
+            onClick={() => navigate(isWarden ? `/warden/print/${student._id}` : `/admin/print-preview/${student._id}`)}
             className="btn-secondary flex items-center gap-2 bg-surface text-text-primary hover:bg-surface-input"
           >
             <Printer className="w-4 h-4" />Print Registration
           </button>
           {student.status === 'ACTIVE' && (
             <button
-              onClick={() => navigate(`/admin/checkout/${student._id}`)}
+              onClick={() => navigate(isWarden ? `/warden/students/checkout/${student._id}` : `/admin/checkout/${student._id}`)}
               className="btn-danger flex items-center gap-2"
             >
               <LogOut className="w-4 h-4" />Process Check-Out

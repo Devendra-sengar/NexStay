@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Users, Search, UserCheck, LogOut, CreditCard, Filter, UserPlus, Printer } from 'lucide-react';
 import { useErpStudents, useAdminProperties } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,8 @@ const STATUSES = ['ALL', 'ACTIVE', 'CHECKED_OUT'];
 
 export default function StudentsPage() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isWarden = pathname.startsWith('/warden');
   const { data: propsData } = useAdminProperties();
   const properties = propsData?.data ?? [];
 
@@ -36,7 +38,7 @@ export default function StudentsPage() {
         </div>
         <button
           className="btn-primary flex items-center gap-2"
-          onClick={() => navigate('/admin/checkin')}
+          onClick={() => navigate(isWarden ? '/warden/students/checkin' : '/admin/checkin')}
         >
           <UserPlus className="w-4 h-4" />Walk-In Check-In
         </button>
@@ -103,7 +105,7 @@ export default function StudentsPage() {
                   const floor = s.floor;
                   const bed = s.bedId;
                   return (
-                    <tr key={s._id} className="hover:bg-surface-input/40 transition-colors cursor-pointer" onClick={() => navigate(`/admin/tenants/${s._id}`)}>
+                    <tr key={s._id} className="hover:bg-surface-input/40 transition-colors cursor-pointer" onClick={() => navigate(isWarden ? `/warden/students/${s._id}` : `/admin/tenants/${s._id}`)}>
                       <td className="py-3 px-4 border-b border-surface-border">
                         <div>
                           <p className="font-medium text-text-primary text-sm">{s.name}</p>
@@ -128,18 +130,18 @@ export default function StudentsPage() {
                       <td className="py-3 px-4 border-b border-surface-border" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => navigate(`/admin/tenants/${s._id}`)}
+                            onClick={() => navigate(isWarden ? `/warden/students/${s._id}` : `/admin/tenants/${s._id}`)}
                             className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-text-muted"
                             title="View Profile"
                           ><UserCheck className="w-3.5 h-3.5" /></button>
                           <button
-                            onClick={() => navigate(`/admin/print-preview/${s._id}`)}
+                            onClick={() => navigate(isWarden ? `/warden/print/${s._id}` : `/admin/print-preview/${s._id}`)}
                             className="p-1.5 rounded-lg hover:bg-secondary/10 hover:text-secondary transition-colors text-text-muted"
                             title="Print Registration"
                           ><Printer className="w-3.5 h-3.5" /></button>
                           {s.status === 'ACTIVE' && (
                             <button
-                              onClick={() => navigate(`/admin/checkout/${s._id}`)}
+                              onClick={() => navigate(isWarden ? `/warden/students/checkout/${s._id}` : `/admin/checkout/${s._id}`)}
                               className="p-1.5 rounded-lg hover:bg-danger/10 hover:text-danger transition-colors text-text-muted"
                               title="Process Check-Out"
                             ><LogOut className="w-3.5 h-3.5" /></button>

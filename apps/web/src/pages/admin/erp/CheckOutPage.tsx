@@ -69,7 +69,7 @@ export default function CheckOutPage() {
   const totalDue = duesData?.totalDue ?? 0;
   const allCleared = totalDue === 0;
 
-  const canProceedStep0 = allCleared || (useOverride && overrideReason.trim().length >= 20);
+  const canProceedStep0 = allCleared || (useOverride && overrideReason.trim().length >= 5);
 
   const handleCheckout = async () => {
     try {
@@ -156,14 +156,14 @@ export default function CheckOutPage() {
                   </label>
                   {useOverride && (
                     <div>
-                      <label className="form-label">Override Reason (min 20 chars)</label>
+                      <label className="form-label">Override Reason (min 5 chars)</label>
                       <textarea
                         className="input-field min-h-[80px] resize-none"
                         placeholder="Explain reason for waiving dues…"
                         value={overrideReason}
                         onChange={e => setOverrideReason(e.target.value)}
                       />
-                      <p className="text-xs text-text-muted mt-1">{overrideReason.trim().length}/20 chars minimum</p>
+                      <p className="text-xs text-text-muted mt-1">{overrideReason.trim().length}/5 chars minimum</p>
                     </div>
                   )}
                 </div>

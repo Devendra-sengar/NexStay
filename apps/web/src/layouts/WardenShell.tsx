@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, DoorOpen, MessageSquare, IndianRupee, Wallet,
-  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock, UserPlus
+  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock, UserPlus, UserCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StaffPermissions } from '@/types/shared';
@@ -147,7 +147,7 @@ export default function WardenShell() {
               <Route path="/students" element={<AdminTenantsPage />} />
               <Route path="/students/:id" element={<StudentProfilePage />} />
               <Route path="/students/checkin" element={<CheckInPage />} />
-              <Route path="/students/checkout/:id" element={<CheckOutPage />} />
+              <Route path="/students/checkout/:studentId" element={<CheckOutPage />} />
               <Route path="/print/:id" element={<PrintPreviewPage />} />
               <Route path="/rooms" element={<AdminRoomsBedsPage />} />
               <Route path="/complaints" element={<AdminComplaintsPage />} />

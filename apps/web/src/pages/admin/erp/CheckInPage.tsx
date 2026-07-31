@@ -1,4 +1,4 @@
-import { useState, useRef, DragEvent, ChangeEvent } from 'react';
+import { useState, useRef, DragEvent, ChangeEvent, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Check, ChevronRight, BedDouble, Upload, Loader2, CheckCircle2, AlertCircle, X, FileImage, QrCode, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -142,20 +142,43 @@ function BedPicker({ value, onChange }: { value: string; onChange: (bedId: strin
   const [floorIdx, setFloorIdx] = useState(0);
   const [selRoom, setSelRoom] = useState<string | undefined>();
 
-  const { data: floors } = useErpRooms(propId);
+  useEffect(() => {
+    if (properties.length === 1 && !propId) {
+      setPropId(properties[0]._id);
+    }
+  }, [properties, propId]);
+
+  const { data: floors, isError, error, isLoading } = useErpRooms(propId);
   const { data: beds } = useRoomBeds(selRoom);
 
   const currentFloor = floors?.[floorIdx];
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="form-label">Property</label>
-        <select className="input-field" value={propId} onChange={e => { setPropId(e.target.value); setFloorIdx(0); setSelRoom(undefined); }}>
-          <option value="">Select property…</option>
-          {properties.map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}
-        </select>
-      </div>
+      {properties.length > 1 ? (
+        <div>
+          <label className="form-label">Property</label>
+          <select className="input-field" value={propId} onChange={e => { setPropId(e.target.value); setFloorIdx(0); setSelRoom(undefined); }}>
+            <option value="">Select property…</option>
+            {properties.map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}
+          </select>
+        </div>
+      ) : properties.length === 1 ? (
+        <div>
+          <label className="form-label">Property</label>
+          <div className="input-field bg-surface text-text-secondary cursor-default border-surface-border">
+            {properties[0].name}
+          </div>
+        </div>
+      ) : null}
+      
+      {isLoading && propId && <p className="text-sm text-text-muted flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading rooms...</p>}
+      {isError && <p className="text-sm text-red-500">Error loading rooms: {(error as any)?.response?.data?.message || (error as any)?.message}</p>}
+      
+      {floors && floors.length === 0 && !isLoading && (
+        <p className="text-sm text-amber-600">No rooms or floors found for this property.</p>
+      )}
+
       {floors && floors.length > 0 && (
         <>
           <div className="flex gap-2 flex-wrap">
@@ -166,6 +189,9 @@ function BedPicker({ value, onChange }: { value: string; onChange: (bedId: strin
               </button>
             ))}
           </div>
+          <p className="text-xs text-amber-600 font-medium mb-2 flex items-center gap-1">
+            <AlertCircle className="w-3.5 h-3.5" /> Please click on a room to view and select an available bed.
+          </p>
           {currentFloor?.rooms?.map((room: any) => (
             <div key={room._id}>
               <button onClick={() => setSelRoom(selRoom === room._id ? undefined : room._id)}
@@ -583,7 +609,15 @@ export default function CheckInPage() {
           <div>
             <h2 className="font-semibold text-text-primary mb-3">Select Bed</h2>
             <BedPicker value={selectedBedId} onChange={(bid, pid) => { setSelectedBedId(bid); setSelectedPropertyId(pid); }} />
-            {selectedBedId && <p className="mt-3 text-sm text-emerald-600 font-medium">✓ Bed selected</p>}
+            {selectedBedId ? (
+              <p className="mt-3 text-sm text-emerald-600 font-medium flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" /> Bed selected
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-red-500 font-medium flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" /> You must select an available bed to proceed.
+              </p>
+            )}
           </div>
         )}
 
