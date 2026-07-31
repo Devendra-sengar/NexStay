@@ -441,7 +441,11 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="form-label">Late Penalty Type</label>
-                <select className="input-field" value={form.latePenaltyType || 'NONE'} onChange={e => set({ latePenaltyType: e.target.value })}>
+                <select className="input-field" value={form.latePenaltyType || 'NONE'} onChange={(e) =>
+  set({
+    latePenaltyType: e.target.value as 'NONE' | 'FIXED' | 'DAILY',
+  })
+}>
                   <option value="NONE">None</option>
                   <option value="FIXED">Fixed Amount</option>
                   <option value="DAILY">Daily Amount</option>
