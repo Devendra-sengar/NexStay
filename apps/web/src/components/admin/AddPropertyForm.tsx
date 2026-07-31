@@ -26,33 +26,33 @@ interface FormState {
   roomSetups: RoomSetup[];
 }
 
-const STEPS = ['Basic Info','Location','Amenities','Images','Rooms','Review & Submit'];
+const STEPS = ['Basic Info', 'Location', 'Amenities', 'Images', 'Rooms', 'Review & Submit'];
 
 const GENDER_OPTIONS = [
-  { value:'BOYS', label:'Boys PG', icon:'♂', color:'bg-blue-50 border-blue-300 text-blue-700' },
-  { value:'GIRLS', label:'Girls PG', icon:'♀', color:'bg-pink-50 border-pink-300 text-pink-700' },
-  { value:'CO_ED', label:'Co-Living', icon:'⚡', color:'bg-violet-50 border-violet-300 text-violet-700' },
+  { value: 'BOYS', label: 'Boys PG', icon: '♂', color: 'bg-blue-50 border-blue-300 text-blue-700' },
+  { value: 'GIRLS', label: 'Girls PG', icon: '♀', color: 'bg-pink-50 border-pink-300 text-pink-700' },
+  { value: 'CO_ED', label: 'Co-Living', icon: '⚡', color: 'bg-violet-50 border-violet-300 text-violet-700' },
 ];
 
 const AMENITY_OPTIONS = [
-  { key:'WIFI', label:'WiFi', icon: Wifi },
-  { key:'FOOD', label:'Food Included', icon: Utensils },
-  { key:'PARKING', label:'Parking', icon: Car },
-  { key:'SECURITY', label:'Security', icon: Shield },
-  { key:'LAUNDRY', label:'Laundry', icon: Shirt },
-  { key:'CCTV', label:'CCTV', icon: Camera },
-  { key:'AC', label:'AC Rooms', icon: Wind },
-  { key:'POWER_BACKUP', label:'Power Backup', icon: Flame },
+  { key: 'WIFI', label: 'WiFi', icon: Wifi },
+  { key: 'FOOD', label: 'Food Included', icon: Utensils },
+  { key: 'PARKING', label: 'Parking', icon: Car },
+  { key: 'SECURITY', label: 'Security', icon: Shield },
+  { key: 'LAUNDRY', label: 'Laundry', icon: Shirt },
+  { key: 'CCTV', label: 'CCTV', icon: Camera },
+  { key: 'AC', label: 'AC Rooms', icon: Wind },
+  { key: 'POWER_BACKUP', label: 'Power Backup', icon: Flame },
 ];
 
-const ROOM_TYPE_OPTIONS = ['SINGLE','DOUBLE','TRIPLE','FOUR_SHARING'];
-const ROOM_CAPACITY: Record<string, number> = { SINGLE:1, DOUBLE:2, TRIPLE:3, FOUR_SHARING:4 };
-const ROOM_LABELS: Record<string, string> = { SINGLE:'Single', DOUBLE:'Double', TRIPLE:'Triple', FOUR_SHARING:'4-Sharing' };
+const ROOM_TYPE_OPTIONS = ['SINGLE', 'DOUBLE', 'TRIPLE', 'FOUR_SHARING'];
+const ROOM_CAPACITY: Record<string, number> = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3, FOUR_SHARING: 4 };
+const ROOM_LABELS: Record<string, string> = { SINGLE: 'Single', DOUBLE: 'Double', TRIPLE: 'Triple', FOUR_SHARING: '4-Sharing' };
 
 const INITIAL: FormState = {
-  name:'', description:'', city:'', locality:'', address:'', state:'', pincode:'', gender:'BOYS', landmark:'',
-  latitude:'', longitude:'', amenities:[], customFacilities:[], nearbyPlaces:[], rules:'', foodIncluded:false, isComplaintFeatureEnabled:true,
-  images:[], videoUrl:'', roomSetups:[{ roomType:'DOUBLE', count:1, pricePerBed:6000 }],
+  name: '', description: '', city: '', locality: '', address: '', state: '', pincode: '', gender: 'BOYS', landmark: '',
+  latitude: '', longitude: '', amenities: [], customFacilities: [], nearbyPlaces: [], rules: '', foodIncluded: false, isComplaintFeatureEnabled: true,
+  images: [], videoUrl: '', roomSetups: [{ roomType: 'DOUBLE', count: 1, pricePerBed: 6000 }],
   allowCustomPaymentAmount: true, latePenaltyType: 'NONE', latePenaltyAmount: 0, gracePeriodDays: 0,
 };
 
@@ -94,15 +94,15 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
 
   const handlePlaceSelect = useCallback((place: PlaceResult) => {
     set({
-      address:  place.formatted,
-      city:     place.city     || form.city,
-      state:    place.state    || form.state,
-      pincode:  place.pincode  || form.pincode,
-      locality: place.street   || form.locality,
-      ...(place.lat != null ? { latitude:  place.lat } : {}),
+      address: place.formatted,
+      city: place.city || form.city,
+      state: place.state || form.state,
+      pincode: place.pincode || form.pincode,
+      locality: place.street || form.locality,
+      ...(place.lat != null ? { latitude: place.lat } : {}),
       ...(place.lng != null ? { longitude: place.lng } : {}),
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.city, form.state, form.pincode, form.locality]);
 
   // ── Validation per step ────────────────────────────────────────────────────
@@ -138,10 +138,10 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
         foodIncluded: form.amenities.includes('FOOD') || form.foodIncluded,
       });
       setSubmitted(true);
-    } catch {}
+    } catch { }
   };
 
-  const addRoomSetup = () => set({ roomSetups: [...form.roomSetups, { roomType:'SINGLE', count:1, pricePerBed:5000 }] });
+  const addRoomSetup = () => set({ roomSetups: [...form.roomSetups, { roomType: 'SINGLE', count: 1, pricePerBed: 5000 }] });
 
   const totalRooms = form.roomSetups.reduce((s, r) => s + r.count, 0);
   const totalBeds = form.roomSetups.reduce((s, r) => s + r.count * (ROOM_CAPACITY[r.roomType] ?? 1), 0);
@@ -308,7 +308,7 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
           <div className="mt-6 pt-6 border-t border-surface-border">
             <h2 className="text-lg font-bold text-text-primary mb-1">Nearby Places / Landmarks</h2>
             <p className="text-text-muted text-sm mb-4">Add places like colleges, metro stations, or malls nearby.</p>
-            
+
             <div className="flex gap-2 mt-1">
               <input
                 className="input-field flex-1"
@@ -441,7 +441,11 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="form-label">Late Penalty Type</label>
-                <select className="input-field" value={form.latePenaltyType || 'NONE'} onChange={e => set({ latePenaltyType: e.target.value as "NONE" | "FIXED" | "DAILY" })}>
+                <select className="input-field" value={form.latePenaltyType || 'NONE'} onChange={(e) =>
+                  set({
+                    latePenaltyType: e.target.value as 'NONE' | 'FIXED' | 'DAILY',
+                  })
+                }>
                   <option value="NONE">None</option>
                   <option value="FIXED">Fixed Amount</option>
                   <option value="DAILY">Daily Amount</option>
@@ -568,20 +572,26 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
         <div className="space-y-5">
           <h2 className="text-lg font-bold text-text-primary">Review & Submit</h2>
           {[
-            { label: 'Basic Info', items: [
-              ['Name', form.name], ['City', form.city], ['State', form.state],
-              ['Gender', form.gender], ['Address', form.address],
-            ], step: 0 },
-            { label: 'Location', items: [
-              ['Latitude', form.latitude !== '' ? String(form.latitude) : 'Not set'],
-              ['Longitude', form.longitude !== '' ? String(form.longitude) : 'Not set'],
-            ], step: 1 },
+            {
+              label: 'Basic Info', items: [
+                ['Name', form.name], ['City', form.city], ['State', form.state],
+                ['Gender', form.gender], ['Address', form.address],
+              ], step: 0
+            },
+            {
+              label: 'Location', items: [
+                ['Latitude', form.latitude !== '' ? String(form.latitude) : 'Not set'],
+                ['Longitude', form.longitude !== '' ? String(form.longitude) : 'Not set'],
+              ], step: 1
+            },
             { label: 'Amenities', items: [['Selected', form.amenities.join(', ') || 'None']], step: 2 },
             { label: 'Images', items: [['Uploaded', `${form.images.length} photo${form.images.length !== 1 ? 's' : ''}`]], step: 3 },
-            { label: 'Rooms', items: [
-              ['Configuration', form.roomSetups.map(r => `${r.count}× ${ROOM_LABELS[r.roomType]} @₹${r.pricePerBed}`).join(', ')],
-              ['Total Beds', String(totalBeds)],
-            ], step: 4 },
+            {
+              label: 'Rooms', items: [
+                ['Configuration', form.roomSetups.map(r => `${r.count}× ${ROOM_LABELS[r.roomType]} @₹${r.pricePerBed}`).join(', ')],
+                ['Total Beds', String(totalBeds)],
+              ], step: 4
+            },
           ].map(({ label, items, step: s }) => (
             <div key={label} className="card p-4">
               <div className="flex items-center justify-between mb-3">
