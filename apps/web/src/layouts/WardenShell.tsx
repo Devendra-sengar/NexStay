@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, DoorOpen, MessageSquare, IndianRupee, Wallet,
-  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock, UserPlus
+  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock, UserPlus, UserCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StaffPermissions } from '@/types/shared';
