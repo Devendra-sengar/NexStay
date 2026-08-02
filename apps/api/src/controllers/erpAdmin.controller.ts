@@ -186,13 +186,39 @@ export const updateRoom = async (req: AuthRequest, res: Response): Promise<void>
     const tenantId = req.user!.tenantId || req.user!.id;
     const room = await Room.findOne({ _id: req.params.id, tenantId });
     if (!room) { res.status(404).json({ success: false, message: 'Room not found' }); return; }
-    const { roomNumber, roomType, pricePerBed, floorId, bedPrices } = req.body;
+    const { roomNumber, roomType, capacity, pricePerBed, floorId, bedPrices } = req.body;
     if (roomNumber) room.roomNumber = roomNumber;
     if (roomType) room.roomType = roomType;
     if (pricePerBed !== undefined) room.pricePerBed = pricePerBed;
     if (floorId) room.floorId = floorId;
+    
+    // Handle capacity change (add/remove beds)
+    if (capacity !== undefined && capacity !== room.capacity) {
+      const beds = await Bed.find({ roomId: room._id }).sort({ bedNumber: 1 });
+      const currentCapacity = beds.length;
+
+      if (capacity > currentCapacity) {
+        // Add beds
+        for (let i = currentCapacity + 1; i <= capacity; i++) {
+          const price = bedPrices && Array.isArray(bedPrices) && bedPrices.length >= i ? bedPrices[i - 1] : (pricePerBed ?? 6000);
+          await Bed.create({ tenantId, propertyId: room.propertyId, roomId: room._id, bedNumber: `B${i}`, status: 'AVAILABLE', price });
+        }
+      } else if (capacity < currentCapacity) {
+        // Remove beds
+        const bedsToRemove = beds.slice(capacity);
+        const occupied = bedsToRemove.filter(b => b.status !== 'AVAILABLE');
+        if (occupied.length > 0) {
+          res.status(400).json({ success: false, message: 'Cannot reduce room capacity. Some beds that would be removed are currently occupied or reserved.' });
+          return;
+        }
+        await Bed.deleteMany({ _id: { $in: bedsToRemove.map(b => b._id) } });
+      }
+      room.capacity = capacity;
+    }
+
     await room.save();
 
+    // Update remaining bed prices
     if (bedPrices && Array.isArray(bedPrices)) {
       const beds = await Bed.find({ roomId: room._id }).sort({ bedNumber: 1 });
       for (let i = 0; i < beds.length; i++) {
@@ -394,6 +420,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     const tenantId = req.user!.tenantId || req.user!.id;
     const {
       bookingId,          // for booking-linked flow
+      preBookingId,       // for converting an ErpPreBooking
       // Walk-in fields
       name, phone, email, college, guardianName, guardianPhone,
       aadhaarUrl, aadhaarNumber, studentIdUrl, photoUrl,
@@ -587,6 +614,12 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       stayingPeriod: stayingPeriod ?? '',
     }], { session });
 
+    let preBookingDoc: any = null;
+    if (preBookingId) {
+      const ErpPreBooking = (await import('../models/ErpPreBooking.model')).ErpPreBooking;
+      preBookingDoc = await ErpPreBooking.findByIdAndUpdate(preBookingId, { status: 'CONVERTED' }, { session, new: true }).lean();
+    }
+
     // Set bed OCCUPIED
     bed.status = 'OCCUPIED';
     bed.currentBookingId = booking._id;
@@ -599,14 +632,44 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     // Generate first rent record
     const dueDate = new Date(moveIn.getFullYear(), moveIn.getMonth() + 1, 5);
+    const rentAmount = monthlyRent ?? booking?.monthlyRent ?? 6000;
+    const tokenAmount = preBookingDoc?.tokenAmount ?? 0;
+    const initialPaidAmount = Math.min(tokenAmount, rentAmount);
+    
     await RentRecord.create([{
       tenantId, propertyId: finalPropertyId,
       roomId: (await Bed.findById(finalBedId))?.roomId,
       hostelStudentId: student[0]._id, bookingId: booking._id,
       month: ym(moveIn),
-      amount: monthlyRent ?? booking?.monthlyRent ?? 6000,
-      paidAmount: 0, fine: 0, dueDate, status: 'UNPAID',
+      amount: rentAmount,
+      paidAmount: initialPaidAmount, 
+      fine: 0, 
+      dueDate, 
+      status: initialPaidAmount >= rentAmount ? 'PAID' : (initialPaidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
+      paidAt: initialPaidAmount >= rentAmount ? new Date() : undefined
     }], { session });
+
+    // If there is a token amount, create a LedgerEntry and PaymentTransaction to record it
+    if (tokenAmount > 0) {
+      const pTx = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
+        transactionId: `TXN-TOKEN-${Date.now()}`,
+        tenantId, propertyId: finalPropertyId,
+        residentId: student[0]._id,
+        settledAmount: tokenAmount,
+        paymentMode: preBookingDoc?.tokenPaymentMethod || 'CASH',
+        status: 'SUCCESS'
+      }], { session });
+
+      await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
+        tenantId, propertyId: finalPropertyId,
+        residentId: student[0]._id,
+        transactionId: pTx[0]._id,
+        credit: tokenAmount, debit: 0,
+        balance: rentAmount - tokenAmount,
+        source: preBookingDoc?.tokenPaymentMethod || 'CASH',
+        verifiedBy: req.user!.id
+      }], { session });
+    }
 
     if (session) await session.commitTransaction();
     // Notify after commit (non-critical, mock-email included)

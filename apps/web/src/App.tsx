@@ -87,7 +87,7 @@ function App() {
           <Route path="/forgot-password"  element={<ForgotPasswordPage />} />
           <Route path="/verify-otp"       element={<OtpVerificationPage />} />
 
-          {/* ── Student Portal ────────────────────────────── */}
+          {/* ── tenant portal ────────────────────────────── */}
           <Route path="/student/*" element={
             <RequireAuth roles={[Role.STUDENT]}>
               <StudentShell />

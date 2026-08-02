@@ -18,6 +18,7 @@ import uploadRoutes from './routes/upload.routes';
 import wardenRoutes from './routes/warden.routes';
 import messManagerRoutes from './routes/messManager.routes';
 import studentRoutes from './routes/student.routes';
+import { startCronJobs } from './cron';
  
 dotenv.config();
 
@@ -91,6 +92,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 connectDB().then(() => {
+  startCronJobs();
   app.listen(PORT, () => {
     console.log(`✅ NexStay API v2 running on http://localhost:${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health`);

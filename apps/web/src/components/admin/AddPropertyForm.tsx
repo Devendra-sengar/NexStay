@@ -422,7 +422,7 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
                   checked={form.isComplaintFeatureEnabled} onChange={e => set({ isComplaintFeatureEnabled: e.target.checked })} />
                 <div>
                   <span className="text-sm font-semibold text-text-primary block">Enable Complaints</span>
-                  <span className="text-xs text-text-muted">Allow students to raise complaints for this property</span>
+                  <span className="text-xs text-text-muted">Allow tenants to raise complaints for this property</span>
                 </div>
               </label>
               <label className="flex items-center gap-3 cursor-pointer">
@@ -430,7 +430,7 @@ export default function AddPropertyForm({ onCancel }: { onCancel: () => void }) 
                   checked={form.allowCustomPaymentAmount !== false} onChange={e => set({ allowCustomPaymentAmount: e.target.checked })} />
                 <div>
                   <span className="text-sm font-semibold text-text-primary block">Allow Custom Rent Amount</span>
-                  <span className="text-xs text-text-muted">Allow students to enter a custom amount when uploading rent payment proof</span>
+                  <span className="text-xs text-text-muted">Allow tenants to enter a custom amount when uploading rent payment proof</span>
                 </div>
               </label>
             </div>

@@ -497,6 +497,39 @@ export function useDeleteStaff() {
   });
 }
 
+// ─── Future Bookings (Pre-Bookings) ───────────────────────────────────────────
+export function usePreBookings() {
+  return useQuery({
+    queryKey: ['pre-bookings'],
+    queryFn: async () => {
+      const { data } = await erp('/pre-bookings');
+      return data as { data: any[] };
+    },
+  });
+}
+
+export function usePreBookingById(id?: string) {
+  return useQuery({
+    queryKey: ['pre-booking', id],
+    queryFn: async () => {
+      const { data } = await erp(`/pre-bookings/${id}`);
+      return data as { data: any };
+    },
+    enabled: !!id,
+  });
+}
+
+export function useCreatePreBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: any) => {
+      const { data } = await erp('/pre-bookings', { method: 'POST', data: body });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pre-bookings'] }),
+  });
+}
+
 // ─── Login Staff (WARDEN / MESS_MANAGER with portal credentials) ──────────────
 // Fetches the owner's hostels for the hostelId dropdown
 export function useMyHostels() {

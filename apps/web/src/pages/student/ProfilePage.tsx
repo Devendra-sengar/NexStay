@@ -37,7 +37,7 @@ export default function StudentProfilePage() {
           </div>
           <div>
             <p style={{ color: '#0f172a', fontSize: 18, fontWeight: 700, margin: '0 0 2px' }}>{user?.name}</p>
-            <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Student ID: {user?.studentId || user?.phone}</p>
+            <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>Tenant ID: {user?.studentId || user?.phone}</p>
           </div>
         </div>
         <div style={{ display: 'grid', gap: 10 }}>

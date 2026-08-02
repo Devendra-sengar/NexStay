@@ -14,7 +14,7 @@ interface StaffPermissions {
 }
 
 const PERM_CONFIG: Array<{ key: keyof StaffPermissions; label: string; desc: string; icon: string; roles: string[] }> = [
-  { key: 'canViewStudents',     label: 'View Students',       desc: 'See student/tenant list',         icon: '■', roles: ['WARDEN', 'MESS_MANAGER'] },
+  { key: 'canViewStudents',     label: 'View Tenants',       desc: 'See student/tenant list',         icon: '■', roles: ['WARDEN', 'MESS_MANAGER'] },
   { key: 'canManageComplaints', label: 'Manage Complaints',   desc: 'View and resolve complaints',     icon: '●', roles: ['WARDEN'] },
   { key: 'canViewRentRecords',  label: 'View Rent Records',   desc: 'See rent payment records',        icon: '◆', roles: ['WARDEN'] },
   { key: 'canUploadMenu',       label: 'Upload Mess Menu',    desc: 'Post daily mess menu',            icon: '◈', roles: ['MESS_MANAGER'] },

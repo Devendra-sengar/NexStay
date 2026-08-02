@@ -38,7 +38,7 @@ export default function WardenDashboardPage() {
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
-        <StatCard icon={Users}        label="Active Students"   value={stats?.totalStudents || 0}  color="#1d4ed8" />
+        <StatCard icon={Users}        label="Active Tenants"   value={stats?.totalStudents || 0}  color="#1d4ed8" />
         <StatCard icon={BedDouble}    label="Available Beds"    value={stats?.availableBeds || 0} color="#16a34a" sub={`${stats?.occupiedBeds || 0} occupied`} />
         <StatCard icon={MessageSquare} label="Open Complaints" value={stats?.openComplaints || 0} color="#dc2626" />
         <StatCard icon={IndianRupee}  label="Pending Rent"      value={stats?.pendingRentCount || 0} color="#d97706" sub="students" />

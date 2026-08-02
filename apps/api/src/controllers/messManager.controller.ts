@@ -74,9 +74,9 @@ export const upsertMenu = async (req: AuthRequest, res: Response): Promise<void>
         tenantId,
         date: menuDate,
         uploadedBy,
-        breakfast: breakfast || { items: [], photoUrl: null },
-        lunch: lunch || { items: [], photoUrl: null },
-        dinner: dinner || { items: [], photoUrl: null },
+        breakfast: breakfast || { items: [], photoType: 'NONE', thaliPhotoUrl: null, photosUploadedAt: null },
+        lunch: lunch || { items: [], photoType: 'NONE', thaliPhotoUrl: null, photosUploadedAt: null },
+        dinner: dinner || { items: [], photoType: 'NONE', thaliPhotoUrl: null, photosUploadedAt: null },
         specialNote: specialNote || '',
       },
       { upsert: true, new: true }

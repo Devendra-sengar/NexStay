@@ -80,7 +80,7 @@ function StudentsTab() {
             <thead><tr>{['Name','Email','Phone','Status','Registered','Active Bookings','Actions'].map(h => <th key={h}>{h}</th>)}</tr></thead>
             <tbody>
               {students.length === 0 ? (
-                <tr><td colSpan={7} className="py-8 text-center text-text-muted">No students found</td></tr>
+                <tr><td colSpan={7} className="py-8 text-center text-text-muted">No tenants found</td></tr>
               ) : students.map((g: any) => (
                 <tr key={g._id} className={cn('hover:bg-surface-input/40', g.status === 'SUSPENDED' && 'bg-red-50/40')}>
                   <td className="py-2.5 px-4 border-b border-surface-border text-sm font-medium">{g.name}</td>

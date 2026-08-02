@@ -6,26 +6,42 @@ export interface IMessMenuDoc extends Document {
   date: string; // YYYY-MM-DD
   uploadedBy: mongoose.Types.ObjectId;
   breakfast: {
-    items: string[];
-    photoUrl: string | null;
+    items: { name: string; photoUrl: string | null }[];
+    photoType: 'NONE' | 'THALI' | 'ITEMS';
+    thaliPhotoUrl: string | null;
+    photosUploadedAt: Date | null;
   };
   lunch: {
-    items: string[];
-    photoUrl: string | null;
+    items: { name: string; photoUrl: string | null }[];
+    photoType: 'NONE' | 'THALI' | 'ITEMS';
+    thaliPhotoUrl: string | null;
+    photosUploadedAt: Date | null;
   };
   dinner: {
-    items: string[];
-    photoUrl: string | null;
+    items: { name: string; photoUrl: string | null }[];
+    photoType: 'NONE' | 'THALI' | 'ITEMS';
+    thaliPhotoUrl: string | null;
+    photosUploadedAt: Date | null;
   };
   specialNote: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
+const MenuItemSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    photoUrl: { type: String, default: null }
+  },
+  { _id: false }
+);
+
 const MealSchema = new Schema(
   {
-    items:    { type: [String], default: [] },
-    photoUrl: { type: String, default: null },
+    items: { type: [MenuItemSchema], default: [] },
+    photoType: { type: String, enum: ['NONE', 'THALI', 'ITEMS'], default: 'NONE' },
+    thaliPhotoUrl: { type: String, default: null },
+    photosUploadedAt: { type: Date, default: null }
   },
   { _id: false }
 );
@@ -51,9 +67,9 @@ const MessMenuSchema = new Schema<IMessMenuDoc>(
       ref: 'User',
       required: true,
     },
-    breakfast: { type: MealSchema, default: () => ({ items: [], photoUrl: null }) },
-    lunch:     { type: MealSchema, default: () => ({ items: [], photoUrl: null }) },
-    dinner:    { type: MealSchema, default: () => ({ items: [], photoUrl: null }) },
+    breakfast: { type: MealSchema, default: () => ({ items: [], photoType: 'NONE', thaliPhotoUrl: null, photosUploadedAt: null }) },
+    lunch:     { type: MealSchema, default: () => ({ items: [], photoType: 'NONE', thaliPhotoUrl: null, photosUploadedAt: null }) },
+    dinner:    { type: MealSchema, default: () => ({ items: [], photoType: 'NONE', thaliPhotoUrl: null, photosUploadedAt: null }) },
     specialNote: { type: String, default: '' },
   },
   { timestamps: true }

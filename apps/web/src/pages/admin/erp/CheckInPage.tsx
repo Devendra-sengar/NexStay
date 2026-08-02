@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import api from '@/lib/api';
-import { useProcessCheckIn, useAdminProperties, useErpRooms, useRoomBeds } from '@/lib/adminApi';
+import { useProcessCheckIn, useAdminProperties, useErpRooms, useRoomBeds, usePreBookingById } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
 const getToken = () => localStorage.getItem('accessToken');
@@ -227,8 +227,12 @@ export default function CheckInPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const bookingId = params.get('bookingId');
+  const preBookingId = params.get('preBookingId');
 
   const { data: booking } = useSingleBooking(bookingId ?? undefined);
+  const { data: preBookingRes } = usePreBookingById(preBookingId ?? undefined);
+  const preBooking = preBookingRes?.data;
+  
   const checkIn = useProcessCheckIn();
   const [step, setStep] = useState(0);
   const [success, setSuccess] = useState<string | null>(null);
@@ -253,8 +257,39 @@ export default function CheckInPage() {
   const [phoneError, setPhoneError] = useState('');
   const [guardianPhoneError, setGuardianPhoneError] = useState('');
 
-  // Common stay fields
   const [stayDetails, setStayDetails] = useState({ moveInDate: new Date().toISOString().split('T')[0], monthlyRent: booking?.monthlyRent ?? 6000, securityDeposit: 0, noticePeriodDays: 30 });
+
+  // Pre-fill from PreBooking
+  useEffect(() => {
+    if (preBooking && !walkin.name) {
+      setWalkin(prev => ({
+        ...prev,
+        name: preBooking.name || '', phone: preBooking.phone || '', email: preBooking.email || '',
+        college: preBooking.college || '', guardianName: preBooking.guardianName || '',
+        guardianPhone: preBooking.guardianPhone || '', guardianAddress: preBooking.guardianAddress || '',
+        fatherName: preBooking.fatherName || '', fatherOccupation: preBooking.fatherOccupation || '',
+        fatherContact: preBooking.fatherContact || '', motherName: preBooking.motherName || '',
+        dateOfBirth: preBooking.dateOfBirth ? new Date(preBooking.dateOfBirth).toISOString().split('T')[0] : '',
+        bloodGroup: preBooking.bloodGroup || '', aadhaarNumber: preBooking.aadhaarNumber || '',
+        maritalStatus: preBooking.maritalStatus || '', education: preBooking.education || '',
+        occupation: preBooking.occupation || '', organization: preBooking.organization || '',
+        permanentAddress: preBooking.permanentAddress || '', vehicleNumber: preBooking.vehicleNumber || '',
+        medicalHistory: preBooking.medicalHistory || ''
+      }));
+      setWalkinDocs({
+        aadhaarUrl: preBooking.aadhaarUrl || '',
+        studentIdUrl: preBooking.studentIdUrl || '',
+        photoUrl: preBooking.photoUrl || ''
+      });
+      setStayDetails(prev => ({
+        ...prev,
+        moveInDate: preBooking.expectedJoiningDate ? new Date(preBooking.expectedJoiningDate).toISOString().split('T')[0] : prev.moveInDate,
+      }));
+      if (preBooking.propertyId) {
+        setSelectedPropertyId(typeof preBooking.propertyId === 'string' ? preBooking.propertyId : (preBooking.propertyId._id || ''));
+      }
+    }
+  }, [preBooking]);
 
   const isBookingFlow = !!bookingId && !!booking;
   const totalSteps = isBookingFlow ? 4 : 5;
@@ -279,9 +314,15 @@ export default function CheckInPage() {
 
   const handleComplete = async () => {
     try {
-      const payload = isBookingFlow
-        ? { bookingId: booking._id, bedId: String(booking.bedId?._id ?? booking.bedId), propertyId: String(booking.propertyId?._id ?? booking.propertyId), ...stayDetails, stayingPeriod }
-        : { ...walkin, ...walkinDocs, bedId: selectedBedId, propertyId: selectedPropertyId, ...stayDetails, stayingPeriod };
+      const payload: any = {
+        bookingId: bookingId ?? undefined,
+        preBookingId: preBookingId ?? undefined,
+        monthlyRent: Number(stayDetails.monthlyRent),
+        securityDeposit: Number(stayDetails.securityDeposit),
+        moveInDate: stayDetails.moveInDate,
+        noticePeriodDays: stayDetails.noticePeriodDays,
+        ...(!isBookingFlow ? { ...walkin, ...walkinDocs, bedId: selectedBedId, propertyId: selectedPropertyId, stayingPeriod } : { bedId: String(booking.bedId?._id ?? booking.bedId), propertyId: String(booking.propertyId?._id ?? booking.propertyId), stayingPeriod })
+      };
 
       const res = await checkIn.mutateAsync(payload);
       setSuccessData(res.data?.data);
@@ -309,9 +350,9 @@ export default function CheckInPage() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-surface-border mb-6 flex flex-col items-center max-w-sm w-full mx-auto animate-slide-up">
             <div className="flex items-center gap-2 mb-2">
               <QrCode className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-bold text-text-primary">Student Login QR</h3>
+              <h3 className="font-bold text-text-primary">tenant login QR</h3>
             </div>
-            <p className="text-xs text-text-muted mb-4">Ask the student to scan this QR code to access their portal.</p>
+            <p className="text-xs text-text-muted mb-4">Ask the tenant to scan this QR code to access their portal.</p>
             <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 mb-4 inline-block">
               <QRCodeSVG value={loginUrl} size={150} level="H" />
             </div>
@@ -341,7 +382,7 @@ export default function CheckInPage() {
         )}
 
         <div className="flex gap-3 justify-center flex-wrap">
-          <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Students</button>
+          <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Tenants</button>
           <button className="btn-primary" onClick={() => navigate('/admin/rooms')}>View BedGrid</button>
           {successData?.student?._id && (
             <button
@@ -379,7 +420,7 @@ export default function CheckInPage() {
             <div className="space-y-3">
               {[
                 { key: 'aadhaar', label: 'Aadhaar Card', url: booking.aadhaarUrl },
-                { key: 'studentId', label: 'Student ID', url: booking.studentIdUrl },
+                { key: 'studentId', label: 'Tenant ID', url: booking.studentIdUrl },
                 { key: 'photo', label: 'Photo', url: booking.photoUrl },
               ].map(({ key, label, url }) => (
                 <div key={key} className="flex items-center justify-between p-3 border border-surface-border rounded-xl">
@@ -428,7 +469,7 @@ export default function CheckInPage() {
           <div>
             <h2 className="font-semibold text-text-primary mb-4">Summary</h2>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Student</span><span className="font-medium">{guest?.name}</span></div>
+              <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Tenant</span><span className="font-medium">{guest?.name}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Bed</span><span className="font-medium">{(booking.bedId as any)?.bedNumber}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Move-In</span><span className="font-medium">{stayDetails.moveInDate}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Monthly Rent</span><span className="font-medium">₹{stayDetails.monthlyRent?.toLocaleString('en-IN')}</span></div>
@@ -457,7 +498,7 @@ export default function CheckInPage() {
                 />
               </div>
             ))}
-            {/* Student Phone */}
+            {/* Tenant Phone */}
             <div>
               <label className="form-label">Phone * <span className="text-text-muted font-normal">(10 digits)</span></label>
               <input
@@ -584,7 +625,7 @@ export default function CheckInPage() {
               <p className="text-xs text-text-muted mb-1">All 3 documents are <strong>compulsory</strong>. Next is enabled only after all are uploaded.</p>
               {/* Status badges */}
               <div className="flex gap-2 mt-2 mb-4 flex-wrap">
-                {([['Aadhaar', walkinDocs.aadhaarUrl], ['Student ID', walkinDocs.studentIdUrl], ['Photo', walkinDocs.photoUrl]] as [string,string][]).map(([label, url]) => (
+                {([['Aadhaar', walkinDocs.aadhaarUrl], ['Tenant ID', walkinDocs.studentIdUrl], ['Photo', walkinDocs.photoUrl]] as [string,string][]).map(([label, url]) => (
                   <span key={label} className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1',
                     url ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-400 border border-red-200')}>
                     {url ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
@@ -594,7 +635,7 @@ export default function CheckInPage() {
               </div>
             </div>
             <DocUpload label="Aadhaar Card *" value={walkinDocs.aadhaarUrl} onChange={url => setWalkinDocs(d => ({ ...d, aadhaarUrl: url }))} />
-            <DocUpload label="Student ID *" value={walkinDocs.studentIdUrl} onChange={url => setWalkinDocs(d => ({ ...d, studentIdUrl: url }))} />
+            <DocUpload label="Tenant ID *" value={walkinDocs.studentIdUrl} onChange={url => setWalkinDocs(d => ({ ...d, studentIdUrl: url }))} />
             <DocUpload label="Photo *" value={walkinDocs.photoUrl} onChange={url => setWalkinDocs(d => ({ ...d, photoUrl: url }))} />
             {!allDocsUploaded && (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center gap-2">
@@ -653,7 +694,13 @@ export default function CheckInPage() {
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Phone</span><span className="font-medium">{walkin.phone}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Move-In</span><span className="font-medium">{stayDetails.moveInDate}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Monthly Rent</span><span className="font-medium">₹{stayDetails.monthlyRent?.toLocaleString('en-IN')}</span></div>
-              <div className="flex justify-between py-2"><span className="text-text-muted">Security Deposit</span><span className="font-medium">₹{stayDetails.securityDeposit?.toLocaleString('en-IN')}</span></div>
+              <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Security Deposit</span><span className="font-medium">₹{stayDetails.securityDeposit?.toLocaleString('en-IN')}</span></div>
+              {preBooking && (
+                <div className="flex justify-between py-2 text-emerald-600 font-medium">
+                  <span>Less: Token Paid (Pre-Booking)</span>
+                  <span>- ₹{preBooking.tokenAmount?.toLocaleString('en-IN')}</span>
+                </div>
+              )}
             </div>
           </div>
         )}

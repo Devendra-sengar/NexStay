@@ -193,7 +193,7 @@ function RaiseComplaintModal({ properties, onClose }: { properties: any[]; onClo
             </select>
           </div>
           <div>
-            <label className="form-label">Select Student</label>
+            <label className="form-label">Select Tenant</label>
             <select className="input-field" value={studentId} onChange={e => setStudentId(e.target.value)} disabled={!propertyId || loadingStudents} required>
               <option value="">{loadingStudents ? 'Loading students...' : !propertyId ? 'Select property first' : 'Choose student...'}</option>
               {students.map((s: any) => <option key={s._id} value={s._id}>{s.name} ({s.phone})</option>)}

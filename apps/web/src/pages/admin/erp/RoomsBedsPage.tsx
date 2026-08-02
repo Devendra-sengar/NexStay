@@ -209,7 +209,7 @@ function RoomModal({ propertyId, floors, room, onClose }: { propertyId: string; 
     if (!roomNumber.trim()) { toast.error('Room number required'); return; }
     const bedPrices = isSamePrice ? Array(capacity).fill(pricePerBed) : individualPrices;
     try {
-      if (room) { await update.mutateAsync({ id: room._id, roomNumber, floorId, roomType, pricePerBed, bedPrices }); toast.success('Room updated'); }
+      if (room) { await update.mutateAsync({ id: room._id, roomNumber, floorId, roomType, capacity, pricePerBed, bedPrices }); toast.success('Room updated'); }
       else { await create.mutateAsync({ propertyId, floorId, roomNumber, roomType, capacity, pricePerBed, bedPrices }); toast.success(`Room created with ${capacity} bed(s)`); }
       onClose();
     } catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
@@ -230,7 +230,7 @@ function RoomModal({ propertyId, floors, room, onClose }: { propertyId: string; 
             </select>
           </div>
           <div><label className="form-label">Room Type</label>
-            <select className="input-field" value={roomType} onChange={e => setRoomType(e.target.value)} disabled={!!room}>
+            <select className="input-field" value={roomType} onChange={e => setRoomType(e.target.value)}>
               {ROOM_TYPES.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
             </select>
           </div>

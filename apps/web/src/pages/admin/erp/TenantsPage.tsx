@@ -33,7 +33,7 @@ export default function StudentsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Students</h1>
+          <h1 className="text-2xl font-bold text-text-primary">Tenants</h1>
           <p className="text-sm text-text-secondary mt-0.5">{total} total • Manage checked-in tenants and their lifecycle</p>
         </div>
         <button
@@ -87,14 +87,14 @@ export default function StudentsPage() {
           ) : students.length === 0 ? (
             <div className="p-10 text-center">
               <Users className="w-10 h-10 text-text-muted mx-auto mb-3" />
-              <p className="font-medium text-text-primary mb-1">No students found</p>
+              <p className="font-medium text-text-primary mb-1">No tenants found</p>
               <p className="text-sm text-text-muted">Try changing filters or add a walk-in check-in.</p>
             </div>
           ) : (
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Student', 'College', 'Property', 'Room / Bed', 'Monthly Rent', 'Move-In', 'Status', 'Actions'].map(h => (
+                  {['Tenant', 'College', 'Property', 'Room / Bed', 'Monthly Rent', 'Move-In', 'Status', 'Actions'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>

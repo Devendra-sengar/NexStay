@@ -94,7 +94,7 @@ export default function CheckOutPage() {
       <h2 className="text-2xl font-bold text-text-primary mb-2">Check-Out Complete!</h2>
       <p className="text-text-secondary mb-6">Bed is now <span className="text-emerald-600 font-semibold">AVAILABLE</span>.</p>
       <div className="flex gap-3">
-        <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Students</button>
+        <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Tenants</button>
         <button className="btn-primary" onClick={() => navigate('/admin/rooms')}>View BedGrid</button>
       </div>
     </div>
@@ -129,7 +129,7 @@ export default function CheckOutPage() {
                     <AlertTriangle className="w-4 h-4 text-danger flex-shrink-0" />
                     <p className="text-sm font-semibold text-danger">Total Outstanding: ₹{totalDue.toLocaleString('en-IN')}</p>
                   </div>
-                  <p className="text-xs text-red-600">Student has unpaid dues. Clear them or provide an override reason.</p>
+                  <p className="text-xs text-red-600">Tenant has unpaid dues. Clear them or provide an override reason.</p>
                 </div>
 
                 <div className="space-y-2 mb-4">
@@ -198,7 +198,7 @@ export default function CheckOutPage() {
           <div>
             <h2 className="font-semibold text-text-primary mb-4">Step 3 — Confirm Check-Out</h2>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Student</span><span className="font-medium">{student?.name}</span></div>
+              <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Tenant</span><span className="font-medium">{student?.name}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Check-Out Date</span><span className="font-medium">{checkoutDate}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Deposit Return</span><span className="font-medium text-emerald-600">₹{depositReturn.toLocaleString('en-IN')}</span></div>
               <div className="flex justify-between py-2 border-b border-surface-border"><span className="text-text-muted">Outstanding Dues</span><span className={cn('font-medium', allCleared ? 'text-emerald-600' : 'text-danger')}>{allCleared ? 'Cleared' : `₹${totalDue.toLocaleString('en-IN')} (overridden)`}</span></div>
@@ -206,7 +206,7 @@ export default function CheckOutPage() {
             </div>
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">This will free the bed and mark the student as CHECKED_OUT. This action cannot be undone.</p>
+              <p className="text-xs text-amber-700">This will free the bed and mark the tenant as CHECKED_OUT. This action cannot be undone.</p>
             </div>
           </div>
         )}

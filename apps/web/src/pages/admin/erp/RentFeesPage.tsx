@@ -23,7 +23,7 @@ function printReceipt(r: any) {
   .total{font-weight:bold;font-size:1.1em}.sig{margin-top:40px;border-top:1px solid #0f172a;width:200px;padding-top:4px;font-size:12px}</style>
   </head><body>
   <h2>NexStay</h2><p>Receipt #RCPT-${r.month}-${String(r._id).slice(-6).toUpperCase()}</p>
-  <div class="row"><span>Student</span><span>${student?.name||'—'}</span></div>
+  <div class="row"><span>Tenant</span><span>${student?.name||'—'}</span></div>
   <div class="row"><span>Property</span><span>${prop?.name||'—'}</span></div>
   <div class="row"><span>Room</span><span>${room?.roomNumber||'—'}</span></div>
   <div class="row"><span>Month</span><span>${r.month}</span></div>
@@ -362,9 +362,9 @@ function AddFeeModal({ onClose }: { onClose: () => void }) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <div className="flex justify-between mb-4"><h3 className="font-bold">Add Fee</h3><button onClick={onClose}><X className="w-4 h-4"/></button></div>
         <div className="space-y-3">
-          <div><label className="form-label">Student</label>
+          <div><label className="form-label">Tenant</label>
             <select className="input-field" value={studentId} onChange={e=>setStudentId(e.target.value)}>
-              <option value="">Select student…</option>
+              <option value="">Select Tenant…</option>
               {students.map((s:any)=><option key={s._id} value={s._id}>{s.name} ({s.phone})</option>)}
             </select></div>
           <div><label className="form-label">Fee Type</label>
@@ -470,7 +470,7 @@ function ProofReviewModal({ record, onClose }: { record: any; onClose: () => voi
 
             {/* Info row */}
             <div className="grid grid-cols-3 gap-2 mt-4">
-              {[['Student', student?.name || '—'], ['Month', record.month], ['Balance', FMT(balance)]].map(([l, v]) => (
+              {[['Tenant', student?.name || '—'], ['Month', record.month], ['Balance', FMT(balance)]].map(([l, v]) => (
                 <div key={l} className="bg-surface-input rounded-lg p-2.5 text-center">
                   <p className="text-[10px] text-text-muted mb-0.5">{l}</p>
                   <p className="text-sm font-semibold text-text-primary truncate">{v}</p>
@@ -627,7 +627,7 @@ function TransactionsLedger({ rows, isLoading, onReview }: { rows: any[]; isLoad
         <thead>
           <tr>
             <th>Date</th>
-            <th>Student</th>
+            <th>Tenant</th>
             <th>Invoice</th>
             <th>Amount</th>
             <th>Mode</th>
@@ -739,7 +739,7 @@ export default function RentFeesPage() {
             <button key={s} onClick={()=>{setStatus(s);setPage(1);}} className={cn('px-2.5 py-1.5 text-[11px] font-semibold rounded',status===s?'bg-white text-primary shadow-sm':'text-text-secondary hover:text-text-primary')}>{s}</button>
           ))}
         </div>
-        <input className="input-field flex-1 min-w-36 h-9 py-1.5 text-xs" placeholder="Search student…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} />
+        <input className="input-field flex-1 min-w-36 h-9 py-1.5 text-xs" placeholder="Search tenant…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} />
         {selected.length > 0 && (
           <button className="btn-secondary h-9 py-1.5 flex items-center gap-2 text-xs border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={handleBulkReminder} disabled={sendReminders.isPending}>
             <Bell className="w-3.5 h-3.5"/>Remind ({selected.length})
@@ -763,7 +763,7 @@ export default function RentFeesPage() {
             <table className="data-table">
               <thead><tr>
                 <th><input type="checkbox" checked={allSelected} onChange={()=>allSelected?setSelected([]):setSelected(rows.map((r:any)=>r._id))} /></th>
-                {['Student','Property','Room','Month','Due Date','Rent','Fine','Discount','Total','Paid','Balance','Status','Proof','Actions'].map(h=><th key={h}>{h}</th>)}
+                {['Tenant','Property','Room','Month','Due Date','Rent','Fine','Discount','Total','Paid','Balance','Status','Proof','Actions'].map(h=><th key={h}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {rows.map((r:any)=>{

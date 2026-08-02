@@ -167,7 +167,7 @@ function CollectionTab({ propId, month, setMonth }: { propId: string; month: str
       )}
       <div className="card overflow-hidden">
         <table className="data-table">
-          <thead><tr>{['Student','Phone','Room','Due','Paid','Balance','Status'].map(h=><th key={h}>{h}</th>)}</tr></thead>
+          <thead><tr>{['Tenant','Phone','Room','Due','Paid','Balance','Status'].map(h=><th key={h}>{h}</th>)}</tr></thead>
           <tbody>
             {records.map((r: any) => {
               const stu = r.hostelStudentId as any;

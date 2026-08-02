@@ -28,7 +28,7 @@ export default function PrintPreviewPage() {
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `${student?.name || "Student"}_Registration`,
+    documentTitle: `${student?.name || "Tenant"}_Registration`,
     pageStyle: `@page { size: A4; margin: 0; }`,
   });
 

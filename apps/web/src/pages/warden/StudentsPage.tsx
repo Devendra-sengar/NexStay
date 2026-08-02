@@ -29,7 +29,7 @@ export default function WardenStudentsPage() {
         </div>
 
         {isLoading ? <p style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Loading…</p> :
-         students.length === 0 ? <p style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>No students found</p> : (
+         students.length === 0 ? <p style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>No tenants found</p> : (
           <div>
             {students.map((s: any) => (
               <div key={s._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid #f8fafc' }}>

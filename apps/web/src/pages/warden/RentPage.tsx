@@ -30,7 +30,7 @@ export default function WardenRentPage() {
                   {r.status === 'PAID' ? <CheckCircle2 size={17} color={s.color} /> : r.status === 'PARTIAL' ? <Clock size={17} color={s.color} /> : <AlertCircle size={17} color={s.color} />}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 600, margin: '0 0 2px' }}>{student?.name || 'Student'}</p>
+                  <p style={{ color: '#0f172a', fontSize: 14, fontWeight: 600, margin: '0 0 2px' }}>{student?.name || 'Tenant'}</p>
                   <p style={{ color: '#64748b', fontSize: 12, margin: 0 }}>{r.month} · ₹{r.amount?.toLocaleString('en-IN')}{r.fine > 0 ? ` + ₹${r.fine} fine` : ''}</p>
                 </div>
                 <span style={{ padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color }}>{r.status}</span>

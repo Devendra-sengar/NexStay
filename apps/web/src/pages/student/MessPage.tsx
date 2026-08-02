@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { UtensilsCrossed, Calendar, Clock } from 'lucide-react';
+import { UtensilsCrossed, Calendar, ImageIcon } from 'lucide-react';
 import api from '@/lib/api';
 
 const MEALS = ['breakfast', 'lunch', 'dinner'] as const;
@@ -30,16 +30,48 @@ export default function StudentMessPage() {
 
         {today ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {MEALS.map(meal => (
-              <div key={meal} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px' }}>
-                <p style={{ color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, margin: '0 0 6px' }}>{MEAL_LABELS[meal]}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {today[meal]?.items?.length > 0 ? today[meal].items.map((item: string, i: number) => (
-                    <span key={i} style={{ padding: '3px 10px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 100, fontSize: 13, color: '#374151' }}>{item}</span>
-                  )) : <span style={{ color: '#94a3b8', fontSize: 13 }}>Not updated</span>}
+            {MEALS.map(meal => {
+              const mealData = today[meal];
+              const items = mealData?.items || [];
+              const hasItems = items.length > 0;
+              
+              return (
+                <div key={meal} style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <p style={{ color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, margin: 0 }}>{MEAL_LABELS[meal]}</p>
+                    {mealData?.photoType !== 'NONE' && mealData?.photoType && (
+                      <span style={{ fontSize: 10, background: '#e0e7ff', color: '#4f46e5', padding: '2px 6px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <ImageIcon size={10} /> Photos Available
+                      </span>
+                    )}
+                  </div>
+                  
+                  {mealData?.photoType === 'THALI' && mealData.thaliPhotoUrl && (
+                    <div style={{ width: '100%', height: 180, borderRadius: 10, overflow: 'hidden', marginBottom: 10, border: '1px solid #e2e8f0' }}>
+                      <img src={mealData.thaliPhotoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={`${meal} thali`} />
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {hasItems ? items.map((item: any, i: number) => {
+                      const name = typeof item === 'string' ? item : item.name;
+                      const photoUrl = typeof item === 'object' ? item.photoUrl : null;
+                      
+                      return (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, padding: '4px', overflow: 'hidden' }}>
+                          {mealData?.photoType === 'ITEMS' && photoUrl && (
+                            <div style={{ width: 100, height: 70, borderRadius: 4, overflow: 'hidden', background: '#f1f5f9' }}>
+                              <img src={photoUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={name} />
+                            </div>
+                          )}
+                          <span style={{ fontSize: 13, color: '#374151', padding: mealData?.photoType === 'ITEMS' && photoUrl ? '2px 4px' : '4px 8px', textAlign: 'center', fontWeight: 500 }}>{name}</span>
+                        </div>
+                      );
+                    }) : <span style={{ color: '#94a3b8', fontSize: 13, padding: '4px 0' }}>Not updated</span>}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {today.specialNote && (
               <div style={{ background: '#f3f0ff', border: '1px solid #c4b5fd', borderRadius: 10, padding: '10px 14px' }}>
                 <p style={{ color: '#7c3aed', fontSize: 13, margin: 0 }}>★ {today.specialNote}</p>
@@ -69,12 +101,16 @@ export default function StudentMessPage() {
                 {menu.date === todayStr ? '◎ Today — ' : ''}{new Date(menu.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}
               </p>
               <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                {MEALS.map(meal => menu[meal]?.items?.length > 0 && (
-                  <div key={meal}>
-                    <span style={{ fontSize: 10, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: 0.8 }}>{meal}: </span>
-                    <span style={{ fontSize: 12, color: '#374151' }}>{menu[meal].items.slice(0, 2).join(', ')}{menu[meal].items.length > 2 ? '…' : ''}</span>
-                  </div>
-                ))}
+                {MEALS.map(meal => {
+                  const items = menu[meal]?.items || [];
+                  const itemNames = items.map((it: any) => typeof it === 'string' ? it : it.name);
+                  return itemNames.length > 0 && (
+                    <div key={meal}>
+                      <span style={{ fontSize: 10, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: 0.8 }}>{meal}: </span>
+                      <span style={{ fontSize: 12, color: '#374151' }}>{itemNames.slice(0, 2).join(', ')}{itemNames.length > 2 ? '…' : ''}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

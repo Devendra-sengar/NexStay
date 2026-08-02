@@ -23,6 +23,8 @@ import AdminInventoryPage from '@/pages/admin/erp/InventoryPage';
 import AdminExpensesPage from '@/pages/admin/erp/ExpensesPage';
 import AdminComplaintsPage from '@/pages/admin/erp/ComplaintsPage';
 import AdminReportsPage from '@/pages/admin/erp/ReportsPage';
+import PreBookingsListPage from '@/pages/admin/erp/PreBookingsListPage';
+import CreatePreBookingPage from '@/pages/admin/erp/CreatePreBookingPage';
 import MessMenuPage from '@/pages/mess/MenuPage';
 import MessHistoryPage from '@/pages/mess/MenuHistoryPage';
 import StudentProfilePage from '@/pages/admin/erp/StudentProfilePage';
@@ -45,7 +47,8 @@ const NAV = [
     { label: 'Bookings',      icon: BookOpen,  path: '/admin/bookings',   permKey: 'canManageMarketplace' },
   ]},
   { section: 'HOSTEL ERP', items: [
-    { label: 'Students',    icon: Users,         path: '/admin/tenants',    permKey: 'canManageERP' },
+    { label: 'Tenants',    icon: Users,         path: '/admin/tenants',    permKey: 'canManageERP' },
+    { label: 'Future Bookings', icon: BookOpen, path: '/admin/pre-bookings', permKey: 'canManageERP' },
     { label: 'Rooms & Beds', icon: BedDouble,    path: '/admin/rooms',      permKey: 'canManageRooms' },
     { label: 'Rent & Fees', icon: CreditCard,    path: '/admin/rent',       permKey: 'canManageERP' },
     { label: 'Staff',       icon: UserCheck,     path: '/admin/staff',      permKey: 'canManageStaff' },
@@ -219,6 +222,8 @@ export default function HostelAdminShell() {
             <Route path="checkin" element={<CheckInPage />} />
             <Route path="checkout/:studentId" element={<CheckOutPage />} />
             <Route path="leads" element={<AdminLeadsPage />} />
+            <Route path="pre-bookings" element={<PreBookingsListPage />} />
+            <Route path="pre-bookings/new" element={<CreatePreBookingPage />} />
             <Route path="print-preview/:studentId" element={<PrintPreviewPage />} />
             <Route path="dev/emails" element={<DevEmailsPage />} />
             <Route path="*" element={<AdminDashboard />} />

@@ -62,9 +62,9 @@ const ROLES: RoleOption[] = [
   },
   {
     value: Role.STUDENT,
-    label: 'Student',
+    label: 'Tenant',
     icon: <GraduationCap className="w-4 h-4" />,
-    identifierLabel: 'Mobile Number / Student ID',
+    identifierLabel: 'Mobile Number / Tenant ID',
     identifierPlaceholder: '10-digit mobile number',
     passwordPlaceholder: 'Last 4 digits of mobile (default)',
     needsHostelCode: true,
@@ -305,7 +305,7 @@ export default function Login() {
                   { role: Role.HOSTEL_ADMIN, id: 'rajesh@nexstay.in', pw: 'owner123', label: 'Owner', code: '' },
                   { role: Role.WARDEN, id: 'warden@nexstay.in', pw: 'warden123', label: 'Warden', code: 'NST-001' },
                   { role: Role.MESS_MANAGER, id: 'mess@nexstay.in', pw: 'mess123', label: 'Mess Mgr', code: 'NST-001' },
-                  { role: Role.STUDENT, id: '9000000001', pw: '0001', label: 'Student', code: 'NST-001' },
+                  { role: Role.STUDENT, id: '9000000001', pw: '0001', label: 'Tenant', code: 'NST-001' },
                 ].map(c => (
                   <button key={c.role} type="button"
                     onClick={() => { handleRoleChange(c.role); setIdentifier(c.id); setPassword(c.pw); setHostelCode(c.code); }}

@@ -59,7 +59,7 @@ export default function StudentShell() {
           </div>
           <div>
             <span className="text-base font-bold text-text-primary">Nex<span className="text-indigo-600">Stay</span></span>
-            <p className="text-[10px] text-text-muted">Student Portal</p>
+            <p className="text-[10px] text-text-muted">tenant portal</p>
           </div>
           <button className="lg:hidden ml-auto text-text-muted" onClick={() => setSidebarOpen(false)}>
             <X className="w-4 h-4" />
@@ -70,7 +70,7 @@ export default function StudentShell() {
         <div className="px-3 py-2 border-b border-surface-border">
           <div className="bg-indigo-50 rounded-lg px-3 py-2">
             <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">Welcome back</p>
-            <p className="text-sm font-semibold text-indigo-900 truncate">{user?.name || 'Student'}</p>
+            <p className="text-sm font-semibold text-indigo-900 truncate">{user?.name || 'Tenant'}</p>
           </div>
         </div>
 
@@ -96,7 +96,7 @@ export default function StudentShell() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-text-primary truncate">{user?.name}</p>
-              <p className="text-xs text-text-muted">Student</p>
+              <p className="text-xs text-text-muted">Tenant</p>
             </div>
             <button onClick={handleLogout} className="text-text-muted hover:text-danger transition-colors">
               <LogOut className="w-4 h-4" />
@@ -118,7 +118,7 @@ export default function StudentShell() {
             <Menu className="w-5 h-5" />
           </button>
           <span className="text-sm font-semibold text-text-primary hidden sm:block">
-            Student Portal
+            tenant portal
           </span>
           <div className="ml-auto flex items-center gap-3">
             <span className="text-sm text-text-muted hidden sm:block">{user?.name}</span>

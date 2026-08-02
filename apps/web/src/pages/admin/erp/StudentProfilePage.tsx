@@ -120,7 +120,7 @@ function DocumentsTab({ s }: { s: any }) {
   return (
     <div className="space-y-3">
       <DocCard label="Aadhaar Card" url={s.aadhaarUrl} verified={!!verified} />
-      <DocCard label="Student ID Card" url={s.studentIdUrl} verified={!!verified} />
+      <DocCard label="Tenant ID Card" url={s.studentIdUrl} verified={!!verified} />
       <DocCard label="Passport Photo" url={s.photoUrl} verified={!!verified} />
     </div>
   );

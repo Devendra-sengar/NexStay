@@ -2,7 +2,7 @@ import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
   LayoutDashboard, Users, DoorOpen, MessageSquare, IndianRupee, Wallet,
-  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock, UserPlus, UserCircle
+  UtensilsCrossed, LogOut, Menu, X, ShieldCheck, Lock, UserPlus, UserCircle, BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { StaffPermissions } from '@/types/shared';
@@ -22,6 +22,8 @@ import CheckInPage from '@/pages/admin/erp/CheckInPage';
 import CheckOutPage from '@/pages/admin/erp/CheckOutPage';
 import PrintPreviewPage from '@/pages/admin/erp/PrintPreviewPage';
 import ProfilePage from '@/pages/account/ProfilePage';
+import PreBookingsListPage from '@/pages/admin/erp/PreBookingsListPage';
+import CreatePreBookingPage from '@/pages/admin/erp/CreatePreBookingPage';
 
 const perm = (p: keyof StaffPermissions) => (perms?: StaffPermissions | null) => perms?.[p] ?? false;
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -35,7 +37,8 @@ export default function WardenShell() {
   const navItems = [
     { to: '/warden/dashboard',   label: 'Dashboard',    icon: LayoutDashboard, allowed: true },
     { to: '/warden/leads',       label: 'Enquiries',    icon: UserPlus,        allowed: true },
-    { to: '/warden/students',    label: 'Students',     icon: Users,           allowed: perm('canViewStudents')(perms) },
+    { to: '/warden/students',    label: 'Tenants',     icon: Users,           allowed: perm('canViewStudents')(perms) },
+    { to: '/warden/pre-bookings', label: 'Future Bookings', icon: BookOpen,   allowed: perm('canViewStudents')(perms) },
     { to: '/warden/rooms',       label: 'Rooms',        icon: DoorOpen,        allowed: perm('canManageRooms')(perms) },
     { to: '/warden/complaints',  label: 'Complaints',   icon: MessageSquare,   allowed: perm('canManageComplaints')(perms) },
     { to: '/warden/rent',        label: 'Rent Records', icon: IndianRupee,     allowed: perm('canViewRentRecords')(perms) },
@@ -148,6 +151,9 @@ export default function WardenShell() {
               <Route path="/students/:id" element={<StudentProfilePage />} />
               <Route path="/students/checkin" element={<CheckInPage />} />
               <Route path="/students/checkout/:studentId" element={<CheckOutPage />} />
+              <Route path="/pre-bookings" element={perm('canViewStudents')(perms) ? <PreBookingsListPage /> : <AccessRestricted permission="canViewStudents" />} />
+              <Route path="/pre-bookings/new" element={perm('canViewStudents')(perms) ? <CreatePreBookingPage /> : <AccessRestricted permission="canViewStudents" />} />
+              <Route path="/check-in" element={perm('canViewStudents')(perms) ? <CheckInPage /> : <AccessRestricted permission="canViewStudents" />} />
               <Route path="/print/:id" element={<PrintPreviewPage />} />
               <Route path="/rooms" element={<AdminRoomsBedsPage />} />
               <Route path="/complaints" element={<AdminComplaintsPage />} />
