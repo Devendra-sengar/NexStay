@@ -44,7 +44,6 @@ const NAV = [
   { section: 'MARKETPLACE', items: [
     { label: 'My Properties', icon: Building2, path: '/admin/properties', permKey: 'canManageMarketplace' },
     { label: 'Leads',         icon: UserPlus,  path: '/admin/leads',      permKey: 'canManageMarketplace' },
-    { label: 'Bookings',      icon: BookOpen,  path: '/admin/bookings',   permKey: 'canManageMarketplace' },
   ]},
   { section: 'HOSTEL ERP', items: [
     { label: 'Tenants',    icon: Users,         path: '/admin/tenants',    permKey: 'canManageERP' },
