@@ -1,18 +1,30 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePreBookings } from '@/lib/adminApi';
+import { usePreBookings, useDeletePreBooking } from '@/lib/adminApi';
 import { format } from 'date-fns';
-import { Plus, Search, Calendar, ChevronRight, UserPlus, CheckCircle2, Clock } from 'lucide-react';
+import { Plus, Search, Calendar, ChevronRight, UserPlus, CheckCircle2, Clock, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function PreBookingsListPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isWarden = user?.role === 'WARDEN';
   const { data, isLoading } = usePreBookings();
+  const deletePreBooking = useDeletePreBooking();
   const preBookings = data?.data || [];
   const [searchTerm, setSearchTerm] = useState('');
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this future booking? This action cannot be undone.')) return;
+    try {
+      await deletePreBooking.mutateAsync(id);
+      toast.success('Booking deleted successfully');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to delete booking');
+    }
+  };
 
   const filtered = preBookings.filter(b => 
     b.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -107,12 +119,21 @@ export default function PreBookingsListPage() {
                     </td>
                     <td className="p-4 text-right">
                       {booking.status === 'PENDING' && (
-                        <button
-                          onClick={() => navigate(isWarden ? `/warden/check-in?preBookingId=${booking._id}` : `/admin/check-in?preBookingId=${booking._id}`)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
-                        >
-                          Convert to Tenant <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => navigate(isWarden ? `/warden/check-in?preBookingId=${booking._id}` : `/admin/check-in?preBookingId=${booking._id}`)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
+                          >
+                            Convert to Tenant <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(booking._id)}
+                            className="p-1.5 text-status-error bg-status-error/10 hover:bg-status-error/20 rounded-lg transition-colors"
+                            title="Delete Booking"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                       {booking.status === 'CONVERTED' && (
                         <span className="text-xs font-medium text-text-muted">Already Converted</span>

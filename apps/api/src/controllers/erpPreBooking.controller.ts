@@ -14,8 +14,13 @@ export const createPreBooking = async (req: AuthRequest, res: Response): Promise
       tenantId = req.user?.id;
     }
 
+    let finalPropertyId = req.body.propertyId;
+    if (role === 'WARDEN' && req.user?.hostelId) {
+      finalPropertyId = req.user.hostelId;
+    }
+
     const {
-      propertyId, name, phone, email, college,
+      name, phone, email, college,
       guardianName, guardianPhone, guardianAddress,
       aadhaarUrl, aadhaarNumber, studentIdUrl, photoUrl,
       expectedJoiningDate, tokenAmount, tokenPaymentMethod, preferredRoomType,
@@ -28,7 +33,7 @@ export const createPreBooking = async (req: AuthRequest, res: Response): Promise
     const newBooking = new ErpPreBooking({
       tenantId,
       hostelId: hostelId || null,
-      propertyId,
+      propertyId: finalPropertyId,
       name,
       phone,
       email,
@@ -94,6 +99,41 @@ export const getPreBookingById = async (req: AuthRequest, res: Response): Promis
     res.json({ success: true, data: booking });
   } catch (error: any) {
     console.error('Error fetching pre-booking:', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
+  }
+};
+
+export const deletePreBooking = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const booking = await ErpPreBooking.findById(req.params.id);
+    if (!booking) {
+      res.status(404).json({ success: false, message: 'Booking not found' });
+      return;
+    }
+    
+    // Check if the user is authorized to delete
+    const { role } = req.user!;
+    if (role === 'WARDEN' && req.user?.hostelId) {
+      if (String(booking.propertyId) !== String(req.user.hostelId)) {
+        res.status(403).json({ success: false, message: 'Not authorized to delete this booking' });
+        return;
+      }
+    } else if (role === 'HOSTEL_ADMIN' && req.user?.id) {
+      if (String(booking.tenantId) !== String(req.user.id)) {
+        res.status(403).json({ success: false, message: 'Not authorized to delete this booking' });
+        return;
+      }
+    }
+
+    if (booking.status === 'CONVERTED') {
+      res.status(400).json({ success: false, message: 'Cannot delete a converted booking' });
+      return;
+    }
+
+    await ErpPreBooking.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Booking deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting pre-booking:', error);
     res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };

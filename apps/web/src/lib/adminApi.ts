@@ -722,3 +722,14 @@ export function useDeleteLead() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] })
   });
 }
+
+export function useDeletePreBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await api(`/erp/pre-bookings/${id}`, { method: 'DELETE' });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['erp-pre-bookings'] })
+  });
+}

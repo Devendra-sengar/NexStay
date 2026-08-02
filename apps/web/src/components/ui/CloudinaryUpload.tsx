@@ -159,15 +159,16 @@ export default function CloudinaryUpload({
             </div>
 
             <div>
-              <p className="text-text-primary font-medium text-sm">
+              <p className="text-text-primary font-medium text-sm mb-2">
                 {isDragging ? 'Drop images here!' : 'Drag & drop images here'}
               </p>
-              <p className="text-text-faint text-xs mt-1">
-                or{' '}
-                <span className="text-brand-primary underline underline-offset-2">
-                  click to browse
-                </span>
-              </p>
+              <button
+                type="button"
+                className="btn-secondary text-xs px-3 py-1"
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+              >
+                Browse Files
+              </button>
             </div>
 
             <div className="flex items-center gap-4 text-text-faint text-xs mt-1">

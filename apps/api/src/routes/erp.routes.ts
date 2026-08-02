@@ -24,7 +24,7 @@ import {
   createLead, getLeads, updateLeadStatus, deleteLead
 } from '../controllers/lead.controller';
 import {
-  createPreBooking, getPreBookings, getPreBookingById
+  createPreBooking, getPreBookings, getPreBookingById, deletePreBooking
 } from '../controllers/erpPreBooking.controller';
 
 const router = Router();
@@ -35,6 +35,7 @@ router.use(requireRoles('HOSTEL_ADMIN', 'SUPER_ADMIN', 'WARDEN', 'MESS_MANAGER')
 router.post('/pre-bookings', createPreBooking);
 router.get('/pre-bookings', getPreBookings);
 router.get('/pre-bookings/:id', getPreBookingById);
+router.delete('/pre-bookings/:id', deletePreBooking);
 
 // ── Rooms & Beds ─────────────────────────────────────────────────
 router.get('/rooms', getErpRooms);

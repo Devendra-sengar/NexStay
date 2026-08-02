@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreatePreBooking, useAdminProperties } from '@/lib/adminApi';
 import { ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
@@ -13,18 +13,24 @@ export default function CreatePreBookingPage() {
   const { data: propsData } = useAdminProperties();
   const properties = propsData?.data || [];
 
-  const [propId, setPropId] = useState(properties.length === 1 ? properties[0]._id : '');
+  const [propId, setPropId] = useState('');
   const [formData, setFormData] = useState({
     name: '', phone: '', email: '', preferredRoomType: '',
     expectedJoiningDate: '', tokenAmount: '', tokenPaymentMethod: 'CASH',
     college: '', guardianName: '', guardianPhone: '', guardianAddress: ''
   });
   
+  useEffect(() => {
+    if (properties.length === 1 && !propId) {
+      setPropId(properties[0]._id);
+    }
+  }, [properties, propId]);
+  
   const createPreBooking = useCreatePreBooking();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!propId) return toast.error('Please select a property');
+    if (!isWarden && !propId) return toast.error('Please select a property');
     if (!formData.name || !formData.phone || !formData.preferredRoomType || !formData.expectedJoiningDate || !formData.tokenAmount) {
       return toast.error('Please fill all required fields');
     }
@@ -62,7 +68,7 @@ export default function CreatePreBookingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {properties.length > 1 && (
+            {!isWarden && (
               <div className="md:col-span-2">
                 <label className="form-label">Property <span className="text-red-500">*</span></label>
                 <select className="input-field" value={propId} onChange={e => setPropId(e.target.value)} required>

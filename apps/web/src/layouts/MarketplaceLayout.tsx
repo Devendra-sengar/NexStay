@@ -1,8 +1,9 @@
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { Search, Menu, X, Building2, LogIn, LogOut, LayoutDashboard } from 'lucide-react';
+import { Search, Menu, X, Building2, LogIn, LogOut, LayoutDashboard, Download } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Role } from '@/types/shared';
+import { usePwaInstall } from '@/hooks/usePwaInstall';
 
 // Pages
 import HomePage from '@/pages/public/HomePage';
@@ -15,6 +16,7 @@ export default function MarketplaceLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [navSearch, setNavSearch] = useState('');
   const navigate = useNavigate();
+  const { isInstallable, installPwa } = usePwaInstall();
 
   const handleNavSearch = () => {
     const q = navSearch.trim();
@@ -68,6 +70,11 @@ export default function MarketplaceLayout() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-2 ml-auto">
+            {isInstallable && (
+              <button onClick={installPwa} className="btn-secondary flex items-center gap-2 mr-2 border-primary/20 text-primary hover:bg-primary/5">
+                <Download className="w-4 h-4" /> Install App
+              </button>
+            )}
             {user ? (
               <div className="flex items-center gap-2">
                 <Link to={getDashboardLink()} className="flex items-center gap-2 btn-secondary">
@@ -107,6 +114,11 @@ export default function MarketplaceLayout() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden bg-white border-t border-surface-border px-4 py-3 space-y-1 animate-slide-up">
+            {isInstallable && (
+              <button onClick={() => { installPwa(); setMenuOpen(false); }} className="nav-item w-full text-left text-primary font-medium">
+                <Download className="w-4 h-4" />Install App
+              </button>
+            )}
             {user ? (
               <>
                 <Link to={getDashboardLink()} className="nav-item" onClick={() => setMenuOpen(false)}>
