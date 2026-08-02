@@ -5,7 +5,7 @@ This document is a ready-to-use master prompt set for building **NexStay**, a Ho
 **How to use this:** Paste "Phase 0" first and let the agent complete it fully. Once it's done and you've reviewed the output, paste "Phase 1", and so on. Each phase prompt assumes the previous phases are already built — do not skip ahead.
 
 ---
-
+ 
 ## GLOBAL CONTEXT (Paste this once at the very start, before Phase 0)
 
 ```
