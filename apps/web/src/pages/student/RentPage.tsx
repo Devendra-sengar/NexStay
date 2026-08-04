@@ -4,6 +4,7 @@ import { IndianRupee, Printer, CheckCircle2, Clock, AlertCircle, Upload, Image a
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import ReceiptModal from '@/components/ui/ReceiptModal';
 
 const statusColor = (s: string) =>
   s === 'PAID'    ? { bg: '#dcfce7', color: '#16a34a' } :
@@ -189,6 +190,7 @@ export default function StudentRentPage() {
 
   const [uploadRecord, setUploadRecord] = useState<any>(null);
   const [viewProofUrl, setViewProofUrl] = useState<string | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
 
   if (isLoading || txsLoading) return (
     <div className="p-10 space-y-4">
@@ -396,9 +398,9 @@ export default function StudentRentPage() {
                       </td>
                       <td>
                         {r.status === 'PAID' ? (
-                          <a href={`/api/hostel-admin/erp/rent/${r._id}/receipt`} target="_blank" rel="noreferrer" className="text-primary text-xs font-semibold hover:underline flex items-center gap-1">
+                          <button onClick={() => setReceiptUrl(`/student/rent/${r._id}/receipt`)} className="text-primary text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer">
                             <Printer className="w-3.5 h-3.5" /> Receipt
-                          </a>
+                          </button>
                         ) : (
                           <span className="text-text-muted text-xs">—</span>
                         )}
@@ -470,6 +472,13 @@ export default function StudentRentPage() {
       )}
       {viewProofUrl && (
         <ViewProofModal url={viewProofUrl} onClose={() => setViewProofUrl(null)} />
+      )}
+      {receiptUrl && (
+        <ReceiptModal
+          url={receiptUrl}
+          fileName="Rent_Receipt.pdf"
+          onClose={() => setReceiptUrl(null)}
+        />
       )}
 
     </div>

@@ -672,8 +672,9 @@ export function useAdminHostelInfo() {
   return useQuery({
     queryKey: ['admin-hostel-info'],
     queryFn: async () => {
-      const { data } = await api('/hostel');
-      return data.data as any;
+      const { data } = await api('/my-hostels');
+      // For now, return the first hostel
+      return data.data?.[0] as any;
     },
     staleTime: 60000,
   });
@@ -731,5 +732,37 @@ export function useDeletePreBooking() {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['erp-pre-bookings'] })
+  });
+}
+
+export function useResetStaffPassword() {
+  return useMutation({
+    mutationFn: async ({ id, newPassword }: { id: string; newPassword: string }) => {
+      const { data } = await erp(`/staff/${id}/reset-password`, { method: 'POST', data: { newPassword } });
+      return data;
+    }
+  });
+}
+
+export function useResetStudentPassword() {
+  return useMutation({
+    mutationFn: async ({ id, newPassword }: { id: string; newPassword: string }) => {
+      const { data } = await erp(`/students/${id}/reset-password`, { method: 'POST', data: { newPassword } });
+      return data;
+    }
+  });
+}
+
+export function useUpdateMyHostelSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await api(`/my-hostels/${id}/settings`, { method: 'PATCH', data });
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-hostels'] });
+      qc.invalidateQueries({ queryKey: ['admin-hostel-info'] });
+    }
   });
 }

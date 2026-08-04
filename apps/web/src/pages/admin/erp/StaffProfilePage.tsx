@@ -1,7 +1,8 @@
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Lock, Phone, Mail, MapPin, Calendar, Banknote } from 'lucide-react';
+import { ArrowLeft, Lock, Phone, Mail, MapPin, Calendar, Banknote, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useStaffById, useToggleStaffStatus } from '@/lib/adminApi';
+import { useStaffById, useToggleStaffStatus, useResetStaffPassword } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
 const ROLE_ICONS: Record<string,string> = { WARDEN:'■', COOK:'◆', CLEANER:'✦', SECURITY:'●', MESS_MANAGER:'◊', OTHER:'◎' };
@@ -12,6 +13,71 @@ function InfoRow({ label, value, icon: Icon }: { label: string; value?: string; 
       {Icon && <Icon className="w-4 h-4 text-text-muted mt-0.5 flex-shrink-0" />}
       <div><p className="text-xs text-text-muted font-medium">{label}</p><p className="text-sm text-text-primary font-medium mt-0.5">{value || '—'}</p></div>
     </div>
+  );
+}
+
+function ResetPasswordButton({ id, type }: { id: string, type: 'staff' | 'student' }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const resetStaff = useResetStaffPassword();
+  // We'll pass type to reuse this in Student Profile, or just use the staff hook here.
+  // Actually let's just make it staff specific here for simplicity.
+  
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) return toast.error('Password must be at least 6 characters');
+    try {
+      if (type === 'staff') {
+        await resetStaff.mutateAsync({ id, newPassword: password });
+      }
+      toast.success('Password reset successfully');
+      setIsOpen(false);
+      setPassword('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to reset password');
+    }
+  };
+
+  return (
+    <>
+      <button onClick={() => setIsOpen(true)} className="btn-secondary flex items-center gap-2">
+        <KeyRound className="w-4 h-4" /> Reset Password
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-sm rounded-2xl shadow-xl overflow-hidden">
+            <div className="p-5 border-b border-surface-border flex items-center justify-between">
+              <h3 className="font-bold text-text-primary">Reset Password</h3>
+              <button onClick={() => setIsOpen(false)} className="text-text-muted hover:text-text-primary">✕</button>
+            </div>
+            <form onSubmit={handleReset} className="p-5">
+              <p className="text-sm text-text-muted mb-4">
+                Enter a new password for this user. They will use this password to log in.
+              </p>
+              <div className="space-y-1 mb-5">
+                <label className="text-sm font-medium text-text-primary">New Password</label>
+                <input
+                  type="text"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="input-field"
+                  placeholder="e.g., NexStay@123"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setIsOpen(false)} className="btn-secondary">Cancel</button>
+                <button type="submit" disabled={resetStaff.isPending} className="btn-primary">
+                  {resetStaff.isPending ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -45,9 +111,14 @@ export default function StaffProfilePage() {
             <span className={cn('badge mt-1', staff.isActive ? 'badge-success' : 'badge-gray')}>{staff.isActive ? 'ACTIVE' : 'INACTIVE'}</span>
           </div>
         </div>
-        <button onClick={handleToggle} disabled={toggle.isPending} className={cn('btn-secondary', !staff.isActive && 'border-emerald-500 text-emerald-600 hover:bg-emerald-50')}>
-          {staff.isActive ? 'Deactivate' : 'Reactivate'}
-        </button>
+        <div className="flex items-center gap-2">
+          {['WARDEN', 'MESS_MANAGER'].includes(staff.role) && (
+            <ResetPasswordButton id={staff._id} type="staff" />
+          )}
+          <button onClick={handleToggle} disabled={toggle.isPending} className={cn('btn-secondary', !staff.isActive && 'border-emerald-500 text-emerald-600 hover:bg-emerald-50')}>
+            {staff.isActive ? 'Deactivate' : 'Reactivate'}
+          </button>
+        </div>
       </div>
 
       {/* Details */}

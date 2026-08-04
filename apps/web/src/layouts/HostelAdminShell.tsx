@@ -36,6 +36,7 @@ import AdminLeadsPage from '@/pages/admin/erp/AdminLeadsPage';
 // Pages — Settings
 import AdminProfilePage from '@/pages/admin/settings/ProfilePage';
 import DevEmailsPage from '@/pages/admin/dev/DevEmailsPage';
+import HostelSettingsPage from '@/pages/admin/settings/HostelSettingsPage';
 
 const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
@@ -62,6 +63,7 @@ const NAV = [
   ]},
   { section: 'SETTINGS', items: [
     { label: 'Profile',       icon: Settings,  path: '/admin/profile' },
+    { label: 'Hostel Settings', icon: Building2, path: '/admin/hostel-settings' },
     { label: 'Mock Emails', icon: Database,  path: '/admin/dev/emails' },
   ]},
 ];
@@ -218,6 +220,7 @@ export default function HostelAdminShell() {
             <Route path="mess-menu" element={<MessMenuPage />} />
             <Route path="mess-history" element={<MessHistoryPage />} />
             <Route path="profile" element={<AdminProfilePage />} />
+            <Route path="hostel-settings" element={<HostelSettingsPage />} />
             <Route path="checkin" element={<CheckInPage />} />
             <Route path="checkout/:studentId" element={<CheckOutPage />} />
             <Route path="leads" element={<AdminLeadsPage />} />

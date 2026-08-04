@@ -312,6 +312,33 @@ export const getErpStudentById = async (req: AuthRequest, res: Response): Promis
   }
 };
 
+export const resetStudentPassword = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+      return;
+    }
+
+    const student = await HostelStudent.findOne({ _id: req.params.id, tenantId });
+    if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
+
+    const user = await User.findOne({ _id: student.guestId });
+    if (!user) { res.status(404).json({ success: false, message: 'Login account not found for this student.' }); return; }
+
+    const bcrypt = await import('bcryptjs');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    user.passwordHash = passwordHash;
+    await user.save();
+
+    res.json({ success: true, message: 'Student password reset successfully' });
+  } catch (err) {
+    console.error('[resetStudentPassword]', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // ─── GET /api/hostel-admin/erp/students/:id/rent ─────────────────────────────
 export const getStudentRent = async (req: AuthRequest, res: Response): Promise<void> => {
   try {

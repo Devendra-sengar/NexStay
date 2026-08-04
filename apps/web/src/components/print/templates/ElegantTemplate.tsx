@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 interface PrintData { student: any; hostel: any; }
 function fmtDate(d?: string | Date) { if (!d) return ""; return new Date(d).toLocaleDateString("en-IN"); }
 function calcAge(d?: string | Date) { if (!d) return ""; return String(Math.floor((Date.now() - new Date(d).getTime()) / (365.25*24*3600*1000))); }
@@ -34,7 +34,10 @@ export default function ElegantTemplate({ student, hostel }: PrintData) {
         </div>
         {/* Hostel name */}
         <div style={{ textAlign:"center", marginBottom:8 }}>
-          <div style={{ fontSize:24, fontWeight:700, color:darkGold, letterSpacing:1 }}>{hostel?.name ?? "Hostel Name"}</div>
+          {hostel?.printLogoUrl && (
+            <img src={hostel.printLogoUrl} alt="Logo" style={{ maxHeight: 70, maxWidth: 120, objectFit: "contain", marginBottom: 8 }} />
+          )}
+          <div style={{ fontSize:24, fontWeight:700, color:darkGold, letterSpacing:1 }}>{student?.propertyId?.name || hostel?.name || "Hostel Name"}</div>
           <div style={{ fontSize:9, color:"#7a5c3a", marginTop:4, lineHeight:1.7 }}>
             {fullAddr && <div>{fullAddr}</div>}
             {hostel?.contactPhone && <div>Contact: {hostel.contactPhone}</div>}
@@ -80,9 +83,9 @@ export default function ElegantTemplate({ student, hostel }: PrintData) {
             <ERow label="Medical History (If Any Disease)" value={student?.medicalHistory} gold={gold} />
           </tbody>
         </table>
-        {/* Staying */}
+        {/* Lock-in */}
         <div style={{ marginTop:14, padding:"8px 12px", border:`1px solid ${gold}50`, background:"#fdf3dc", fontSize:10, display:"flex", alignItems:"center", gap:20 }}>
-          <span style={{ fontWeight:700, color:darkGold }}>Staying Period</span>
+          <span style={{ fontWeight:700, color:darkGold }}>Lock-in Period</span>
           {[["6_MONTHS","6 Months"],["12_MONTHS","12 Months"],["OTHER","Other"]].map(([val,lbl]) => (
             <label key={val} style={{ display:"flex", alignItems:"center", gap:5, cursor:"default" }}>
               <span style={{ width:12, height:12, border:`1.5px solid ${gold}`, display:"inline-block", background:student?.stayingPeriod===val?gold:"transparent", flexShrink:0 }} />{lbl}

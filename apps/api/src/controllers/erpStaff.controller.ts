@@ -140,6 +140,33 @@ export const toggleStaffStatus = async (req: AuthRequest, res: Response): Promis
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
 
+export const resetStaffPassword = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      res.status(400).json({ success: false, message: 'Password must be at least 6 characters long' });
+      return;
+    }
+
+    const staff = await Staff.findOne({ _id: req.params.id, tenantId });
+    if (!staff) { res.status(404).json({ success: false, message: 'Staff not found' }); return; }
+    if (!staff.email) { res.status(400).json({ success: false, message: 'This staff member does not have an email/login account.' }); return; }
+
+    const user = await User.findOne({ email: staff.email.toLowerCase() });
+    if (!user) { res.status(404).json({ success: false, message: 'Login account not found for this staff member.' }); return; }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    user.passwordHash = passwordHash;
+    await user.save();
+
+    res.json({ success: true, message: 'Staff password reset successfully' });
+  } catch (err) {
+    console.error('[resetStaffPassword]', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 export const deleteStaff = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tenantId = req.user!.tenantId || req.user!.id;

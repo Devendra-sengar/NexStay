@@ -16,13 +16,19 @@ export interface AuthRequest extends Request {
 
 // ─── Authenticate: verify JWT, attach req.user ────────────────────────────────
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  let token: string | undefined;
+
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query.token && typeof req.query.token === 'string') {
+    token = req.query.token;
+  }
+
+  if (!token) {
     res.status(401).json({ success: false, message: 'No token provided' });
     return;
   }
-
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = verifyAccessToken(token);
     const user = await User.findById(decoded.id).select('-passwordHash -otp -otpExpiry -refreshToken');

@@ -58,6 +58,9 @@ export default function K1Template({ student, hostel }: PrintData) {
             <div style={{ flex: 1, paddingTop: 10, minWidth: 0 }}>
               {/* Property Title */}
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                {hostel?.printLogoUrl && (
+                  <img src={hostel.printLogoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 100, objectFit: "contain", marginRight: 12 }} />
+                )}
                 {propertyName.split(' ').map((word: string, idx: number) => {
                   if (idx === 0) {
                     return <span key={idx} style={{ fontSize: 50, fontWeight: 900, textTransform: "uppercase", letterSpacing: -1, paddingRight: 4, fontFamily: "Arial, sans-serif" }}>{word}</span>;
@@ -116,7 +119,7 @@ export default function K1Template({ student, hostel }: PrintData) {
           </div>
 
           <div style={{ marginTop: 25, display: "flex", alignItems: "center", gap: 80, fontSize: 14, fontWeight: 700 }}>
-            <span>Staying Period</span>
+            <span>Lock-in Period</span>
             <div style={{ display: "flex", gap: 50 }}>
               {[["6_MONTHS", "6 Month"], ["12_MONTHS", "12 Month"]].map(([val, lbl]) => (
                 <label key={val} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>

@@ -22,6 +22,7 @@ export interface IHostelDoc extends Document {
     dinner: string;
   };
   printTemplate?: string;
+  printLogoUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,6 +71,10 @@ const HostelSchema = new Schema<IHostelDoc>(
       type: String,
       enum: ['classic', 'modern', 'minimal', 'elegant'],
       default: 'classic',
+    },
+    printLogoUrl: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 interface PrintData { student: any; hostel: any; }
 function fmtDate(d?: string | Date) { if (!d) return ""; return new Date(d).toLocaleDateString("en-IN"); }
 function calcAge(d?: string | Date) { if (!d) return ""; return String(Math.floor((Date.now() - new Date(d).getTime()) / (365.25*24*3600*1000))); }
@@ -11,10 +11,15 @@ export default function MinimalTemplate({ student, hostel }: PrintData) {
     <div style={{ width:"210mm", minHeight:"297mm", margin:"0 auto", background:"#fff", fontFamily:"Arial, sans-serif", padding:"14mm 16mm", boxSizing:"border-box", color:"#111" }}>
       {/* Header */}
       <div style={{ borderBottom:"2px solid #111", paddingBottom:12, marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
-        <div>
-          <div style={{ fontSize:22, fontWeight:800, letterSpacing:-0.5 }}>{hostel?.name ?? "Hostel Name"}</div>
-          <div style={{ fontSize:9, color:"#555", marginTop:3 }}>{fullAddr}</div>
-          {hostel?.contactPhone && <div style={{ fontSize:9, color:"#555" }}>📞 {hostel.contactPhone}</div>}
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          {hostel?.printLogoUrl && (
+            <img src={hostel.printLogoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 100, objectFit: "contain" }} />
+          )}
+          <div>
+            <div style={{ fontSize:22, fontWeight:800, letterSpacing:-0.5 }}>{student?.propertyId?.name || hostel?.name || "Hostel Name"}</div>
+            <div style={{ fontSize:9, color:"#555", marginTop:3 }}>{fullAddr}</div>
+            {hostel?.contactPhone && <div style={{ fontSize:9, color:"#555" }}>📞 {hostel.contactPhone}</div>}
+          </div>
         </div>
         <div style={{ textAlign:"right" }}>
           <div style={{ fontSize:10, fontWeight:700, letterSpacing:2, textTransform:"uppercase" }}>Registration Form</div>
@@ -48,9 +53,9 @@ export default function MinimalTemplate({ student, hostel }: PrintData) {
           <MR label="Medical History" value={student?.medicalHistory} />
         </tbody>
       </table>
-      {/* Staying */}
+      {/* Lock-in */}
       <div style={{ marginTop:14, borderTop:"1px solid #ddd", paddingTop:10, display:"flex", gap:20, alignItems:"center", fontSize:10 }}>
-        <span style={{ fontWeight:700 }}>Staying Period:</span>
+        <span style={{ fontWeight:700 }}>Lock-in Period:</span>
         {[["6_MONTHS","6 Months"],["12_MONTHS","12 Months"],["OTHER","Other"]].map(([val,lbl]) => (
           <label key={val} style={{ display:"flex", alignItems:"center", gap:4 }}>
             <span style={{ width:10, height:10, border:"1px solid #111", display:"inline-block", background:student?.stayingPeriod===val?"#111":"transparent" }} />{lbl}

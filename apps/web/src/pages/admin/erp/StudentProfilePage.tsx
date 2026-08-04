@@ -3,10 +3,10 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, User, FileText, Users, Home, Receipt, MessageSquare,
   Phone, Mail, GraduationCap, MapPin, Calendar, ShieldCheck, ShieldAlert,
-  Upload, Building2, BedDouble, LogOut, CreditCard, CheckCircle2, Clock, Printer
+  Upload, Building2, BedDouble, LogOut, CreditCard, CheckCircle2, Clock, Printer, KeyRound
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useErpStudentById, useStudentRent, useRecordRentPayment } from '@/lib/adminApi';
+import { useErpStudentById, useStudentRent, useRecordRentPayment, useResetStudentPassword } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -47,6 +47,67 @@ function DocCard({ label, url, verified }: { label: string; url?: string; verifi
         </span>
       )}
     </div>
+  );
+}
+
+function ResetPasswordButton({ id }: { id: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const resetStudent = useResetStudentPassword();
+  
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) return toast.error('Password must be at least 6 characters');
+    try {
+      await resetStudent.mutateAsync({ id, newPassword: password });
+      toast.success('Password reset successfully');
+      setIsOpen(false);
+      setPassword('');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to reset password');
+    }
+  };
+
+  return (
+    <>
+      <button onClick={() => setIsOpen(true)} className="btn-secondary mt-4 flex items-center justify-center gap-2 w-full sm:w-auto">
+        <KeyRound className="w-4 h-4" /> Reset Login Password
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-sm rounded-2xl shadow-xl overflow-hidden">
+            <div className="p-5 border-b border-surface-border flex items-center justify-between">
+              <h3 className="font-bold text-text-primary">Reset Login Password</h3>
+              <button onClick={() => setIsOpen(false)} className="text-text-muted hover:text-text-primary">✕</button>
+            </div>
+            <form onSubmit={handleReset} className="p-5">
+              <p className="text-sm text-text-muted mb-4">
+                Enter a new password for this tenant. They will use this password to log into the tenant portal.
+              </p>
+              <div className="space-y-1 mb-5">
+                <label className="text-sm font-medium text-text-primary">New Password</label>
+                <input
+                  type="text"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="input-field"
+                  placeholder="e.g., NexStay@123"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setIsOpen(false)} className="btn-secondary">Cancel</button>
+                <button type="submit" disabled={resetStudent.isPending} className="btn-primary">
+                  {resetStudent.isPending ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -110,6 +171,9 @@ function PersonalTab({ s }: { s: any }) {
         <InfoRow label="Email" value={s.email} />
         <InfoRow label="College" value={s.college} />
         <InfoRow label="Status" value={s.status} />
+      </div>
+      <div className="mt-6 border-t border-surface-border pt-6">
+        <ResetPasswordButton id={s._id} />
       </div>
     </div>
   );

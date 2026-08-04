@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 interface PrintData { student: any; hostel: any; }
 function fmtDate(d?: string | Date) { if (!d) return "—"; return new Date(d).toLocaleDateString("en-IN"); }
 function calcAge(d?: string | Date) { if (!d) return "—"; return String(Math.floor((Date.now() - new Date(d).getTime()) / (365.25*24*3600*1000))); }
@@ -17,11 +17,16 @@ export default function ModernTemplate({ student, hostel }: PrintData) {
       <div style={{ padding:"10mm 12mm" }}>
         {/* Header */}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
-          <div>
-            <div style={{ fontSize:26, fontWeight:800, color:accentColor, letterSpacing:-0.5, lineHeight:1 }}>{hostel?.name ?? "Hostel Name"}</div>
-            <div style={{ fontSize:9, color:"#64748b", marginTop:4, lineHeight:1.7 }}>
-              {fullAddr && <div>{fullAddr}</div>}
-              {hostel?.contactPhone && <div>📞 {hostel.contactPhone}</div>}
+          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            {hostel?.printLogoUrl && (
+              <img src={hostel.printLogoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 100, objectFit: "contain" }} />
+            )}
+            <div>
+              <div style={{ fontSize:26, fontWeight:800, color:accentColor, letterSpacing:-0.5, lineHeight:1 }}>{student?.propertyId?.name || hostel?.name || "Hostel Name"}</div>
+              <div style={{ fontSize:9, color:"#64748b", marginTop:4, lineHeight:1.7 }}>
+                {fullAddr && <div>{fullAddr}</div>}
+                {hostel?.contactPhone && <div>📞 {hostel.contactPhone}</div>}
+              </div>
             </div>
           </div>
           <div style={{ textAlign:"center" }}>
@@ -60,9 +65,9 @@ export default function ModernTemplate({ student, hostel }: PrintData) {
           <GF label="Admission Date" value={fmtDate(student?.admissionDate)} />
           <GF label="Medical History" value={student?.medicalHistory} full />
         </div>
-        {/* Staying Period */}
+        {/* Lock-in Period */}
         <div style={{ marginTop:16, padding:"10px 14px", background:lightAccent, borderRadius:6, border:`1px solid ${accentColor}20` }}>
-          <span style={{ fontWeight:700, fontSize:10, color:accentColor, marginRight:16 }}>Staying Period</span>
+          <span style={{ fontWeight:700, fontSize:10, color:accentColor, marginRight:16 }}>Lock-in Period</span>
           {[["6_MONTHS","6 Months"],["12_MONTHS","12 Months"],["OTHER","Other"]].map(([val,lbl]) => (
             <label key={val} style={{ display:"inline-flex", alignItems:"center", gap:5, marginRight:16, fontSize:10, cursor:"default" }}>
               <span style={{ width:14, height:14, borderRadius:3, border:`2px solid ${accentColor}`, background:student?.stayingPeriod===val?accentColor:"transparent", display:"inline-block", flexShrink:0 }} />{lbl}

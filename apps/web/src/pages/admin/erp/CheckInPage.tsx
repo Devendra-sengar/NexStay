@@ -669,9 +669,9 @@ export default function CheckInPage() {
             <div><label className="form-label">Monthly Rent (₹)</label><input type="number" className="input-field" value={stayDetails.monthlyRent} onChange={e => setStayDetails(s => ({ ...s, monthlyRent: +e.target.value }))} /></div>
             <div><label className="form-label">Security Deposit (₹)</label><input type="number" className="input-field" value={stayDetails.securityDeposit} onChange={e => setStayDetails(s => ({ ...s, securityDeposit: +e.target.value }))} /></div>
             <div><label className="form-label">Notice Period (days)</label><input type="number" className="input-field" value={stayDetails.noticePeriodDays} onChange={e => setStayDetails(s => ({ ...s, noticePeriodDays: +e.target.value }))} /></div>
-            {/* Staying Period */}
+            {/* Lock-in Period */}
             <div>
-              <label className="form-label">Staying Period</label>
+              <label className="form-label">Lock-in Period</label>
               <div className="flex gap-3 flex-wrap">
                 {[['6_MONTHS','6 Months'],['12_MONTHS','12 Months'],['OTHER','Other']].map(([val,lbl]) => (
                   <label key={val} className={cn('flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium',

@@ -6,35 +6,14 @@ import {
   useAddFine, useApplyDiscount, useSendReminders, useRecordRentPayment, useAdminProperties, useErpStudents,
   useCreateFee, useSecurityDeposits, useProofAction, useTransactions, useVerifyTransaction, useAuditLogs
 } from '@/lib/adminApi';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import ReceiptModal from '@/components/ui/ReceiptModal';
 
 const ym = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 const FMT = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
-// ── Receipt printer ────────────────────────────────────────────────────────────
-function printReceipt(r: any) {
-  const student = r.hostelStudentId as any;
-  const prop = r.propertyId as any;
-  const room = r.roomId as any;
-  const w = window.open('', '_blank')!;
-  w.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
-  <style>body{font-family:sans-serif;max-width:500px;margin:40px auto;color:#0f172a}
-  h2{color:#2563eb}.row{display:flex;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding:6px 0}
-  .total{font-weight:bold;font-size:1.1em}.sig{margin-top:40px;border-top:1px solid #0f172a;width:200px;padding-top:4px;font-size:12px}</style>
-  </head><body>
-  <h2>NexStay</h2><p>Receipt #RCPT-${r.month}-${String(r._id).slice(-6).toUpperCase()}</p>
-  <div class="row"><span>Tenant</span><span>${student?.name||'—'}</span></div>
-  <div class="row"><span>Property</span><span>${prop?.name||'—'}</span></div>
-  <div class="row"><span>Room</span><span>${room?.roomNumber||'—'}</span></div>
-  <div class="row"><span>Month</span><span>${r.month}</span></div>
-  <div class="row"><span>Rent</span><span>${FMT(r.amount)}</span></div>
-  <div class="row"><span>Fine</span><span>${FMT(r.fine||0)}</span></div>
-  <div class="row total"><span>Amount Paid</span><span>${FMT(r.paidAmount||0)}</span></div>
-  <div class="row"><span>Method</span><span>${r.paymentMethod||'—'}</span></div>
-  <div class="row"><span>Date</span><span>${r.paidAt?new Date(r.paidAt).toLocaleDateString('en-IN'):'—'}</span></div>
-  <div class="sig">Admin Signature</div></body></html>`);
-  w.print();
-}
+// ── Removed local printReceipt function (using backend API instead) ──
 
 // ── StatCard ───────────────────────────────────────────────────────────────────
 function StatCard({ label, value, color, onClick }: { label: string; value: string; color: string; onClick?: () => void }) {
@@ -814,7 +793,7 @@ export default function RentFeesPage() {
                           {r.status!=='PAID'&&<button title="Record Payment" onClick={()=>setModal({type:'pay',record:r})} className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg text-text-muted"><CreditCard className="w-3.5 h-3.5"/></button>}
                           {r.status!=='PAID'&&<button title="Add Fine" onClick={()=>setModal({type:'fine',record:r})} className="p-1.5 hover:bg-danger/10 hover:text-danger rounded-lg text-text-muted text-xs font-bold">+₹</button>}
                           {r.status!=='PAID'&&<button title="Apply Discount" onClick={()=>setModal({type:'discount',record:r})} className="p-1.5 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg text-text-muted text-xs font-bold">-₹</button>}
-                          {r.status==='PAID'&&<button title="Print Receipt" onClick={()=>printReceipt(r)} className="p-1.5 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-text-muted"><Printer className="w-3.5 h-3.5"/></button>}
+                          {r.status==='PAID'&&<button title="View Receipt" onClick={() => setModal({ type: 'receipt', record: r })} className="p-1.5 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg text-text-muted cursor-pointer"><Printer className="w-3.5 h-3.5"/></button>}
                           <button title="View History" onClick={()=>setModal({type:'history',record:r})} className="p-1.5 hover:bg-violet-50 hover:text-violet-700 rounded-lg text-text-muted"><History className="w-3.5 h-3.5"/></button>
                           <button title="Send Reminder" onClick={async()=>{try{await sendReminders.mutateAsync([r._id]);toast.success('Reminder sent');}catch(e:any){toast.error(e.response?.data?.message||'Error');}}} className="p-1.5 hover:bg-amber-50 hover:text-amber-700 rounded-lg text-text-muted"><Bell className="w-3.5 h-3.5"/></button>
                         </div>
@@ -846,6 +825,7 @@ export default function RentFeesPage() {
       {modal?.type==='fee'    && <AddFeeModal   onClose={()=>setModal(null)} />}
       {modal?.type==='proof'  && <ProofReviewModal record={modal.record} onClose={()=>setModal(null)} />}
       {modal?.type==='tx-proof' && <TxProofModal tx={modal.record} onClose={()=>setModal(null)} />}
+      {modal?.type==='receipt' && <ReceiptModal url={`/hostel-admin/erp/rent/${modal.record?._id}/receipt`} fileName={`Receipt_${modal.record?.month}.pdf`} onClose={()=>setModal(null)} />}
       {showDepositModal && <SecurityDepositModal propertyId={propId||undefined} onClose={()=>setShowDepositModal(false)} />}
     </div>
   );

@@ -5,7 +5,7 @@ import {
   createFloor, updateFloor, deleteFloor,
   createRoom, updateRoom, deleteRoom,
   getErpStudents, getErpStudentById, getStudentRent,
-  recordRentPayment, processCheckIn, processCheckOut, getStudentDues,
+  recordRentPayment, processCheckIn, processCheckOut, getStudentDues, resetStudentPassword
 } from '../controllers/erpAdmin.controller';
 import { getRentReceipt } from '../controllers/hostelAdmin.controller';
 import {
@@ -18,7 +18,7 @@ import {
   getStaff, getStaffById, createStaff, updateStaff, toggleStaffStatus, deleteStaff,
   getInventory, createInventoryItem, updateInventoryItem, deleteInventoryItem,
   getAdminComplaints, getAdminComplaintById, updateComplaintStatus, addInternalNote,
-  createAdminComplaint,
+  createAdminComplaint, resetStaffPassword
 } from '../controllers/erpStaff.controller';
 import {
   createLead, getLeads, updateLeadStatus, deleteLead
@@ -54,6 +54,7 @@ router.delete('/rooms/:id', deleteRoom);
 // ── Students ─────────────────────────────────────────────────────
 router.get('/students', getErpStudents);
 router.get('/students/:id', getErpStudentById);
+router.post('/students/:id/reset-password', resetStudentPassword);
 router.get('/students/:id/rent', getStudentRent);
 router.get('/dues/:studentId', getStudentDues);
 
@@ -95,6 +96,7 @@ router.get('/staff', getStaff);
 router.get('/staff/:id', getStaffById);
 router.post('/staff', createStaff);
 router.put('/staff/:id', updateStaff);
+router.post('/staff/:id/reset-password', resetStaffPassword);
 router.patch('/staff/:id/toggle', toggleStaffStatus);
 router.delete('/staff/:id', deleteStaff);
 

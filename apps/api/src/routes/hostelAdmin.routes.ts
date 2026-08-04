@@ -11,6 +11,7 @@ import {
   getAdminBookings,
   acceptBooking,
   rejectBooking,
+  updateMyHostelSettings,
 } from '../controllers/hostelAdmin.controller';
 import {
   createStaffUser, getHostelStaff,
@@ -51,6 +52,7 @@ router.get('/my-hostels', async (req: AuthRequest, res: Response) => {
     res.json({ success: true, data: hostels });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 });
+router.patch('/my-hostels/:id/settings', updateMyHostelSettings);
 
 // Staff management (for owner's hostels)
 router.post('/staff', createStaffUser);

@@ -28,11 +28,16 @@ export default function ClassicTemplate({ student, hostel }: PrintData) {
           <div style={{ display: "inline-block", background: "#111", color: "#fff", padding: "4px 28px", fontSize: 11, fontWeight: 800, letterSpacing: 3 }}>REGISTRATION FORM</div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1, marginBottom: 4, textTransform: "uppercase" }}>{student?.propertyId?.name || hostel?.name || "Hostel Name"}</div>
-            <div style={{ fontSize: 9, lineHeight: 1.8, color: "#333" }}>
-              {fullAddr && <div>{fullAddr}</div>}
-              {hostel?.contactPhone && <div>Contact: {hostel.contactPhone}</div>}
+          <div style={{ flex: 1, display: "flex", gap: "16px", alignItems: "center" }}>
+            {hostel?.printLogoUrl && (
+              <img src={hostel.printLogoUrl} alt="Logo" style={{ maxHeight: 60, maxWidth: 100, objectFit: "contain" }} />
+            )}
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1, marginBottom: 4, textTransform: "uppercase" }}>{student?.propertyId?.name || hostel?.name || "Hostel Name"}</div>
+              <div style={{ fontSize: 9, lineHeight: 1.8, color: "#333" }}>
+                {fullAddr && <div>{fullAddr}</div>}
+                {hostel?.contactPhone && <div>Contact: {hostel.contactPhone}</div>}
+              </div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, marginLeft: 16 }}>
@@ -64,7 +69,7 @@ export default function ClassicTemplate({ student, hostel }: PrintData) {
           <FL label="Medical History (If Any Disease)" value={student?.medicalHistory} />
         </div>
         <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 24, fontSize: 10 }}>
-          <span style={{ fontWeight: 700 }}>Staying Period</span>
+          <span style={{ fontWeight: 700 }}>Lock-in Period</span>
           {[["6_MONTHS", "6 Month"], ["12_MONTHS", "12 Month"], ["OTHER", "Other"]].map(([val, lbl]) => (
             <label key={val} style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <span style={{ width: 13, height: 13, border: "1.5px solid #000", display: "inline-block", background: student?.stayingPeriod === val ? "#000" : "transparent", flexShrink: 0 }} />
