@@ -45,14 +45,22 @@ export default function ReceiptModal({ url, onClose, fileName }: ReceiptModalPro
       const container = document.createElement('div');
       container.innerHTML = html;
       const html2pdf = (await import('html2pdf.js')).default;
-      
-      const opt = {
-        margin:       10,
-        filename:     fileName,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
+    const opt = {
+  margin: 10,
+  filename: fileName,
+  image: {
+    type: "jpeg" as const,
+    quality: 0.98,
+  },
+  html2canvas: {
+    scale: 2,
+  },
+  jsPDF: {
+    unit: "mm" as const,
+    format: "a4" as const,
+    orientation: "portrait" as const,
+  },
+};
       
       await html2pdf().set(opt).from(container).save();
       toast.success('Downloaded successfully!', { id: toastId });
