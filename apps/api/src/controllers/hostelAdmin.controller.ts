@@ -528,7 +528,7 @@ export const updateMyHostelSettings = async (req: AuthRequest, res: Response): P
     const { id } = req.params;
     
     // Only allow updating printTemplate and printLogoUrl for now
-    const { printTemplate, printLogoUrl } = req.body;
+    const { printTemplate, printLogoUrl, isComplaintFeatureEnabled, allowCustomPaymentAmount } = req.body;
 
     const hostel = await Hostel.findOne({ _id: id, ownerId });
     if (!hostel) {
@@ -538,6 +538,8 @@ export const updateMyHostelSettings = async (req: AuthRequest, res: Response): P
 
     if (printTemplate !== undefined) hostel.printTemplate = printTemplate;
     if (printLogoUrl !== undefined) hostel.printLogoUrl = printLogoUrl;
+    if (isComplaintFeatureEnabled !== undefined) hostel.isComplaintFeatureEnabled = isComplaintFeatureEnabled;
+    if (allowCustomPaymentAmount !== undefined) hostel.allowCustomPaymentAmount = allowCustomPaymentAmount;
 
     await hostel.save();
     res.json({ success: true, data: hostel, message: 'Hostel settings updated successfully' });

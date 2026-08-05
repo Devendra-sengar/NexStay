@@ -49,7 +49,7 @@ export const getStudentDashboard = async (req: AuthRequest, res: Response): Prom
     if (studentRecord) {
       property = await Property.findById(studentRecord.propertyId).select('isComplaintFeatureEnabled').lean();
       hostel = await Hostel.findById(studentRecord.hostelId || (user as any)?.hostelId)
-        .select('name hostelCode messEnabled messTimings').lean();
+        .select('name hostelCode messEnabled messTimings isComplaintFeatureEnabled allowCustomPaymentAmount').lean();
 
       // Get room info
       const bed = await Bed.findById(studentRecord.bedId).populate('roomId', 'roomNumber').lean();
@@ -99,7 +99,8 @@ export const getStudentDashboard = async (req: AuthRequest, res: Response): Prom
           stayDays,
         },
         currentRent: currentRent || null,
-        isComplaintFeatureEnabled: property?.isComplaintFeatureEnabled ?? true,
+        isComplaintFeatureEnabled: (hostel as any)?.isComplaintFeatureEnabled === false ? false : (property?.isComplaintFeatureEnabled !== false),
+        allowCustomPaymentAmount: (hostel as any)?.allowCustomPaymentAmount === false ? false : (property?.allowCustomPaymentAmount !== false),
         pendingComplaints,
         todayMenu: todayMenu || null,
         recentNotices,
@@ -259,7 +260,8 @@ export const getCurrentMonthRent = async (req: AuthRequest, res: Response): Prom
     
     const thisMonth = new Date().toISOString().slice(0, 7);
     const rent = await RentRecord.findOne({ hostelStudentId: studentRecord._id, month: thisMonth });
-    const property = await Property.findById(studentRecord.propertyId).select('allowCustomPaymentAmount latePenaltyType latePenaltyAmount gracePeriodDays').lean();
+    const property = await Property.findById(studentRecord.propertyId).select('latePenaltyType latePenaltyAmount gracePeriodDays').lean();
+    const hostel = await Hostel.findById(studentRecord.hostelId || (req.user as any)?.hostelId).select('allowCustomPaymentAmount').lean();
     
     if (rent && property) {
       const computedFine = calculateDynamicFine(rent, property);
@@ -272,7 +274,7 @@ export const getCurrentMonthRent = async (req: AuthRequest, res: Response): Prom
     res.json({ 
       success: true, 
       data: rent ? rent.toObject() : null,
-      allowCustomPaymentAmount: property?.allowCustomPaymentAmount ?? true 
+      allowCustomPaymentAmount: hostel?.allowCustomPaymentAmount ?? true 
     });
   } catch (err) { res.status(500).json({ success: false, message: 'Server error' }); }
 };
@@ -300,9 +302,9 @@ export const raiseComplaint = async (req: AuthRequest, res: Response): Promise<v
       res.status(400).json({ success: false, message: 'No active hostel record found' }); return;
     }
 
-    const property = await Property.findById(studentRecord.propertyId).select('isComplaintFeatureEnabled').lean();
-    if (property && property.isComplaintFeatureEnabled === false) {
-      res.status(403).json({ success: false, message: 'Complaints are currently disabled for this property.' }); return;
+    const hostel = await Hostel.findById(studentRecord.hostelId).select('isComplaintFeatureEnabled').lean();
+    if (hostel && hostel.isComplaintFeatureEnabled === false) {
+      res.status(403).json({ success: false, message: 'Complaints are currently disabled for this hostel.' }); return;
     }
 
     const complaint = await Complaint.create({

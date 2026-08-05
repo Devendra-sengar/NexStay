@@ -10,6 +10,8 @@ export default function HostelSettingsPage() {
   
   const [selectedHostelId, setSelectedHostelId] = useState<string>('');
   const [logoUrl, setLogoUrl] = useState<string>('');
+  const [isComplaintFeatureEnabled, setIsComplaintFeatureEnabled] = useState<boolean>(true);
+  const [allowCustomPaymentAmount, setAllowCustomPaymentAmount] = useState<boolean>(true);
 
   useEffect(() => {
     if (hostels && hostels.length > 0 && !selectedHostelId) {
@@ -21,6 +23,8 @@ export default function HostelSettingsPage() {
     if (selectedHostelId && hostels) {
       const h = hostels.find(h => h._id === selectedHostelId);
       setLogoUrl(h?.printLogoUrl || '');
+      setIsComplaintFeatureEnabled(h?.isComplaintFeatureEnabled ?? true);
+      setAllowCustomPaymentAmount(h?.allowCustomPaymentAmount ?? true);
     }
   }, [selectedHostelId, hostels]);
 
@@ -29,7 +33,7 @@ export default function HostelSettingsPage() {
     try {
       await updateSettings.mutateAsync({
         id: selectedHostelId,
-        data: { printLogoUrl: logoUrl }
+        data: { printLogoUrl: logoUrl, isComplaintFeatureEnabled, allowCustomPaymentAmount }
       });
       toast.success('Hostel settings updated successfully');
     } catch (err: any) {
@@ -128,6 +132,32 @@ export default function HostelSettingsPage() {
             </div>
           </div>
         </div>
+        
+        <div className="border-t border-surface-border pt-6 mt-6">
+          <h3 className="text-lg font-bold text-text-primary mb-1">Feature Toggles</h3>
+          <p className="text-sm text-text-muted mb-4">
+            Enable or disable specific features for tenants of this hostel.
+          </p>
+          <div className="bg-surface-input/30 border border-surface-border p-4 rounded-xl flex flex-col gap-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 text-primary rounded border-surface-border focus:ring-primary"
+                checked={isComplaintFeatureEnabled} onChange={e => setIsComplaintFeatureEnabled(e.target.checked)} />
+              <div>
+                <span className="text-sm font-semibold text-text-primary block">Enable Complaints Feature</span>
+                <span className="text-xs text-text-muted">Allow tenants to raise complaints via their dashboard</span>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 text-primary rounded border-surface-border focus:ring-primary"
+                checked={allowCustomPaymentAmount} onChange={e => setAllowCustomPaymentAmount(e.target.checked)} />
+              <div>
+                <span className="text-sm font-semibold text-text-primary block">Allow Custom Rent Amount Payment</span>
+                <span className="text-xs text-text-muted">Allow tenants to edit the payable amount when uploading rent payment proof online</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
       </div>
     </div>
   );
