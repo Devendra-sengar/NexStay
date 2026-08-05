@@ -260,7 +260,7 @@ export const getCurrentMonthRent = async (req: AuthRequest, res: Response): Prom
     
     const thisMonth = new Date().toISOString().slice(0, 7);
     const rent = await RentRecord.findOne({ hostelStudentId: studentRecord._id, month: thisMonth });
-    const property = await Property.findById(studentRecord.propertyId).select('latePenaltyType latePenaltyAmount gracePeriodDays').lean();
+    const property = await Property.findById(studentRecord.propertyId).select('allowCustomPaymentAmount latePenaltyType latePenaltyAmount gracePeriodDays').lean();
     const hostel = await Hostel.findById(studentRecord.hostelId || (req.user as any)?.hostelId).select('allowCustomPaymentAmount').lean();
     
     if (rent && property) {
@@ -274,7 +274,7 @@ export const getCurrentMonthRent = async (req: AuthRequest, res: Response): Prom
     res.json({ 
       success: true, 
       data: rent ? rent.toObject() : null,
-      allowCustomPaymentAmount: hostel?.allowCustomPaymentAmount ?? true 
+      allowCustomPaymentAmount: hostel?.allowCustomPaymentAmount === false ? false : (property?.allowCustomPaymentAmount !== false)
     });
   } catch (err) { res.status(500).json({ success: false, message: 'Server error' }); }
 };

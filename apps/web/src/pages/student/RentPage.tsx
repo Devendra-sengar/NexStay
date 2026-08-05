@@ -183,10 +183,13 @@ export default function StudentRentPage() {
     queryKey: ['student-transactions'],
     queryFn: () => api.get('/student/transactions').then(r => r.data),
   });
-  const { data: cur } = useQuery({
+  const { data: curRes } = useQuery({
     queryKey: ['student-rent-current'],
-    queryFn: () => api.get('/student/rent/current').then(r => r.data.data),
+    queryFn: () => api.get('/student/rent/current').then(r => r.data),
   });
+
+  const cur = curRes?.data;
+  const allowCustomPaymentAmount = curRes?.allowCustomPaymentAmount ?? true;
 
   const [uploadRecord, setUploadRecord] = useState<any>(null);
   const [viewProofUrl, setViewProofUrl] = useState<string | null>(null);
@@ -466,7 +469,7 @@ export default function StudentRentPage() {
       {uploadRecord && (
         <UploadProofModal 
           record={uploadRecord} 
-          allowCustomPaymentAmount={cur?.allowCustomPaymentAmount ?? true}
+          allowCustomPaymentAmount={allowCustomPaymentAmount}
           onClose={() => setUploadRecord(null)} 
         />
       )}
