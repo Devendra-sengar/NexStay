@@ -456,7 +456,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       moveInDate, monthlyRent, securityDeposit, noticePeriodDays,
       internalNote,
       // ── Extended Registration Form Fields ────────────────────────────────────
-      fatherName, fatherOccupation, fatherContact,
+      registrationDate, fatherName, fatherOccupation, fatherContact,
       motherName, dateOfBirth, bloodGroup, maritalStatus,
       education, occupation, organization,
       permanentAddress, guardianAddress, vehicleNumber,
@@ -625,6 +625,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       securityDeposit: securityDeposit ?? booking?.advancePaid ?? 0,
       status: 'ACTIVE',
       // ── Extended Registration Form Fields ───────────────────────────────────
+      registrationDate: registrationDate ? new Date(registrationDate) : moveIn,
       fatherName: fatherName ?? '',
       fatherOccupation: fatherOccupation ?? '',
       fatherContact: fatherContact ?? '',

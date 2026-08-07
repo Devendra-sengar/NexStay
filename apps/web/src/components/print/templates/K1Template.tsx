@@ -97,7 +97,7 @@ export default function K1Template({ student, hostel }: PrintData) {
           </div>
 
           <div style={{ textAlign: "right", fontSize: 13, marginBottom: 15, fontWeight: 700, display: "flex", justifyContent: "flex-end", alignItems: "baseline" }}>
-            Date <span style={{ display: "inline-block", width: 140, borderBottom: "2px dotted #000", marginLeft: 8, paddingBottom: 2, textAlign: "center" }}>{student?.admissionDate ? fmtDate(student.admissionDate) : ""}</span>
+            Date <span style={{ display: "inline-block", width: 140, borderBottom: "2px dotted #000", marginLeft: 8, paddingBottom: 2, textAlign: "center" }}>{(student?.registrationDate || student?.admissionDate) ? fmtDate(student.registrationDate || student.admissionDate) : ""}</span>
           </div>
 
           <div style={{ fontSize: 14, lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 18 }}>

@@ -326,6 +326,7 @@ function AddFeeModal({ onClose }: { onClose: () => void }) {
   const students = studData?.data ?? [];
   const [studentId, setStudentId] = useState('');
   const [feeType, setFeeType] = useState('Admission Fee');
+  const [customFeeType, setCustomFeeType] = useState('');
   const [amount, setAmount] = useState(0);
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -333,7 +334,8 @@ function AddFeeModal({ onClose }: { onClose: () => void }) {
   const FEE_TYPES = ['Admission Fee','Security Deposit','Maintenance','Laundry','Food Add-On','Other'];
   const submit = async () => {
     if (!studentId || !amount) { toast.error('Student and amount required'); return; }
-    try { await create.mutateAsync({ hostelStudentId: studentId, feeType, amount, dueDate, notes }); toast.success('Fee created'); onClose(); }
+    if (feeType === 'Other' && !customFeeType.trim()) { toast.error('Please specify the custom fee name'); return; }
+    try { await create.mutateAsync({ hostelStudentId: studentId, feeType, customFeeType: customFeeType.trim(), amount, dueDate, notes }); toast.success('Fee created'); onClose(); }
     catch (e: any) { toast.error(e.response?.data?.message || 'Error'); }
   };
   return (
@@ -350,6 +352,12 @@ function AddFeeModal({ onClose }: { onClose: () => void }) {
             <select className="input-field" value={feeType} onChange={e=>setFeeType(e.target.value)}>
               {FEE_TYPES.map(f=><option key={f} value={f}>{f}</option>)}
             </select></div>
+          {feeType === 'Other' && (
+            <div>
+              <label className="form-label">Custom Charge Name</label>
+              <input className="input-field" placeholder="e.g. Damages Penalty" value={customFeeType} onChange={e=>setCustomFeeType(e.target.value)} />
+            </div>
+          )}
           <div><label className="form-label">Amount (₹)</label><input type="number" className="input-field" value={amount} onChange={e=>setAmount(+e.target.value)} /></div>
           <div><label className="form-label">Due Date</label><input type="date" className="input-field" value={dueDate} onChange={e=>setDueDate(e.target.value)} /></div>
           <div><label className="form-label">Notes</label><input className="input-field" value={notes} onChange={e=>setNotes(e.target.value)} /></div>

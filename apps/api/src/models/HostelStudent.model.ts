@@ -25,6 +25,7 @@ export interface IHostelStudentDoc extends Document {
   securityDeposit: number;
   status: string;
   // ── Registration Form Fields ───────────────────────────────────────────────
+  registrationDate?: Date;
   fatherName?: string;
   fatherOccupation?: string;
   fatherContact?: string;
@@ -73,6 +74,7 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
       default: 'ACTIVE',
     },
     // ── Registration Form Fields ─────────────────────────────────────────────
+    registrationDate: { type: Date },
     fatherName: { type: String, default: '' },
     fatherOccupation: { type: String, default: '' },
     fatherContact: { type: String, default: '' },

@@ -365,7 +365,9 @@ export default function StudentRentPage() {
                   const due = Math.max(0, total - (r.paidAmount || 0));
                   return (
                     <tr key={r._id}>
-                      <td className="font-semibold text-text-primary">{r.month}</td>
+                      <td className="font-semibold text-text-primary">
+                        {r.isFee ? `Fee: ${r.feeType}` : r.month}
+                      </td>
                       <td>₹{total.toLocaleString('en-IN')}</td>
                       <td className="text-emerald-600">₹{(r.paidAmount || 0).toLocaleString('en-IN')}</td>
                       <td className="text-danger">{due > 0 ? `₹${due.toLocaleString('en-IN')}` : '—'}</td>

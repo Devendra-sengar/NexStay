@@ -23,7 +23,7 @@ export default function MinimalTemplate({ student, hostel }: PrintData) {
         </div>
         <div style={{ textAlign:"right" }}>
           <div style={{ fontSize:10, fontWeight:700, letterSpacing:2, textTransform:"uppercase" }}>Registration Form</div>
-          <div style={{ fontSize:9, color:"#555", marginTop:2 }}>Date: {fmtDate(student?.admissionDate)}</div>
+          <div style={{ fontSize:9, color:"#555", marginTop:2 }}>Date: {fmtDate(student?.registrationDate || student?.admissionDate)}</div>
           <div style={{ fontSize:9, color:"#555" }}>{GL[hostel?.gender] ?? "Co-Ed"} Hostel</div>
         </div>
       </div>

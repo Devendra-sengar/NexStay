@@ -39,7 +39,7 @@ export default function ModernTemplate({ student, hostel }: PrintData) {
         {/* Title banner */}
         <div style={{ background:accentColor, color:"#fff", padding:"8px 16px", borderRadius:6, marginBottom:16, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontWeight:800, fontSize:13, letterSpacing:1 }}>REGISTRATION FORM</span>
-          <span style={{ fontSize:10 }}>Date: {student?.admissionDate ? fmtDate(student.admissionDate) : "____________"}</span>
+          <span style={{ fontSize:10 }}>Date: {(student?.registrationDate || student?.admissionDate) ? fmtDate(student.registrationDate || student.admissionDate) : "____________"}</span>
         </div>
         {/* Grid fields */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px 16px", fontSize:10 }}>

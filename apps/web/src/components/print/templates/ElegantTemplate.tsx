@@ -54,7 +54,7 @@ export default function ElegantTemplate({ student, hostel }: PrintData) {
         {/* Photo + gender + date row */}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:14 }}>
           <div style={{ fontSize:10, color:"#7a5c3a" }}>
-            Date: <span style={{ borderBottom:`1px solid ${gold}`, display:"inline-block", minWidth:80 }}>{fmtDate(student?.admissionDate)}</span>
+            Date: <span style={{ borderBottom:`1px solid ${gold}`, display:"inline-block", minWidth:80 }}>{fmtDate(student?.registrationDate || student?.admissionDate)}</span>
             <span style={{ marginLeft:16 }}>Gender: <strong>{GL[hostel?.gender]}</strong></span>
           </div>
           <div style={{ textAlign:"center" }}>

@@ -49,7 +49,7 @@ export default function ClassicTemplate({ student, hostel }: PrintData) {
         </div>
         <div style={{ borderTop: "3px solid #000", paddingTop: 2, borderBottom: "1px solid #000", marginBottom: 10 }} />
         <div style={{ textAlign: "right", fontSize: 10, marginBottom: 10 }}>
-          Date......<strong>{student?.admissionDate ? fmtDate(student.admissionDate) : "...................."}</strong>
+          Date......<strong>{(student?.registrationDate || student?.admissionDate) ? fmtDate(student.registrationDate || student.admissionDate) : "...................."}</strong>
         </div>
         <div style={{ fontSize: 10 }}>
           <FL label="Name of Tenant" value={student?.name} />

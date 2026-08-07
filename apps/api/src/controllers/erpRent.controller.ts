@@ -269,22 +269,36 @@ export const sendReminders = async (req: AuthRequest, res: Response): Promise<vo
 export const createFee = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tenantId = req.user!.tenantId || req.user!.id;
-    const { hostelStudentId, feeType, amount, dueDate, notes } = req.body;
+    const { hostelStudentId, feeType, customFeeType, amount, dueDate, notes } = req.body;
     if (!hostelStudentId || !feeType || !amount) {
       res.status(400).json({ success: false, message: 'hostelStudentId, feeType, amount required' }); return;
     }
     const student = await HostelStudent.findOne({ _id: hostelStudentId, tenantId }).lean();
     if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
 
+    const finalFeeType = (feeType === 'Other' && customFeeType) ? customFeeType : feeType;
+    const monthKey = `FEE-${finalFeeType.toUpperCase().replace(/\s+/g, '_')}`;
+
     const fee = await RentRecord.create({
       tenantId, propertyId: student.propertyId,
       hostelStudentId: student._id, bookingId: student.bookingId,
-      month: `FEE-${feeType.toUpperCase().replace(/\s+/g, '_')}`,
+      month: monthKey,
       amount: Number(amount), paidAmount: 0, fine: 0,
       dueDate: dueDate ? new Date(dueDate) : new Date(),
       status: 'UNPAID', notes: notes || '',
-      isFee: true, feeType,
+      isFee: true, feeType: finalFeeType,
     });
+
+    if (student.guestId) {
+      await notify({
+        userId: student.guestId.toString(),
+        title: 'New Charge Added',
+        message: `An extra charge of ₹${amount} for ${finalFeeType} has been added.`,
+        type: 'PAYMENT',
+        linkUrl: '/student/rent'
+      });
+    }
+
     res.status(201).json({ success: true, data: fee });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
