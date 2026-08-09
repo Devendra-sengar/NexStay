@@ -35,7 +35,7 @@ export const getWardenDashboard = async (req: AuthRequest, res: Response): Promi
     // Today's mess menu
     let todayMenu: any = null;
     if (hostel?.messEnabled) {
-      todayMenu = await MessMenu.findOne({ hostelId, date: todayDate() }).lean();
+      todayMenu = await MessMenu.findOne({ hostelId, date: todayDate() }).populate('uploadedBy', 'name').lean();
     }
 
     res.json({

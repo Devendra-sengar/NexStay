@@ -297,6 +297,18 @@ function RoomRow({ room, floors, onEdit, onDelete, onDuplicate }: { room: any; f
   const total = room.totalBeds ?? room.capacity;
   const statusColor = avail > 0 ? 'badge-success' : 'badge-danger';
 
+  let priceDisplay = `₹${room.pricePerBed?.toLocaleString('en-IN')}`;
+  if (room.beds && room.beds.length > 0) {
+    const prices = room.beds.map((b: any) => b.price ?? room.pricePerBed ?? 0);
+    const minP = Math.min(...prices);
+    const maxP = Math.max(...prices);
+    if (minP === maxP) {
+      priceDisplay = `₹${minP.toLocaleString('en-IN')}`;
+    } else {
+      priceDisplay = `₹${minP.toLocaleString('en-IN')} - ₹${maxP.toLocaleString('en-IN')}`;
+    }
+  }
+
   return (
     <>
       <tr className="hover:bg-surface-input/40 transition-colors">
@@ -312,7 +324,7 @@ function RoomRow({ room, floors, onEdit, onDelete, onDuplicate }: { room: any; f
           <span className="font-semibold text-emerald-600">{avail}</span>
           <span className="text-text-muted"> / {total}</span>
         </td>
-        <td className="py-3 px-4 border-b border-surface-border text-sm">₹{room.pricePerBed?.toLocaleString('en-IN')}</td>
+        <td className="py-3 px-4 border-b border-surface-border text-sm font-medium">{priceDisplay}</td>
         <td className="py-3 px-4 border-b border-surface-border">
           <span className={cn('badge', statusColor)}>{avail > 0 ? 'AVAILABLE' : 'FULL'}</span>
         </td>

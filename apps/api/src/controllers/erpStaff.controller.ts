@@ -82,7 +82,7 @@ export const createStaff = async (req: AuthRequest, res: Response): Promise<void
         
         const defaultPermissions = role === 'MESS_MANAGER'
           ? { canUploadMenu: true, canViewSalary: false, canViewStudents: false, canManageComplaints: false, canViewRentRecords: false, canManageRooms: false, canViewAttendance: false }
-          : { canViewStudents: true, canManageComplaints: true, canManageRooms: true, canViewSalary: false, canUploadMenu: false, canViewRentRecords: false, canViewAttendance: false };
+          : { canViewStudents: true, canManageComplaints: true, canManageRooms: true, canViewSalary: false, canUploadMenu: true, canViewRentRecords: false, canViewAttendance: false };
         
         await User.create({
           name,

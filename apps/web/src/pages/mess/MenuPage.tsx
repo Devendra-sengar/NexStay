@@ -56,11 +56,17 @@ export default function MessMenuPage() {
 
   const mutation = useMutation({
     mutationFn: () => {
-      const payload = { ...form };
+      const payload = JSON.parse(JSON.stringify(form));
       ['breakfast', 'lunch', 'dinner'].forEach((m) => {
+        const val = newItems[m]?.trim();
+        if (val) {
+          payload[m].items.push({ name: val, photoUrl: null });
+          setNewItems(p => ({ ...p, [m]: '' }));
+        }
+
         const meal = payload[m as keyof typeof payload] as IMeal;
         let hasPhoto = !!(meal.photoType === 'THALI' && meal.thaliPhotoUrl);
-        if (meal.photoType === 'ITEMS' && meal.items.some(i => i.photoUrl)) hasPhoto = true;
+        if (meal.photoType === 'ITEMS' && meal.items.some((i: any) => i.photoUrl)) hasPhoto = true;
         if (hasPhoto && !meal.photosUploadedAt) {
           meal.photosUploadedAt = new Date();
         }

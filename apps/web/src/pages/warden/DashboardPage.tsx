@@ -46,15 +46,24 @@ export default function WardenDashboardPage() {
 
       {/* Today's Menu */}
       <div style={{ background: 'white', borderRadius: 12, padding: '16px', border: '1px solid #f1f5f9' }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <UtensilsCrossed size={16} color="#b45309" /> Today's Mess Menu
+        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <UtensilsCrossed size={16} color="#b45309" /> Today's Mess Menu
+          </div>
+          {todayMenu?.uploadedBy && (
+            <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b' }}>
+              Updated by: <span style={{ fontWeight: 600, color: '#0f172a' }}>{todayMenu.uploadedBy.name}</span>
+            </span>
+          )}
         </h3>
         {todayMenu ? (
           <div style={{ display: 'grid', gap: 8 }}>
             {(['breakfast', 'lunch', 'dinner'] as const).map(meal => (
               <div key={meal} style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 12px' }}>
                 <p style={{ color: '#64748b', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600, margin: '0 0 4px' }}>{meal}</p>
-                <p style={{ color: '#0f172a', fontSize: 13, margin: 0 }}>{todayMenu[meal]?.items?.join(', ') || '—'}</p>
+                <p style={{ color: '#0f172a', fontSize: 13, margin: 0 }}>
+                  {todayMenu[meal]?.items?.map((i: any) => typeof i === 'string' ? i : i.name).join(', ') || '—'}
+                </p>
               </div>
             ))}
           </div>
