@@ -84,7 +84,7 @@ const ErpPreBookingSchema = new Schema<IErpPreBookingDoc>(
     permanentAddress: { type: String },
     vehicleNumber: { type: String },
     medicalHistory: { type: String },
-    stayingPeriod: { type: String },
+    stayingPeriod: { type: String, default: '' },
   },
   { timestamps: true }
 );

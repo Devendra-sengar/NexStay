@@ -98,7 +98,6 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
     medicalHistory: { type: String, default: '' },
     stayingPeriod: {
       type: String,
-      enum: ['6_MONTHS', '12_MONTHS', 'OTHER', ''],
       default: '',
     },
   },

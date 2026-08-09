@@ -461,7 +461,9 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       education, occupation, organization,
       permanentAddress, guardianAddress, vehicleNumber,
       medicalHistory, stayingPeriod,
-      initialRentAmount, initialExtraCharges, initialPaidAmount
+      initialRentAmount, initialExtraCharges, initialPaidAmount,
+      // ── Old Tenant Fields ────────────────────────────────────────────────────
+      isOldTenant, lockInPeriod, currentMonthStartDate
     } = req.body;
 
     let booking: any;
@@ -625,8 +627,9 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       monthlyRent: monthlyRent ?? booking?.monthlyRent ?? 6000,
       securityDeposit: securityDeposit ?? booking?.advancePaid ?? 0,
       status: 'ACTIVE',
-      // ── Extended Registration Form Fields ───────────────────────────────────
-      registrationDate: registrationDate ? new Date(registrationDate) : moveIn,
+      stayingPeriod: isOldTenant && lockInPeriod ? `${lockInPeriod} Months` : stayingPeriod,
+      // ── Extended Fields ──
+      registrationDate: registrationDate ? new Date(registrationDate) : undefined,
       fatherName: fatherName ?? '',
       fatherOccupation: fatherOccupation ?? '',
       fatherContact: fatherContact ?? '',
@@ -640,7 +643,6 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       permanentAddress: permanentAddress ?? '',
       vehicleNumber: vehicleNumber ?? '',
       medicalHistory: medicalHistory ?? '',
-      stayingPeriod: stayingPeriod ?? '',
     }], { session });
 
     let preBookingDoc: any = null;
@@ -659,81 +661,126 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     const anyAvail = allBeds.some(b => String(b._id) !== String(bed._id) && b.status === 'AVAILABLE');
     await Room.findByIdAndUpdate(bed.roomId, { status: anyAvail ? 'AVAILABLE' : 'FULL' }, { session });
 
-    // Generate first rent record
-    const dueDate = new Date(moveIn.getFullYear(), moveIn.getMonth() + 1, 5);
-    
     // Initial Invoice calculations
     const baseRentAmount = initialRentAmount !== undefined ? initialRentAmount : (monthlyRent ?? booking?.monthlyRent ?? 6000);
     const extraCharges = initialExtraCharges ?? 0;
     const totalAmount = baseRentAmount + extraCharges;
-
+    const dueDate = new Date(moveIn.getFullYear(), moveIn.getMonth() + 1, 5);
     const tokenAmount = preBookingDoc?.tokenAmount ?? 0;
     
-    // If the form provides a specific initialPaidAmount, use it. Otherwise, default to tokenAmount (max up to totalAmount)
-    const firstMonthPaid = initialPaidAmount !== undefined ? initialPaidAmount : Math.min(tokenAmount, totalAmount);
-    
-    const rentRecord = await RentRecord.create([{
-      tenantId, propertyId: finalPropertyId,
-      roomId: (await Bed.findById(finalBedId))?.roomId,
-      hostelStudentId: student[0]._id, bookingId: booking._id,
-      month: ym(moveIn),
-      amount: totalAmount,
-      paidAmount: firstMonthPaid, 
-      fine: 0, 
-      dueDate, 
-      status: firstMonthPaid >= totalAmount ? 'PAID' : (firstMonthPaid > 0 ? 'PARTIAL' : 'UNPAID'),
-      paidAt: firstMonthPaid >= totalAmount ? new Date() : undefined
-    }], { session });
-
-    // If there is an initial paid amount or token, create LedgerEntry & PaymentTransaction
-    if (firstMonthPaid > 0 || tokenAmount > 0) {
-      const amountToRecord = firstMonthPaid > 0 ? firstMonthPaid : tokenAmount;
+    // If Old Tenant, we skip standard check-in billing and just generate the pending dues + current month
+    if (isOldTenant) {
       const pMode = preBookingDoc?.tokenPaymentMethod || 'CASH';
       const validMode = ['CASH', 'ONLINE', 'ADJUSTMENT'].includes(pMode) ? pMode : 'CASH';
       
-      const pTx = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
-        transactionId: `TXN-INITIAL-${Date.now()}`,
-        tenantId, propertyId: finalPropertyId,
-        invoiceId: rentRecord[0]._id,
-        residentId: student[0]._id,
-        settledAmount: amountToRecord,
-        paymentMode: validMode,
-        status: 'SUCCESS'
-      }], { session });
+      // 1. Create Past Dues Invoice (if there's old rent total > 0)
+      if (totalAmount > 0) {
+        const oldRentTotalNum = totalAmount;
+        const oldRentPaidNum = initialPaidAmount !== undefined ? initialPaidAmount : 0;
+        const pastDuesRecord = await RentRecord.create([{
+          tenantId, propertyId: finalPropertyId,
+          roomId: (await Bed.findById(finalBedId))?.roomId,
+          hostelStudentId: student[0]._id, bookingId: booking._id,
+          month: 'Past Dues',
+          amount: oldRentTotalNum,
+          paidAmount: oldRentPaidNum, 
+          fine: 0, 
+          dueDate: moveIn, 
+          status: oldRentPaidNum >= oldRentTotalNum ? 'PAID' : (oldRentPaidNum > 0 ? 'PARTIAL' : 'UNPAID'),
+          paidAt: oldRentPaidNum >= oldRentTotalNum ? new Date() : undefined
+        }], { session });
 
-      await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
-        tenantId, propertyId: finalPropertyId,
-        residentId: student[0]._id,
-        invoiceId: rentRecord[0]._id,
-        transactionId: pTx[0]._id,
-        credit: amountToRecord, debit: 0,
-        balance: totalAmount - amountToRecord,
-        source: validMode,
-        verifiedBy: req.user!.id,
-        notes: preBookingId ? 'Token adjusted for first month rent' : 'Initial payment during registration'
-      }], { session });
-    }
+        if (oldRentPaidNum > 0) {
+          const pTx = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
+            transactionId: `TXN-OLD-${Date.now()}`,
+            tenantId, propertyId: finalPropertyId,
+            invoiceId: pastDuesRecord[0]._id,
+            residentId: student[0]._id,
+            settledAmount: oldRentPaidNum,
+            paymentMode: validMode,
+            status: 'SUCCESS'
+          }], { session });
 
-    // Backfill missing subsequent invoices up to the current month if backdated
-    const currentMonthStr = ym(new Date());
-    let iterDate = new Date(moveIn.getFullYear(), moveIn.getMonth() + 1, 1);
-    const invoicesToCreate: any[] = [];
-    while (ym(iterDate) <= currentMonthStr) {
-      invoicesToCreate.push({
+          await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
+            tenantId, propertyId: finalPropertyId,
+            residentId: student[0]._id,
+            invoiceId: pastDuesRecord[0]._id,
+            transactionId: pTx[0]._id,
+            credit: oldRentPaidNum, debit: 0,
+            balance: oldRentTotalNum - oldRentPaidNum,
+            source: validMode,
+            verifiedBy: req.user!.id,
+            notes: 'Old paid amount during registration'
+          }], { session });
+        }
+      }
+
+    } else {
+      // ── Normal Flow ──
+      const firstMonthPaid = initialPaidAmount !== undefined ? initialPaidAmount : Math.min(tokenAmount, totalAmount);
+      
+      const rentRecord = await RentRecord.create([{
         tenantId, propertyId: finalPropertyId,
         roomId: (await Bed.findById(finalBedId))?.roomId,
         hostelStudentId: student[0]._id, bookingId: booking._id,
-        month: ym(iterDate),
-        amount: monthlyRent ?? booking?.monthlyRent ?? 6000,
-        paidAmount: 0,
-        fine: 0,
-        dueDate: new Date(iterDate.getFullYear(), iterDate.getMonth() + 1, 5),
-        status: 'UNPAID'
-      });
-      iterDate = new Date(iterDate.getFullYear(), iterDate.getMonth() + 1, 1);
-    }
-    if (invoicesToCreate.length > 0) {
-      await RentRecord.insertMany(invoicesToCreate, { session });
+        month: ym(moveIn),
+        amount: totalAmount,
+        paidAmount: firstMonthPaid, 
+        fine: 0, 
+        dueDate, 
+        status: firstMonthPaid >= totalAmount ? 'PAID' : (firstMonthPaid > 0 ? 'PARTIAL' : 'UNPAID'),
+        paidAt: firstMonthPaid >= totalAmount ? new Date() : undefined
+      }], { session });
+
+      if (firstMonthPaid > 0 || tokenAmount > 0) {
+        const amountToRecord = firstMonthPaid > 0 ? firstMonthPaid : tokenAmount;
+        const pMode = preBookingDoc?.tokenPaymentMethod || 'CASH';
+        const validMode = ['CASH', 'ONLINE', 'ADJUSTMENT'].includes(pMode) ? pMode : 'CASH';
+        
+        const pTx = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
+          transactionId: `TXN-INITIAL-${Date.now()}`,
+          tenantId, propertyId: finalPropertyId,
+          invoiceId: rentRecord[0]._id,
+          residentId: student[0]._id,
+          settledAmount: amountToRecord,
+          paymentMode: validMode,
+          status: 'SUCCESS'
+        }], { session });
+
+        await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
+          tenantId, propertyId: finalPropertyId,
+          residentId: student[0]._id,
+          invoiceId: rentRecord[0]._id,
+          transactionId: pTx[0]._id,
+          credit: amountToRecord, debit: 0,
+          balance: totalAmount - amountToRecord,
+          source: validMode,
+          verifiedBy: req.user!.id,
+          notes: preBookingId ? 'Token adjusted for first month rent' : 'Initial payment during registration'
+        }], { session });
+      }
+
+      // Backfill missing subsequent invoices up to the current month if backdated
+      const currentMonthStr = ym(new Date());
+      let iterDate = new Date(moveIn.getFullYear(), moveIn.getMonth() + 1, 1);
+      const invoicesToCreate: any[] = [];
+      while (ym(iterDate) <= currentMonthStr) {
+        invoicesToCreate.push({
+          tenantId, propertyId: finalPropertyId,
+          roomId: (await Bed.findById(finalBedId))?.roomId,
+          hostelStudentId: student[0]._id, bookingId: booking._id,
+          month: ym(iterDate),
+          amount: monthlyRent ?? booking?.monthlyRent ?? 6000,
+          paidAmount: 0,
+          fine: 0,
+          dueDate: new Date(iterDate.getFullYear(), iterDate.getMonth() + 1, 5),
+          status: 'UNPAID'
+        });
+        iterDate = new Date(iterDate.getFullYear(), iterDate.getMonth() + 1, 1);
+      }
+      if (invoicesToCreate.length > 0) {
+        await RentRecord.insertMany(invoicesToCreate, { session });
+      }
     }
 
     if (session) await session.commitTransaction();

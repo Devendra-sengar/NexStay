@@ -270,6 +270,11 @@ export default function CheckInPage() {
     initialPaidAmount: 0,
   });
 
+  const [isOldTenant, setIsOldTenant] = useState(false);
+  const [oldTenantDetails, setOldTenantDetails] = useState({
+    lockInPeriod: '',
+  });
+
   // Pre-fill from PreBooking
   useEffect(() => {
     if (preBooking && !walkin.name) {
@@ -339,7 +344,9 @@ export default function CheckInPage() {
               stayingPeriod,
               registrationDate: walkin.registrationDate,
             }
-        )
+        ),
+        isOldTenant,
+        ...oldTenantDetails
       };
 
       const res = await checkIn.mutateAsync(payload);
@@ -434,6 +441,38 @@ export default function CheckInPage() {
       <StepBar current={step} total={totalSteps} />
 
       <div className="card p-6">
+        {/* ── SHARED OLD TENANT TOGGLE ON FIRST PAGE ── */}
+        {step === 0 && (
+          <div className="mb-6 space-y-3">
+            <div className="flex items-center justify-between bg-amber-50 p-4 rounded-xl border border-amber-200">
+              <div>
+                <h3 className="text-sm font-bold text-amber-900">Is this an Old Tenant registration?</h3>
+                <p className="text-xs text-amber-700 mt-0.5">Toggle to skip automatic backfilling and specify past dues manually.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={isOldTenant} onChange={e => setIsOldTenant(e.target.checked)} />
+                <div className="w-11 h-6 bg-surface-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+              </label>
+            </div>
+
+            {isOldTenant && (
+              <div className="p-4 border border-amber-200 bg-amber-50/50 rounded-xl space-y-3">
+                <h3 className="font-semibold text-amber-900 mb-2">Old Tenant Details</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="form-label text-[11px] text-amber-800">Move-In Date (When started)</label>
+                    <input type="date" className="input-field text-sm bg-white" value={stayDetails.moveInDate} onChange={e => setStayDetails(s => ({ ...s, moveInDate: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className="form-label text-[11px] text-amber-800">Lock-in Period (Months)</label>
+                    <input type="number" className="input-field text-sm bg-white" value={oldTenantDetails.lockInPeriod} onChange={e => setOldTenantDetails(s => ({ ...s, lockInPeriod: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── BOOKING FLOW ── */}
         {isBookingFlow && step === 0 && (
           <div>
@@ -480,20 +519,21 @@ export default function CheckInPage() {
         {isBookingFlow && step === 2 && (
           <div className="space-y-3">
             <h2 className="font-semibold text-text-primary mb-3">Stay Details</h2>
-            <div><label className="form-label">Move-In Date</label><input type="date" className="input-field" value={stayDetails.moveInDate} onChange={e => setStayDetails(s => ({ ...s, moveInDate: e.target.value }))} /></div>
+            {!isOldTenant && <div><label className="form-label">Move-In Date</label><input type="date" className="input-field" value={stayDetails.moveInDate} onChange={e => setStayDetails(s => ({ ...s, moveInDate: e.target.value }))} /></div>}
             <div><label className="form-label">Ongoing Monthly Rent (₹)</label><input type="number" className="input-field" value={stayDetails.monthlyRent} onChange={e => setStayDetails(s => ({ ...s, monthlyRent: +e.target.value }))} /></div>
             <div><label className="form-label">Security Deposit (₹)</label><input type="number" className="input-field" value={stayDetails.securityDeposit} onChange={e => setStayDetails(s => ({ ...s, securityDeposit: +e.target.value }))} /></div>
             <div><label className="form-label">Notice Period (days)</label><input type="number" className="input-field" value={stayDetails.noticePeriodDays} onChange={e => setStayDetails(s => ({ ...s, noticePeriodDays: +e.target.value }))} /></div>
+
             <div className="mt-4 pt-4 border-t border-surface-border">
-              <h3 className="font-semibold text-text-primary mb-3">First Month Invoice</h3>
+              <h3 className="font-semibold text-text-primary mb-3">{isOldTenant ? 'Past Dues / Old Rent Invoice' : 'First Month Invoice'}</h3>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label text-[11px]">First Month Base Rent (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialRentAmount} onChange={e => setStayDetails(s => ({ ...s, initialRentAmount: +e.target.value }))} /></div>
-                <div><label className="form-label text-[11px]">First Month Extra Charges (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialExtraCharges} onChange={e => setStayDetails(s => ({ ...s, initialExtraCharges: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">{isOldTenant ? 'Old Base Rent Due (₹)' : 'First Month Base Rent (₹)'}</label><input type="number" className="input-field text-sm" value={stayDetails.initialRentAmount} onChange={e => setStayDetails(s => ({ ...s, initialRentAmount: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">{isOldTenant ? 'Old Extra Charges (₹)' : 'First Month Extra Charges (₹)'}</label><input type="number" className="input-field text-sm" value={stayDetails.initialExtraCharges} onChange={e => setStayDetails(s => ({ ...s, initialExtraCharges: +e.target.value }))} /></div>
               </div>
-              <p className="text-sm font-semibold text-text-primary mt-2">Total First Month Amount: ₹{(stayDetails.initialRentAmount + stayDetails.initialExtraCharges).toLocaleString('en-IN')}</p>
+              <p className="text-sm font-semibold text-text-primary mt-2">{isOldTenant ? 'Total Old Rent Amount' : 'Total First Month Amount'}: ₹{(stayDetails.initialRentAmount + stayDetails.initialExtraCharges).toLocaleString('en-IN')}</p>
               
               <div className="grid grid-cols-2 gap-3 mt-3">
-                <div><label className="form-label text-[11px]">Amount Paid Towards First Month (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialPaidAmount} onChange={e => setStayDetails(s => ({ ...s, initialPaidAmount: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">{isOldTenant ? 'Amount Paid Towards Old Rent (₹)' : 'Amount Paid Towards First Month (₹)'}</label><input type="number" className="input-field text-sm" value={stayDetails.initialPaidAmount} onChange={e => setStayDetails(s => ({ ...s, initialPaidAmount: +e.target.value }))} /></div>
                 <div>
                   <label className="form-label text-[11px]">Remaining Due</label>
                   <div className="h-10 flex items-center px-3 bg-surface border border-surface-border rounded-lg text-sm font-bold text-red-600">
@@ -718,15 +758,15 @@ export default function CheckInPage() {
             <div><label className="form-label">Notice Period (days)</label><input type="number" className="input-field" value={stayDetails.noticePeriodDays} onChange={e => setStayDetails(s => ({ ...s, noticePeriodDays: +e.target.value }))} /></div>
             
             <div className="mt-4 pt-4 border-t border-surface-border">
-              <h3 className="font-semibold text-text-primary mb-3">First Month Invoice</h3>
+              <h3 className="font-semibold text-text-primary mb-3">{isOldTenant ? 'Past Dues / Old Rent Invoice' : 'First Month Invoice'}</h3>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label text-[11px]">First Month Base Rent (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialRentAmount} onChange={e => setStayDetails(s => ({ ...s, initialRentAmount: +e.target.value }))} /></div>
-                <div><label className="form-label text-[11px]">First Month Extra Charges (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialExtraCharges} onChange={e => setStayDetails(s => ({ ...s, initialExtraCharges: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">{isOldTenant ? 'Old Base Rent Due (₹)' : 'First Month Base Rent (₹)'}</label><input type="number" className="input-field text-sm" value={stayDetails.initialRentAmount} onChange={e => setStayDetails(s => ({ ...s, initialRentAmount: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">{isOldTenant ? 'Old Extra Charges (₹)' : 'First Month Extra Charges (₹)'}</label><input type="number" className="input-field text-sm" value={stayDetails.initialExtraCharges} onChange={e => setStayDetails(s => ({ ...s, initialExtraCharges: +e.target.value }))} /></div>
               </div>
-              <p className="text-sm font-semibold text-text-primary mt-2">Total First Month Amount: ₹{(stayDetails.initialRentAmount + stayDetails.initialExtraCharges).toLocaleString('en-IN')}</p>
+              <p className="text-sm font-semibold text-text-primary mt-2">{isOldTenant ? 'Total Old Rent Amount' : 'Total First Month Amount'}: ₹{(stayDetails.initialRentAmount + stayDetails.initialExtraCharges).toLocaleString('en-IN')}</p>
               
               <div className="grid grid-cols-2 gap-3 mt-3">
-                <div><label className="form-label text-[11px]">Amount Paid Towards First Month (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialPaidAmount} onChange={e => setStayDetails(s => ({ ...s, initialPaidAmount: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">{isOldTenant ? 'Amount Paid Towards Old Rent (₹)' : 'Amount Paid Towards First Month (₹)'}</label><input type="number" className="input-field text-sm" value={stayDetails.initialPaidAmount} onChange={e => setStayDetails(s => ({ ...s, initialPaidAmount: +e.target.value }))} /></div>
                 <div>
                   <label className="form-label text-[11px]">Remaining Due</label>
                   <div className="h-10 flex items-center px-3 bg-surface border border-surface-border rounded-lg text-sm font-bold text-red-600">
