@@ -1,5 +1,5 @@
 import express from 'express';
-import cors from 'cors';
+import cors from 'cors'; 
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv'; 
@@ -25,7 +25,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
+// ─── Middlewares ───────────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
