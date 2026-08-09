@@ -12,7 +12,7 @@ import SuperAdminShell from '@/layouts/SuperAdminShell';
 
 // Lazy shells for new portals
 const WardenShell    = lazy(() => import('@/layouts/WardenShell'));
-const MessShell      = lazy(() => import('@/layouts/MessShell'));
+const MessShell      = lazy(() => import('@/layouts/MessShell')); 
 const StudentShell   = lazy(() => import('@/layouts/StudentShell'));
 
 // Auth pages
