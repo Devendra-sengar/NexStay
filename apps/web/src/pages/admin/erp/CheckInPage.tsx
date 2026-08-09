@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import api from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useProcessCheckIn, useAdminProperties, useErpRooms, useRoomBeds, usePreBookingById } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
@@ -135,7 +136,7 @@ function StepBar({ current, total }: { current: number; total: number }) {
 }
 
 // ─── BedPicker (for walk-in Step 3) ──────────────────────────────────────────
-function BedPicker({ value, onChange }: { value: string; onChange: (bedId: string, propertyId: string) => void }) {
+function BedPicker({ value, onChange }: { value: string; onChange: (bedId: string, propertyId: string, price?: number) => void }) {
   const { data: propsData } = useAdminProperties();
   const properties = propsData?.data ?? [];
   const [propId, setPropId] = useState('');
@@ -202,7 +203,7 @@ function BedPicker({ value, onChange }: { value: string; onChange: (bedId: strin
                 <div className="flex flex-wrap gap-2 pl-3 mb-2">
                   {beds.map((bed: any) => (
                     <button key={bed._id}
-                      onClick={() => bed.status === 'AVAILABLE' && onChange(bed._id, propId)}
+                      onClick={() => bed.status === 'AVAILABLE' && onChange(bed._id, propId, bed.price)}
                       disabled={bed.status !== 'AVAILABLE'}
                       className={cn('px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all',
                         value === bed._id ? 'bg-primary text-white border-primary' :
@@ -225,6 +226,7 @@ function BedPicker({ value, onChange }: { value: string; onChange: (bedId: strin
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function CheckInPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [params] = useSearchParams();
   const bookingId = params.get('bookingId');
   const preBookingId = params.get('preBookingId');
@@ -258,7 +260,15 @@ export default function CheckInPage() {
   const [phoneError, setPhoneError] = useState('');
   const [guardianPhoneError, setGuardianPhoneError] = useState('');
 
-  const [stayDetails, setStayDetails] = useState({ moveInDate: new Date().toISOString().split('T')[0], monthlyRent: booking?.monthlyRent ?? 6000, securityDeposit: 0, noticePeriodDays: 30 });
+  const [stayDetails, setStayDetails] = useState({
+    moveInDate: new Date().toISOString().split('T')[0],
+    monthlyRent: booking?.monthlyRent ?? 0,
+    securityDeposit: booking?.advancePaid ?? 0,
+    noticePeriodDays: 30,
+    initialRentAmount: booking?.monthlyRent ?? 0,
+    initialExtraCharges: 0,
+    initialPaidAmount: 0,
+  });
 
   // Pre-fill from PreBooking
   useEffect(() => {
@@ -316,13 +326,20 @@ export default function CheckInPage() {
   const handleComplete = async () => {
     try {
       const payload: any = {
+        ...stayDetails,
         bookingId: bookingId ?? undefined,
         preBookingId: preBookingId ?? undefined,
         monthlyRent: Number(stayDetails.monthlyRent),
         securityDeposit: Number(stayDetails.securityDeposit),
-        moveInDate: stayDetails.moveInDate,
-        noticePeriodDays: stayDetails.noticePeriodDays,
-        ...(!isBookingFlow ? { ...walkin, ...walkinDocs, bedId: selectedBedId, propertyId: selectedPropertyId, stayingPeriod } : { bedId: String(booking.bedId?._id ?? booking.bedId), propertyId: String(booking.propertyId?._id ?? booking.propertyId), stayingPeriod })
+        ...(!isBookingFlow 
+          ? { ...walkin, ...walkinDocs, bedId: selectedBedId, propertyId: selectedPropertyId, stayingPeriod } 
+          : { 
+              finalBedId: selectedBedId ?? String((booking.bedId as any)?._id),
+              finalPropertyId: selectedPropertyId ?? String((booking.propertyId as any)?._id),
+              stayingPeriod,
+              registrationDate: walkin.registrationDate,
+            }
+        )
       };
 
       const res = await checkIn.mutateAsync(payload);
@@ -383,11 +400,15 @@ export default function CheckInPage() {
         )}
 
         <div className="flex gap-3 justify-center flex-wrap">
-          <button className="btn-secondary" onClick={() => navigate('/admin/tenants')}>View Tenants</button>
-          <button className="btn-primary" onClick={() => navigate('/admin/rooms')}>View BedGrid</button>
+          <button className="btn-secondary" onClick={() => navigate(user?.role === 'WARDEN' ? '/warden/students' : '/admin/tenants')}>
+            View Tenants
+          </button>
+          <button className="btn-primary" onClick={() => navigate(user?.role === 'WARDEN' ? '/warden/rooms' : '/admin/rooms')}>
+            View BedGrid
+          </button>
           {successData?.student?._id && (
             <button
-              onClick={() => navigate(`/admin/print-preview/${successData.student._id}`)}
+              onClick={() => navigate(user?.role === 'WARDEN' ? `/warden/print/${successData.student._id}` : `/admin/print-preview/${successData.student._id}`)}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
             >
               <Printer className="w-4 h-4" /> Print Registration Form
@@ -460,9 +481,27 @@ export default function CheckInPage() {
           <div className="space-y-3">
             <h2 className="font-semibold text-text-primary mb-3">Stay Details</h2>
             <div><label className="form-label">Move-In Date</label><input type="date" className="input-field" value={stayDetails.moveInDate} onChange={e => setStayDetails(s => ({ ...s, moveInDate: e.target.value }))} /></div>
-            <div><label className="form-label">Monthly Rent (₹)</label><input type="number" className="input-field" value={stayDetails.monthlyRent} onChange={e => setStayDetails(s => ({ ...s, monthlyRent: +e.target.value }))} /></div>
+            <div><label className="form-label">Ongoing Monthly Rent (₹)</label><input type="number" className="input-field" value={stayDetails.monthlyRent} onChange={e => setStayDetails(s => ({ ...s, monthlyRent: +e.target.value }))} /></div>
             <div><label className="form-label">Security Deposit (₹)</label><input type="number" className="input-field" value={stayDetails.securityDeposit} onChange={e => setStayDetails(s => ({ ...s, securityDeposit: +e.target.value }))} /></div>
             <div><label className="form-label">Notice Period (days)</label><input type="number" className="input-field" value={stayDetails.noticePeriodDays} onChange={e => setStayDetails(s => ({ ...s, noticePeriodDays: +e.target.value }))} /></div>
+            <div className="mt-4 pt-4 border-t border-surface-border">
+              <h3 className="font-semibold text-text-primary mb-3">First Month Invoice</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="form-label text-[11px]">First Month Base Rent (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialRentAmount} onChange={e => setStayDetails(s => ({ ...s, initialRentAmount: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">First Month Extra Charges (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialExtraCharges} onChange={e => setStayDetails(s => ({ ...s, initialExtraCharges: +e.target.value }))} /></div>
+              </div>
+              <p className="text-sm font-semibold text-text-primary mt-2">Total First Month Amount: ₹{(stayDetails.initialRentAmount + stayDetails.initialExtraCharges).toLocaleString('en-IN')}</p>
+              
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div><label className="form-label text-[11px]">Amount Paid Towards First Month (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialPaidAmount} onChange={e => setStayDetails(s => ({ ...s, initialPaidAmount: +e.target.value }))} /></div>
+                <div>
+                  <label className="form-label text-[11px]">Remaining Due</label>
+                  <div className="h-10 flex items-center px-3 bg-surface border border-surface-border rounded-lg text-sm font-bold text-red-600">
+                    ₹{Math.max(0, stayDetails.initialRentAmount + stayDetails.initialExtraCharges - stayDetails.initialPaidAmount).toLocaleString('en-IN')}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -651,7 +690,13 @@ export default function CheckInPage() {
         {!isBookingFlow && step === 2 && (
           <div>
             <h2 className="font-semibold text-text-primary mb-3">Select Bed</h2>
-            <BedPicker value={selectedBedId} onChange={(bid, pid) => { setSelectedBedId(bid); setSelectedPropertyId(pid); }} />
+            <BedPicker value={selectedBedId} onChange={(bid, pid, price) => { 
+              setSelectedBedId(bid); 
+              setSelectedPropertyId(pid); 
+              if (price) {
+                setStayDetails(s => ({ ...s, monthlyRent: price }));
+              }
+            }} />
             {selectedBedId ? (
               <p className="mt-3 text-sm text-emerald-600 font-medium flex items-center gap-1">
                 <CheckCircle2 className="w-4 h-4" /> Bed selected
@@ -668,9 +713,28 @@ export default function CheckInPage() {
           <div className="space-y-3">
             <h2 className="font-semibold text-text-primary mb-3">Stay Details</h2>
             <div><label className="form-label">Move-In Date</label><input type="date" className="input-field" value={stayDetails.moveInDate} onChange={e => setStayDetails(s => ({ ...s, moveInDate: e.target.value }))} /></div>
-            <div><label className="form-label">Monthly Rent (₹)</label><input type="number" className="input-field" value={stayDetails.monthlyRent} onChange={e => setStayDetails(s => ({ ...s, monthlyRent: +e.target.value }))} /></div>
+            <div><label className="form-label">Ongoing Monthly Rent (₹)</label><input type="number" className="input-field" value={stayDetails.monthlyRent} onChange={e => setStayDetails(s => ({ ...s, monthlyRent: +e.target.value }))} /></div>
             <div><label className="form-label">Security Deposit (₹)</label><input type="number" className="input-field" value={stayDetails.securityDeposit} onChange={e => setStayDetails(s => ({ ...s, securityDeposit: +e.target.value }))} /></div>
             <div><label className="form-label">Notice Period (days)</label><input type="number" className="input-field" value={stayDetails.noticePeriodDays} onChange={e => setStayDetails(s => ({ ...s, noticePeriodDays: +e.target.value }))} /></div>
+            
+            <div className="mt-4 pt-4 border-t border-surface-border">
+              <h3 className="font-semibold text-text-primary mb-3">First Month Invoice</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="form-label text-[11px]">First Month Base Rent (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialRentAmount} onChange={e => setStayDetails(s => ({ ...s, initialRentAmount: +e.target.value }))} /></div>
+                <div><label className="form-label text-[11px]">First Month Extra Charges (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialExtraCharges} onChange={e => setStayDetails(s => ({ ...s, initialExtraCharges: +e.target.value }))} /></div>
+              </div>
+              <p className="text-sm font-semibold text-text-primary mt-2">Total First Month Amount: ₹{(stayDetails.initialRentAmount + stayDetails.initialExtraCharges).toLocaleString('en-IN')}</p>
+              
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div><label className="form-label text-[11px]">Amount Paid Towards First Month (₹)</label><input type="number" className="input-field text-sm" value={stayDetails.initialPaidAmount} onChange={e => setStayDetails(s => ({ ...s, initialPaidAmount: +e.target.value }))} /></div>
+                <div>
+                  <label className="form-label text-[11px]">Remaining Due</label>
+                  <div className="h-10 flex items-center px-3 bg-surface border border-surface-border rounded-lg text-sm font-bold text-red-600">
+                    ₹{Math.max(0, stayDetails.initialRentAmount + stayDetails.initialExtraCharges - stayDetails.initialPaidAmount).toLocaleString('en-IN')}
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Lock-in Period */}
             <div>
               <label className="form-label">Lock-in Period</label>

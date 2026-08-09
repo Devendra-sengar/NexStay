@@ -23,19 +23,42 @@ function currentMonthRange() {
   return { start, end };
 }
 
+async function getWardenPropertyId(req: AuthRequest, tenantId: string): Promise<string | null> {
+  if (req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER') {
+    if (req.user.hostelId) {
+      const { Hostel } = await import('../models/Hostel.model');
+      const hostel = await Hostel.findById(req.user.hostelId).select('propertyId').lean();
+      if (hostel?.propertyId) return String(hostel.propertyId);
+    }
+    const { Staff } = await import('../models/Staff.model');
+    const staff = await Staff.findOne({ email: req.user.email, tenantId }).lean();
+    return staff?.propertyId ? String(staff.propertyId) : null;
+  }
+  return null;
+}
+
 // ─── GET /api/hostel-admin/dashboard ─────────────────────────────────────────
 export const getAdminDashboard = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId } = req.query;
 
-    // Fetch all properties for the dropdown to prevent it from disappearing
-    const allProperties = await Property.find({ tenantId }).lean();
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+
+    // Fetch properties for the dropdown
+    const allPropFilter: any = { tenantId };
+    if (wardenPropertyId) allPropFilter._id = new mongoose.Types.ObjectId(wardenPropertyId);
+    
+    const allProperties = await Property.find(allPropFilter).lean();
     const allPropertyIds = allProperties.map(p => p._id);
     const allHostels = await mongoose.model('Hostel').find({ propertyId: { $in: allPropertyIds } }).select('propertyId hostelCode').lean() as any[];
 
     const propFilter: any = { tenantId };
-    if (propertyId) propFilter._id = new mongoose.Types.ObjectId(propertyId as string);
+    if (wardenPropertyId) {
+      propFilter._id = new mongoose.Types.ObjectId(wardenPropertyId);
+    } else if (propertyId) {
+      propFilter._id = new mongoose.Types.ObjectId(propertyId as string);
+    }
 
     const filteredProperties = await Property.find(propFilter).lean();
     const filteredPropertyIds = filteredProperties.map(p => p._id);
@@ -160,12 +183,9 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
     const filter: any = { tenantId };
     if (q) filter.name = { $regex: q, $options: 'i' };
 
-    if ((req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER') && req.user?.hostelId) {
-      const { Hostel } = await import('../models/Hostel.model');
-      const h = await Hostel.findById(req.user.hostelId).lean();
-      if (h && h.propertyId) {
-        filter._id = h.propertyId;
-      }
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) {
+      filter._id = wardenPropertyId;
     }
 
     const [properties, total] = await Promise.all([
@@ -243,6 +263,8 @@ export const createAdminProperty = async (req: AuthRequest, res: Response): Prom
       if (prices.length > 0) rentStartingFrom = Math.min(...prices);
     }
 
+    const defaultHostel = await Hostel.findOne({ ownerId: tenantId }).select('isComplaintFeatureEnabled allowCustomPaymentAmount').lean();
+
     const property = await Property.create({
       tenantId, name, description, address, city, locality, state, pincode,
       latitude, longitude, gender,
@@ -253,6 +275,8 @@ export const createAdminProperty = async (req: AuthRequest, res: Response): Prom
       rentStartingFrom,
       verificationStatus: 'PENDING',
       isActive: true, isPaused: false, rating: 0, reviewCount: 0,
+      isComplaintFeatureEnabled: defaultHostel?.isComplaintFeatureEnabled ?? true,
+      allowCustomPaymentAmount: defaultHostel?.allowCustomPaymentAmount ?? true,
     });
 
     // Create floors, rooms, beds from roomSetups
@@ -312,11 +336,6 @@ export const updateAdminProperty = async (req: AuthRequest, res: Response): Prom
 
     const { name, description, images, amenities, customFacilities, rules, foodIncluded, address, city, locality, state, pincode, latitude, longitude, gender, videoUrl } = req.body;
 
-    // Changes to key fields reset to PENDING
-    const needsReview = (name && name !== property.name) ||
-      (description && description !== property.description) ||
-      (images && JSON.stringify(images) !== JSON.stringify(property.images));
-
     Object.assign(property, {
       ...(name && { name }), ...(description !== undefined && { description }),
       ...(images && { images }), ...(amenities && { amenities }), ...(customFacilities && { customFacilities }),
@@ -325,11 +344,10 @@ export const updateAdminProperty = async (req: AuthRequest, res: Response): Prom
       ...(state && { state }), ...(pincode && { pincode }),
       ...(latitude !== undefined && { latitude }), ...(longitude !== undefined && { longitude }),
       ...(gender && { gender }), ...(videoUrl !== undefined && { videoUrl }),
-      ...(needsReview && { verificationStatus: 'PENDING' }),
     });
 
     await property.save();
-    res.json({ success: true, data: property, pendingReview: needsReview });
+    res.json({ success: true, data: property, pendingReview: false });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
@@ -542,6 +560,16 @@ export const updateMyHostelSettings = async (req: AuthRequest, res: Response): P
     if (allowCustomPaymentAmount !== undefined) hostel.allowCustomPaymentAmount = allowCustomPaymentAmount;
 
     await hostel.save();
+
+    // Sync settings to all properties owned by this tenant
+    const propertyUpdates: any = {};
+    if (isComplaintFeatureEnabled !== undefined) propertyUpdates.isComplaintFeatureEnabled = isComplaintFeatureEnabled;
+    if (allowCustomPaymentAmount !== undefined) propertyUpdates.allowCustomPaymentAmount = allowCustomPaymentAmount;
+
+    if (Object.keys(propertyUpdates).length > 0) {
+      await Property.updateMany({ tenantId: ownerId }, { $set: propertyUpdates });
+    }
+
     res.json({ success: true, data: hostel, message: 'Hostel settings updated successfully' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Internal server error' });

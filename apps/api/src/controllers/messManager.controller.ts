@@ -19,13 +19,13 @@ export const getMessDashboard = async (req: AuthRequest, res: Response): Promise
     const hostel = await Hostel.findById(hostelId).select('name hostelCode messEnabled messTimings').lean();
 
     const [studentCount, todayMenu] = await Promise.all([
-      HostelStudent.countDocuments({ hostelId, status: 'ACTIVE' }),
+      HostelStudent.countDocuments({ propertyId: hostelId, status: 'ACTIVE' }),
       MessMenu.findOne({ hostelId, date: todayDate() }).lean(),
     ]);
 
     // Salary info
     const me = await User.findById(req.user?.id).select('name phone').lean();
-    const staffRecord = await Staff.findOne({ hostelId, phone: (me as any)?.phone }).lean();
+    const staffRecord = await Staff.findOne({ propertyId: hostelId, phone: (me as any)?.phone }).lean();
 
     res.json({
       success: true,
@@ -83,7 +83,7 @@ export const upsertMenu = async (req: AuthRequest, res: Response): Promise<void>
     );
 
     // Notify all active students in this hostel
-    const activeStudents = await HostelStudent.find({ hostelId, status: 'ACTIVE' })
+    const activeStudents = await HostelStudent.find({ propertyId: hostelId, status: 'ACTIVE' })
       .select('guestId').lean();
 
     const notifications = activeStudents.map(s => ({
@@ -136,9 +136,12 @@ export const getMessSalary = async (req: AuthRequest, res: Response): Promise<vo
     const tenantId = req.user?.tenantId;
     const me = await User.findById(req.user?.id).select('name phone email').lean();
 
-    const staffRecord = await Staff.findOne({ hostelId, phone: (me as any)?.phone }).lean();
+    // Find ERP Staff record matching this user's phone
+    const staffRecord = await Staff.findOne({ propertyId: hostelId, phone: (me as any)?.phone }).lean();
+
+    // Find salary expense records
     const salaryExpenses = await Expense.find({
-      hostelId,
+      propertyId: hostelId,
       tenantId,
       category: 'STAFF_SALARY',
       description: { $regex: (me as any)?.name || '', $options: 'i' },
@@ -152,7 +155,7 @@ export const getMessSalary = async (req: AuthRequest, res: Response): Promise<vo
 export const getStudentCount = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const hostelId = req.user?.hostelId;
-    const count = await HostelStudent.countDocuments({ hostelId, status: 'ACTIVE' });
+    const count = await HostelStudent.countDocuments({ propertyId: hostelId, status: 'ACTIVE' });
     res.json({ success: true, data: { count } });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };

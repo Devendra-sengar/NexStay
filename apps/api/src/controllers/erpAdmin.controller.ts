@@ -461,6 +461,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       education, occupation, organization,
       permanentAddress, guardianAddress, vehicleNumber,
       medicalHistory, stayingPeriod,
+      initialRentAmount, initialExtraCharges, initialPaidAmount
     } = req.body;
 
     let booking: any;
@@ -660,43 +661,79 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
 
     // Generate first rent record
     const dueDate = new Date(moveIn.getFullYear(), moveIn.getMonth() + 1, 5);
-    const rentAmount = monthlyRent ?? booking?.monthlyRent ?? 6000;
-    const tokenAmount = preBookingDoc?.tokenAmount ?? 0;
-    const initialPaidAmount = Math.min(tokenAmount, rentAmount);
     
-    await RentRecord.create([{
+    // Initial Invoice calculations
+    const baseRentAmount = initialRentAmount !== undefined ? initialRentAmount : (monthlyRent ?? booking?.monthlyRent ?? 6000);
+    const extraCharges = initialExtraCharges ?? 0;
+    const totalAmount = baseRentAmount + extraCharges;
+
+    const tokenAmount = preBookingDoc?.tokenAmount ?? 0;
+    
+    // If the form provides a specific initialPaidAmount, use it. Otherwise, default to tokenAmount (max up to totalAmount)
+    const firstMonthPaid = initialPaidAmount !== undefined ? initialPaidAmount : Math.min(tokenAmount, totalAmount);
+    
+    const rentRecord = await RentRecord.create([{
       tenantId, propertyId: finalPropertyId,
       roomId: (await Bed.findById(finalBedId))?.roomId,
       hostelStudentId: student[0]._id, bookingId: booking._id,
       month: ym(moveIn),
-      amount: rentAmount,
-      paidAmount: initialPaidAmount, 
+      amount: totalAmount,
+      paidAmount: firstMonthPaid, 
       fine: 0, 
       dueDate, 
-      status: initialPaidAmount >= rentAmount ? 'PAID' : (initialPaidAmount > 0 ? 'PARTIAL' : 'UNPAID'),
-      paidAt: initialPaidAmount >= rentAmount ? new Date() : undefined
+      status: firstMonthPaid >= totalAmount ? 'PAID' : (firstMonthPaid > 0 ? 'PARTIAL' : 'UNPAID'),
+      paidAt: firstMonthPaid >= totalAmount ? new Date() : undefined
     }], { session });
 
-    // If there is a token amount, create a LedgerEntry and PaymentTransaction to record it
-    if (tokenAmount > 0) {
+    // If there is an initial paid amount or token, create LedgerEntry & PaymentTransaction
+    if (firstMonthPaid > 0 || tokenAmount > 0) {
+      const amountToRecord = firstMonthPaid > 0 ? firstMonthPaid : tokenAmount;
+      const pMode = preBookingDoc?.tokenPaymentMethod || 'CASH';
+      const validMode = ['CASH', 'ONLINE', 'ADJUSTMENT'].includes(pMode) ? pMode : 'CASH';
+      
       const pTx = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
-        transactionId: `TXN-TOKEN-${Date.now()}`,
+        transactionId: `TXN-INITIAL-${Date.now()}`,
         tenantId, propertyId: finalPropertyId,
+        invoiceId: rentRecord[0]._id,
         residentId: student[0]._id,
-        settledAmount: tokenAmount,
-        paymentMode: preBookingDoc?.tokenPaymentMethod || 'CASH',
+        settledAmount: amountToRecord,
+        paymentMode: validMode,
         status: 'SUCCESS'
       }], { session });
 
       await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
         tenantId, propertyId: finalPropertyId,
         residentId: student[0]._id,
+        invoiceId: rentRecord[0]._id,
         transactionId: pTx[0]._id,
-        credit: tokenAmount, debit: 0,
-        balance: rentAmount - tokenAmount,
-        source: preBookingDoc?.tokenPaymentMethod || 'CASH',
-        verifiedBy: req.user!.id
+        credit: amountToRecord, debit: 0,
+        balance: totalAmount - amountToRecord,
+        source: validMode,
+        verifiedBy: req.user!.id,
+        notes: preBookingId ? 'Token adjusted for first month rent' : 'Initial payment during registration'
       }], { session });
+    }
+
+    // Backfill missing subsequent invoices up to the current month if backdated
+    const currentMonthStr = ym(new Date());
+    let iterDate = new Date(moveIn.getFullYear(), moveIn.getMonth() + 1, 1);
+    const invoicesToCreate: any[] = [];
+    while (ym(iterDate) <= currentMonthStr) {
+      invoicesToCreate.push({
+        tenantId, propertyId: finalPropertyId,
+        roomId: (await Bed.findById(finalBedId))?.roomId,
+        hostelStudentId: student[0]._id, bookingId: booking._id,
+        month: ym(iterDate),
+        amount: monthlyRent ?? booking?.monthlyRent ?? 6000,
+        paidAmount: 0,
+        fine: 0,
+        dueDate: new Date(iterDate.getFullYear(), iterDate.getMonth() + 1, 5),
+        status: 'UNPAID'
+      });
+      iterDate = new Date(iterDate.getFullYear(), iterDate.getMonth() + 1, 1);
+    }
+    if (invoicesToCreate.length > 0) {
+      await RentRecord.insertMany(invoicesToCreate, { session });
     }
 
     if (session) await session.commitTransaction();

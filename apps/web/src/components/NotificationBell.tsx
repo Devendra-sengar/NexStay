@@ -9,7 +9,7 @@ const TYPE_ICON: Record<string, string> = {
   BOOKING_CONFIRMED: '✅', BOOKING_CANCELLED: '❌', CHECKIN_CONFIRMED: '■',
   CHECKOUT_CONFIRMED: '▶', RENT_DUE: '◆', RENT_REMINDER: '⚠️',
   RENT_OVERDUE: '●', COMPLAINT_UPDATE: '◈', NEW_BOOKING: '▾',
-  NEW_COMPLAINT: '▴', BOOKING: '▪', default: '◊',
+  NEW_COMPLAINT: '▴', BOOKING: '▪', PAYMENT_RECEIVED: '💰', default: '◊',
 };
 
 export default function NotificationBell() {
@@ -79,7 +79,9 @@ export default function NotificationBell() {
               notifications.map((n: any) => (
                 <button key={n._id} onClick={() => handleClick(n)}
                   className={cn('w-full text-left px-4 py-3 flex gap-3 transition-colors hover:bg-surface-input/60 group',
-                    !n.isRead && 'bg-blue-50/50 border-l-2 border-l-primary')}>
+                    !n.isRead && 'bg-blue-50/50 border-l-2 border-l-primary',
+                    n.type === 'PAYMENT_RECEIVED' && 'bg-emerald-50/40 border-l-2 border-l-emerald-500'
+                  )}>
                   <span className="text-xl flex-shrink-0 mt-0.5">{TYPE_ICON[n.type] ?? TYPE_ICON.default}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">

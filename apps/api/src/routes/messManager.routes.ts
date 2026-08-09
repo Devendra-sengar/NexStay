@@ -11,8 +11,8 @@ import {
 
 const router = Router();
 
-// All mess routes require authentication + MESS_MANAGER role
-router.use(protect, requireRoles('MESS_MANAGER'), requireHostelAccess);
+// Allow WARDENs to access mess routes (they are protected by specific permissions like canUploadMenu where needed)
+router.use(protect, requireRoles('MESS_MANAGER', 'WARDEN'), requireHostelAccess);
 
 router.get('/dashboard',        getMessDashboard);
 router.get('/menu',             getTodayMenu);

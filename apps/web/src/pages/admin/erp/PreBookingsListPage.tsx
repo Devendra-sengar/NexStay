@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePreBookings, useDeletePreBooking } from '@/lib/adminApi';
 import { format } from 'date-fns';
-import { Plus, Search, Calendar, ChevronRight, UserPlus, CheckCircle2, Clock, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, ChevronRight, UserPlus, CheckCircle2, Clock, Trash2, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import ReceiptModal from '@/components/ui/ReceiptModal';
 
 export default function PreBookingsListPage() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function PreBookingsListPage() {
   const deletePreBooking = useDeletePreBooking();
   const preBookings = data?.data || [];
   const [searchTerm, setSearchTerm] = useState('');
+  const [receiptId, setReceiptId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this future booking? This action cannot be undone.')) return;
@@ -121,6 +123,13 @@ export default function PreBookingsListPage() {
                       {booking.status === 'PENDING' && (
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => setReceiptId(booking._id)}
+                            className="p-1.5 text-text-muted hover:text-primary bg-surface-input hover:bg-primary/10 rounded-lg transition-colors"
+                            title="Print Receipt"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => navigate(isWarden ? `/warden/check-in?preBookingId=${booking._id}` : `/admin/check-in?preBookingId=${booking._id}`)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors"
                           >
@@ -136,7 +145,16 @@ export default function PreBookingsListPage() {
                         </div>
                       )}
                       {booking.status === 'CONVERTED' && (
-                        <span className="text-xs font-medium text-text-muted">Already Converted</span>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setReceiptId(booking._id)}
+                            className="p-1.5 text-text-muted hover:text-primary bg-surface-input hover:bg-primary/10 rounded-lg transition-colors"
+                            title="Print Receipt"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          <span className="text-xs font-medium text-text-muted">Already Converted</span>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -145,6 +163,14 @@ export default function PreBookingsListPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {receiptId && (
+        <ReceiptModal
+          url={`/hostel-admin/erp/pre-bookings/${receiptId}/receipt`}
+          fileName={`Advance_Receipt_${receiptId}.pdf`}
+          onClose={() => setReceiptId(null)}
+        />
       )}
     </div>
   );

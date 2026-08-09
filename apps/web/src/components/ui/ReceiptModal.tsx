@@ -11,19 +11,14 @@ interface ReceiptModalProps {
 
 export default function ReceiptModal({ url, onClose, fileName }: ReceiptModalProps) {
   const [html, setHtml] = useState<string | null>(null);
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    let currentBlobUrl = '';
     const fetchReceipt = async () => {
       try {
         const res = await api.get(url, { responseType: 'text' });
         setHtml(res.data);
-        const blob = new Blob([res.data], { type: 'text/html' });
-        currentBlobUrl = URL.createObjectURL(blob);
-        setBlobUrl(currentBlobUrl);
       } catch (err) {
         toast.error('Failed to load receipt');
         onClose();
@@ -32,10 +27,7 @@ export default function ReceiptModal({ url, onClose, fileName }: ReceiptModalPro
       }
     };
     fetchReceipt();
-    return () => {
-      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
-    };
-  }, [url]);
+  }, [url, onClose]);
 
   const handleDownload = async () => {
     if (!html) return;
@@ -44,25 +36,24 @@ export default function ReceiptModal({ url, onClose, fileName }: ReceiptModalPro
     try {
       const container = document.createElement('div');
       container.innerHTML = html;
+      // Append to body off-screen to allow CSS computation for html2pdf
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      document.body.appendChild(container);
+
       const html2pdf = (await import('html2pdf.js')).default;
-    const opt = {
-  margin: 10,
-  filename: fileName,
-  image: {
-    type: "jpeg" as const,
-    quality: 0.98,
-  },
-  html2canvas: {
-    scale: 2,
-  },
-  jsPDF: {
-    unit: "mm" as const,
-    format: "a4" as const,
-    orientation: "portrait" as const,
-  },
-};
+      const opt = {
+        margin: 10,
+        filename: fileName,
+        image: { type: "jpeg" as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "portrait" as const },
+      };
       
       await html2pdf().set(opt).from(container).save();
+      
+      // Cleanup
+      document.body.removeChild(container);
       toast.success('Downloaded successfully!', { id: toastId });
     } catch (error) {
       toast.error('Failed to generate PDF', { id: toastId });
@@ -97,11 +88,12 @@ export default function ReceiptModal({ url, onClose, fileName }: ReceiptModalPro
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            blobUrl && (
+            html && (
               <iframe
-                src={blobUrl}
+                srcDoc={html}
                 title="Receipt Preview"
                 className="w-full h-full border-none bg-white rounded-lg shadow-sm"
+                sandbox="allow-same-origin allow-scripts"
               />
             )
           )}

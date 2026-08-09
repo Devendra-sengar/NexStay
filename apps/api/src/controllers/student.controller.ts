@@ -11,11 +11,12 @@ import { PaymentSubmission } from '../models/PaymentSubmission.model';
 import { PaymentTransaction } from '../models/PaymentTransaction.model';
 import { LedgerEntry } from '../models/LedgerEntry.model';
 import { AuditLog } from '../models/AuditLog.model';
+import { User } from '../models/User.model';
+import { notify } from '../services/notification.service';
 
 import { calculateDynamicFine } from '../utils/penalty';
 import { Bed } from '../models/Bed.model';
 import { Room } from '../models/Room.model';
-import { User } from '../models/User.model';
 import { Property } from '../models/Property.model';
 import bcrypt from 'bcryptjs';
 import cloudinary from '../config/cloudinary';
@@ -303,8 +304,12 @@ export const raiseComplaint = async (req: AuthRequest, res: Response): Promise<v
     }
 
     const hostel = await Hostel.findById(studentRecord.hostelId).select('isComplaintFeatureEnabled').lean();
-    if (hostel && hostel.isComplaintFeatureEnabled === false) {
-      res.status(403).json({ success: false, message: 'Complaints are currently disabled for this hostel.' }); return;
+    const property = await Property.findById(studentRecord.propertyId).select('isComplaintFeatureEnabled').lean();
+    
+    const isFeatureEnabled = (hostel as any)?.isComplaintFeatureEnabled === false ? false : (property?.isComplaintFeatureEnabled !== false);
+    
+    if (!isFeatureEnabled) {
+      res.status(403).json({ success: false, message: 'Complaints are currently disabled for this property.' }); return;
     }
 
     const complaint = await Complaint.create({
@@ -473,6 +478,34 @@ export const submitPaymentProof = async (req: AuthRequest, res: Response): Promi
     record.paymentProofStatus = 'PENDING';
     record.paymentProofNote = '';
     await record.save();
+
+    // ── Notify Owner & Warden ───────────────────────────────────────────────
+    try {
+      const notifyPromises: Promise<void>[] = [];
+      // 1. Notify Owner
+      notifyPromises.push(notify({
+        userId: record.tenantId.toString(),
+        type: 'PAYMENT_RECEIVED',
+        title: '💰 Payment Proof Submitted',
+        message: `${studentRecord.name} submitted a payment proof for ₹${amountSubmitted}.`,
+        linkUrl: '/admin/rent'
+      }).catch(() => {}));
+
+      // 2. Notify Warden(s) of this property
+      const wardens = await User.find({ role: 'WARDEN', hostelId: record.propertyId }).lean();
+      for (const w of wardens) {
+        notifyPromises.push(notify({
+          userId: w._id.toString(),
+          type: 'PAYMENT_RECEIVED',
+          title: '💰 Payment Proof Submitted',
+          message: `${studentRecord.name} submitted a payment proof for ₹${amountSubmitted}.`,
+          linkUrl: '/warden/rent'
+        }).catch(() => {}));
+      }
+      await Promise.all(notifyPromises);
+    } catch (notifyErr) {
+      console.error('Failed to send payment notifications:', notifyErr);
+    }
 
     res.json({ success: true, message: 'Payment proof submitted. Admin will verify shortly.', data: submission });
   } catch (err: any) {

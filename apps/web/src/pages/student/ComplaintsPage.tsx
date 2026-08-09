@@ -12,10 +12,18 @@ export default function StudentComplaintsPage() {
   const [form, setForm] = useState({ title: '', category: 'OTHER', description: '' });
   const qc = useQueryClient();
 
+  const { data: dashboardData } = useQuery({
+    queryKey: ['student-dashboard'],
+    queryFn: () => api.get('/student/dashboard').then(r => r.data.data),
+    staleTime: 1000 * 60 * 5,
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ['student-complaints'],
     queryFn: () => api.get('/student/complaints').then(r => r.data.data),
   });
+
+  const isComplaintFeatureEnabled = dashboardData?.isComplaintFeatureEnabled ?? true;
 
   const mutation = useMutation({
     mutationFn: (body: any) => api.post('/student/complaints', body),
@@ -34,9 +42,11 @@ export default function StudentComplaintsPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>Complaints</h1>
-        <button onClick={() => setShowForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
-          <Plus size={14} /> Raise Complaint
-        </button>
+        {isComplaintFeatureEnabled && (
+          <button onClick={() => setShowForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+            <Plus size={14} /> Raise Complaint
+          </button>
+        )}
       </div>
 
       {/* Form */}

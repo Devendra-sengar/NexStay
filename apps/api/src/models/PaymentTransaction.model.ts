@@ -37,6 +37,5 @@ PaymentTransactionSchema.index({ tenantId: 1, createdAt: -1 });
 PaymentTransactionSchema.index({ propertyId: 1, createdAt: -1 });
 PaymentTransactionSchema.index({ invoiceId: 1 });
 PaymentTransactionSchema.index({ submissionId: 1 });
-PaymentTransactionSchema.index({ transactionId: 1 });
 
 export const PaymentTransaction = mongoose.model<IPaymentTransactionDoc>('PaymentTransaction', PaymentTransactionSchema);
