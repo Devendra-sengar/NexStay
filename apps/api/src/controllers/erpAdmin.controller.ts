@@ -881,3 +881,238 @@ export const getStudentDues = async (req: AuthRequest, res: Response): Promise<v
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+export const bulkCreateStudents = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { students } = req.body;
+    if (!students || !Array.isArray(students)) {
+      res.status(400).json({ success: false, message: 'Invalid data format' });
+      return;
+    }
+
+    const ownerHostel = await (await import('../models/Hostel.model')).Hostel
+      .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId) })
+      .select('_id hostelCode name')
+      .lean();
+    const ownerHostelId = req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER' ? req.user.hostelId : (ownerHostel?._id ?? null);
+
+    const results: any[] = [];
+    for (const student of students) {
+      const {
+        name, phone, email, propertyId, admissionDate,
+        dateOfBirth, aadhaarNumber, occupation, fatherName, motherName,
+        fatherContact, permanentAddress, organization, bloodGroup, maritalStatus
+      } = student;
+
+      try {
+        if (!name || !phone || !email || !propertyId) {
+          throw new Error('Missing required fields (name, phone, email, propertyId)');
+        }
+
+        const existingStudent = await HostelStudent.findOne({
+          tenantId, phone, propertyId, status: { $in: ['ACTIVE', 'DRAFT'] }
+        }).lean();
+        if (existingStudent) throw new Error('Phone number already active or in drafts');
+
+        const defaultPassword = String(phone).slice(-4);
+        let existingUser: any = await User.findOne({ phone }).lean();
+        if (!existingUser) {
+          const existingByEmail = await User.findOne({ email: email.toLowerCase() }).lean();
+          if (existingByEmail) throw new Error('Email already in use by another account');
+          
+          const bcrypt = require('bcryptjs');
+          const salt = await bcrypt.genSalt(10);
+          const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+          existingUser = await User.create({
+            name, phone, email: email.toLowerCase(), passwordHash: hashedPassword, role: 'STUDENT', hostelId: ownerHostelId, studentId: phone
+          });
+          await GuestProfile.create({ userId: existingUser._id, tenantId });
+        }
+
+        const newStudent = await HostelStudent.create({
+          tenantId, hostelId: ownerHostelId, propertyId, guestId: existingUser._id,
+          name, phone, email: email.toLowerCase(),
+          admissionDate: admissionDate ? new Date(admissionDate) : new Date(),
+          monthlyRent: 0, securityDeposit: 0, status: 'DRAFT', feeBreakdown: [],
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+          aadhaarNumber, occupation, fatherName, motherName, fatherContact, permanentAddress, organization, bloodGroup, maritalStatus
+        });
+
+        results.push({ success: true, phone, name, id: newStudent._id });
+      } catch (err: any) {
+        results.push({ success: false, phone, name, error: err.message });
+      }
+    }
+
+    res.json({ success: true, data: results });
+  } catch (err: any) {
+    console.error('Bulk Upload Error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+  }
+};
+
+export const deleteDraft = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { id } = req.params;
+    
+    const HostelStudent = (await import('../models/HostelStudent.model')).HostelStudent;
+    const student = await HostelStudent.findOne({ _id: id, tenantId });
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Draft not found' });
+      return;
+    }
+    
+    if (student.status !== 'DRAFT') {
+      res.status(400).json({ success: false, message: 'Only drafts can be deleted' });
+      return;
+    }
+
+    await HostelStudent.deleteOne({ _id: id });
+    res.json({ success: true, message: 'Draft deleted successfully' });
+  } catch (err: any) {
+    console.error('Delete Draft Error:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<void> => {
+  const supportsTx = (mongoose.connection.getClient() as any)?.topology?.description?.type !== 'Single';
+  const session = supportsTx ? await mongoose.startSession() : null;
+  if (session) session.startTransaction();
+
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const student = await HostelStudent.findOne({ _id: req.params.id, tenantId }).session(session);
+    if (!student) throw new Error('Student not found');
+    if (student.status !== 'DRAFT') throw new Error('Student is not in draft state');
+
+    const {
+      roomId, bedId,
+      admissionDate, stayingPeriod, monthlyRent, securityDeposit,
+      fatherName, motherName, dateOfBirth, bloodGroup, maritalStatus,
+      education, occupation, organization, permanentAddress,
+      vehicleNumber, medicalHistory, college, guardianName,
+      guardianPhone, guardianAddress, fatherOccupation, aadhaarNumber,
+      initialPaidAmount
+    } = req.body;
+
+    if (!roomId || !bedId) {
+      throw new Error('Room and Bed selection is required to finalize draft');
+    }
+
+    const bed = await (await import('../models/Bed.model')).Bed.findOne({ _id: bedId, roomId, propertyId: student.propertyId, tenantId }).session(session);
+    if (!bed) throw new Error('Bed not found');
+    if (bed.status !== 'AVAILABLE') throw new Error('Selected bed is not available');
+
+    // update student
+    student.status = 'ACTIVE';
+    if (admissionDate) student.admissionDate = new Date(admissionDate);
+    if (stayingPeriod) student.stayingPeriod = stayingPeriod;
+    
+    // Monthly Rent Fallback
+    if (monthlyRent && Number(monthlyRent) > 0) {
+      student.monthlyRent = Number(monthlyRent);
+    } else {
+      const room = await (await import('../models/Room.model')).Room.findById(roomId).lean();
+      student.monthlyRent = bed.price || (room as any)?.pricePerBed || 0;
+    }
+
+    if (securityDeposit !== undefined) student.securityDeposit = Number(securityDeposit);
+    
+    if (fatherName) student.fatherName = fatherName;
+    if (motherName) student.motherName = motherName;
+    if (dateOfBirth) student.dateOfBirth = new Date(dateOfBirth);
+    if (bloodGroup) student.bloodGroup = bloodGroup;
+    if (maritalStatus) student.maritalStatus = maritalStatus;
+    if (education) student.education = education;
+    if (occupation) student.occupation = occupation;
+    if (organization) student.organization = organization;
+    if (permanentAddress) student.permanentAddress = permanentAddress;
+    if (vehicleNumber) student.vehicleNumber = vehicleNumber;
+    if (medicalHistory) student.medicalHistory = medicalHistory;
+    if (college) student.college = college;
+    if (guardianName) student.guardianName = guardianName;
+    if (guardianPhone) student.guardianPhone = guardianPhone;
+    if (guardianAddress) student.guardianAddress = guardianAddress;
+    if (fatherOccupation) student.fatherOccupation = fatherOccupation;
+    if (aadhaarNumber) student.aadhaarNumber = aadhaarNumber;
+
+    // create booking
+    const Booking = (await import('../models/Booking.model')).Booking;
+    const booking = await Booking.create([{
+      guestId: student.guestId, tenantId, hostelId: student.hostelId, propertyId: student.propertyId, roomId, bedId,
+      status: 'CONFIRMED', checkInDate: student.admissionDate,
+      advancePaid: 0, monthlyRent: student.monthlyRent, documentsVerified: false
+    }], { session });
+
+    student.bookingId = booking[0]._id;
+    student.bedId = bed._id;
+    
+    bed.status = 'OCCUPIED';
+    await bed.save({ session });
+
+    // generate first rent record
+    const totalAmount = student.monthlyRent + (student.securityDeposit || 0);
+    const moveIn = student.admissionDate;
+    const paidNum = Number(initialPaidAmount) || 0;
+    const firstMonthPaid = Math.min(paidNum, totalAmount);
+    
+    // Set booking advancePaid if applicable
+    booking[0].advancePaid = firstMonthPaid;
+    await booking[0].save({ session });
+
+    const rentRecord = await RentRecord.create([{
+      tenantId: student.tenantId,
+      propertyId: student.propertyId,
+      hostelId: student.hostelId,
+      roomId: bed?.roomId,
+      hostelStudentId: student._id,
+      bookingId: student.bookingId,
+      month: ym(moveIn),
+      amount: totalAmount,
+      paidAmount: firstMonthPaid,
+      fine: 0,
+      dueDate: new Date(moveIn),
+      status: firstMonthPaid >= totalAmount ? 'PAID' : (firstMonthPaid > 0 ? 'PARTIAL' : 'UNPAID'),
+      paidAt: firstMonthPaid >= totalAmount ? new Date() : undefined,
+      feeBreakdown: [
+        { description: `Monthly Rent (${ym(moveIn)})`, amount: student.monthlyRent },
+        ...(student.securityDeposit > 0 ? [{ description: 'Security Deposit', amount: student.securityDeposit }] : [])
+      ]
+    }], { session });
+
+    if (firstMonthPaid > 0) {
+      const pTx = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
+        transactionId: `TXN-DRAFT-${Date.now()}`,
+        tenantId, propertyId: student.propertyId,
+        invoiceId: rentRecord[0]._id,
+        residentId: student._id,
+        settledAmount: firstMonthPaid,
+        paymentMode: 'CASH', // default to CASH since no payment gateway configured here yet
+        status: 'SUCCESS'
+      }], { session });
+
+      await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
+        tenantId, propertyId: student.propertyId,
+        residentId: student._id,
+        invoiceId: rentRecord[0]._id,
+        transactionId: pTx[0]._id,
+        credit: firstMonthPaid, debit: 0,
+        balance: totalAmount - firstMonthPaid,
+        source: 'CASH',
+        verifiedBy: req.user!.id,
+        notes: 'Initial payment during draft finalization'
+      }], { session });
+    }
+
+    await student.save({ session });
+
+    if (session) { await session.commitTransaction(); session.endSession(); }
+    res.json({ success: true, message: 'Draft finalized and rent history created' });
+  } catch (err: any) {
+    if (session) { await session.abortTransaction(); session.endSession(); }
+    console.error('Finalize Draft Error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+  }
+};
+

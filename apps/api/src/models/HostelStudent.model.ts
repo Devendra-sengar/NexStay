@@ -49,9 +49,9 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
     tenantId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     hostelId: { type: Schema.Types.ObjectId, ref: 'Hostel', default: null },
     propertyId: { type: Schema.Types.ObjectId, ref: 'Property', required: true },
-    bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', required: true, unique: true },
+    bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', required: false, unique: true, sparse: true },
     guestId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    bedId: { type: Schema.Types.ObjectId, ref: 'Bed', required: true },
+    bedId: { type: Schema.Types.ObjectId, ref: 'Bed', required: false },
     name: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true, match: [/^\d{10}$/, 'Phone number must be exactly 10 digits'] },
     email: { type: String, required: true, lowercase: true, trim: true },
@@ -70,7 +70,7 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
     securityDeposit: { type: Number, default: 0 },
     status: {
       type: String,
-      enum: ['ACTIVE', 'CHECKED_OUT'],
+      enum: ['ACTIVE', 'CHECKED_OUT', 'DRAFT'],
       default: 'ACTIVE',
     },
     // ── Registration Form Fields ─────────────────────────────────────────────

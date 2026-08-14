@@ -27,6 +27,6 @@ const GuestProfileSchema = new Schema<IGuestProfileDoc>(
   { timestamps: true }
 );
 
-GuestProfileSchema.index({ userId: 1 });
+
 
 export const GuestProfile = mongoose.model<IGuestProfileDoc>('GuestProfile', GuestProfileSchema);

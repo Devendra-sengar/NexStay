@@ -766,3 +766,35 @@ export function useUpdateMyHostelSettings() {
     }
   });
 }
+export function useBulkUploadStudents() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any[]) => {
+      const res = await erp('/students/bulk', { method: 'POST', data: { students: data } });
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['erp-students'] }),
+  });
+}
+
+export function useFinalizeDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await erp(`/students/${id}/finalize`, { method: 'PUT', data });
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['erp-students'] }),
+  });
+}
+
+export function useDeleteDraft() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await erp(`/students/${id}/draft`, { method: 'DELETE' });
+      return res.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['erp-students'] })
+  });
+}

@@ -41,6 +41,6 @@ PaymentSubmissionSchema.index({ tenantId: 1, status: 1 });
 PaymentSubmissionSchema.index({ propertyId: 1, status: 1 });
 PaymentSubmissionSchema.index({ invoiceId: 1 });
 PaymentSubmissionSchema.index({ residentId: 1 });
-PaymentSubmissionSchema.index({ submissionId: 1 });
+
 
 export const PaymentSubmission = mongoose.model<IPaymentSubmissionDoc>('PaymentSubmission', PaymentSubmissionSchema);

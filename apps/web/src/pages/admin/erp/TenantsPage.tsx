@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Users, Search, UserCheck, LogOut, CreditCard, Filter, UserPlus, Printer } from 'lucide-react';
-import { useErpStudents, useAdminProperties } from '@/lib/adminApi';
+import { Users, Search, UserCheck, LogOut, CreditCard, Filter, UserPlus, Printer, Upload, Trash } from 'lucide-react';
+import { useErpStudents, useAdminProperties, useDeleteDraft } from '@/lib/adminApi';
+import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
+import { BulkUploadModal } from './BulkUploadModal';
+import { FinalizeDraftModal } from './FinalizeDraftModal';
 
-const STATUSES = ['ALL', 'ACTIVE', 'CHECKED_OUT'];
+const STATUSES = ['ALL', 'ACTIVE', 'DRAFT', 'CHECKED_OUT'];
 
 export default function StudentsPage() {
   const navigate = useNavigate();
@@ -17,6 +20,10 @@ export default function StudentsPage() {
   const [status, setStatus] = useState('ACTIVE');
   const [propertyId, setPropertyId] = useState('');
   const [page, setPage] = useState(1);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [studentToFinalize, setStudentToFinalize] = useState<any>(null);
+
+  const { mutate: deleteDraft, isPending: isDeleting } = useDeleteDraft();
 
   const { data, isLoading } = useErpStudents({
     search: search || undefined,
@@ -36,12 +43,20 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-bold text-text-primary">Tenants</h1>
           <p className="text-sm text-text-secondary mt-0.5">{total} total • Manage checked-in tenants and their lifecycle</p>
         </div>
-        <button
-          className="btn-primary flex items-center gap-2"
-          onClick={() => navigate(isWarden ? '/warden/students/checkin' : '/admin/checkin')}
-        >
-          <UserPlus className="w-4 h-4" />Walk-In Check-In
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="btn-secondary flex items-center gap-2"
+            onClick={() => setShowBulkUpload(true)}
+          >
+            <Upload className="w-4 h-4" />Bulk Upload
+          </button>
+          <button
+            className="btn-primary flex items-center gap-2"
+            onClick={() => navigate(isWarden ? '/warden/students/checkin' : '/admin/checkin')}
+          >
+            <UserPlus className="w-4 h-4" />Walk-In Check-In
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -129,6 +144,27 @@ export default function StudentsPage() {
                       </td>
                       <td className="py-3 px-4 border-b border-surface-border" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
+                          {s.status === 'DRAFT' && (
+                            <>
+                              <button
+                                onClick={() => setStudentToFinalize(s)}
+                                className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-text-muted"
+                                title="Finalize Draft"
+                              ><UserCheck className="w-3.5 h-3.5" /></button>
+                              <button
+                                onClick={() => {
+                                  if(confirm('Are you sure you want to delete this draft?')) {
+                                    deleteDraft(s._id, {
+                                      onSuccess: () => toast.success('Draft deleted')
+                                    });
+                                  }
+                                }}
+                                disabled={isDeleting}
+                                className="p-1.5 rounded-lg hover:bg-danger/10 hover:text-danger transition-colors text-text-muted"
+                                title="Delete Draft"
+                              ><Trash className="w-3.5 h-3.5" /></button>
+                            </>
+                          )}
                           <button
                             onClick={() => navigate(isWarden ? `/warden/students/${s._id}` : `/admin/tenants/${s._id}`)}
                             className="p-1.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-text-muted"
@@ -167,6 +203,8 @@ export default function StudentsPage() {
           </div>
         )}
       </div>
+      {showBulkUpload && <BulkUploadModal onClose={() => setShowBulkUpload(false)} />}
+      {studentToFinalize && <FinalizeDraftModal student={studentToFinalize} onClose={() => setStudentToFinalize(null)} />}
     </div>
   );
 }

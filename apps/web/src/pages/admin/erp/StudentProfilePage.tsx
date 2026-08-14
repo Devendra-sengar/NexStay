@@ -169,6 +169,7 @@ function PersonalTab({ s }: { s: any }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InfoRow label="Phone" value={s.phone} />
         <InfoRow label="Email" value={s.email} />
+        <InfoRow label="Aadhaar Number" value={s.aadhaarNumber} />
         <InfoRow label="College" value={s.college} />
         <InfoRow label="Status" value={s.status} />
       </div>
@@ -195,6 +196,11 @@ function GuardianTab({ s }: { s: any }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <InfoRow label="Guardian Name" value={s.guardianName} />
       <InfoRow label="Guardian Phone" value={s.guardianPhone} />
+      <InfoRow label="Guardian Address" value={s.guardianAddress} />
+      <div className="col-span-full border-t border-surface-border my-2" />
+      <InfoRow label="Father's Name" value={s.fatherName} />
+      <InfoRow label="Mother's Name" value={s.motherName} />
+      <InfoRow label="Father's Occupation" value={s.fatherOccupation} />
     </div>
   );
 }
@@ -212,6 +218,7 @@ function StayTab({ s }: { s: any }) {
         <InfoRow label="Room" value={room?.roomNumber} />
         <InfoRow label="Bed" value={bed?.bedNumber} />
         <InfoRow label="Move-In Date" value={s.admissionDate ? new Date(s.admissionDate).toLocaleDateString('en-IN') : undefined} />
+        <InfoRow label="Lock-in Period" value={s.stayingPeriod ? `${s.stayingPeriod} Months` : '—'} />
         <InfoRow label="Notice Period Date" value={s.noticePeriodDate ? new Date(s.noticePeriodDate).toLocaleDateString('en-IN') : undefined} />
         <InfoRow label="Expected Exit" value={s.exitDate ? new Date(s.exitDate).toLocaleDateString('en-IN') : 'Active'} />
         <InfoRow label="Monthly Rent" value={`₹${s.monthlyRent?.toLocaleString('en-IN')}`} />
