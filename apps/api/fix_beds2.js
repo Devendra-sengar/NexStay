@@ -5,7 +5,7 @@ mongoose.connect('mongodb://localhost:27017/nexstay').then(async () => {
   
   // Find the last created student
   const students = await db.collection('hostelstudents').find().sort({ createdAt: -1 }).limit(1).toArray();
-  if (students.length > 0) {
+  if (students.length > 0) { 
     const student = students[0];
     console.log('Found recent student:', student.name);
     
