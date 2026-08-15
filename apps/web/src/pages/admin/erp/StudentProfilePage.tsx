@@ -170,7 +170,9 @@ function PersonalTab({ s }: { s: any }) {
         <InfoRow label="Phone" value={s.phone} />
         <InfoRow label="Email" value={s.email} />
         <InfoRow label="Aadhaar Number" value={s.aadhaarNumber} />
-        <InfoRow label="College" value={s.college} />
+        <InfoRow label="Organization" value={s.organization || s.college} />
+        <InfoRow label="Date of Birth" value={s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('en-IN') : undefined} />
+        <InfoRow label="Marital Status" value={s.maritalStatus} />
         <InfoRow label="Status" value={s.status} />
       </div>
       <div className="mt-6 border-t border-surface-border pt-6">
@@ -199,6 +201,7 @@ function GuardianTab({ s }: { s: any }) {
       <InfoRow label="Guardian Address" value={s.guardianAddress} />
       <div className="col-span-full border-t border-surface-border my-2" />
       <InfoRow label="Father's Name" value={s.fatherName} />
+      <InfoRow label="Father's Contact" value={s.fatherContact} />
       <InfoRow label="Mother's Name" value={s.motherName} />
       <InfoRow label="Father's Occupation" value={s.fatherOccupation} />
     </div>
@@ -317,8 +320,8 @@ export default function StudentProfilePage() {
 
   if (!student) return (
     <div className="page-container text-center py-20">
-      <p className="text-text-muted">Student not found.</p>
-      <button className="btn-primary mt-4" onClick={() => navigate(isWarden ? '/warden/students' : '/admin/tenants')}>Back to Students</button>
+      <p className="text-text-muted">Tenant not found.</p>
+      <button className="btn-primary mt-4" onClick={() => navigate(isWarden ? '/warden/students' : '/admin/tenants')}>Back to Tenants</button>
     </div>
   );
 
@@ -326,7 +329,7 @@ export default function StudentProfilePage() {
     <div className="page-container max-w-5xl">
       {/* Breadcrumb */}
       <button onClick={() => navigate(isWarden ? '/warden/students' : '/admin/tenants')} className="flex items-center gap-2 text-sm text-text-muted hover:text-primary mb-4 transition-colors">
-        <ArrowLeft className="w-4 h-4" />Back to Students
+        <ArrowLeft className="w-4 h-4" />Back to Tenants
       </button>
 
       {/* Hero card */}
@@ -337,7 +340,7 @@ export default function StudentProfilePage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-text-primary">{student.name}</h1>
-            <p className="text-sm text-text-muted">{student.phone} • {student.college || 'No college'}</p>
+            <p className="text-sm text-text-muted">{student.phone} • {student.organization || student.college || 'No organization'}</p>
             <span className={cn('badge mt-1 text-xs', student.status === 'ACTIVE' ? 'badge-success' : 'badge-gray')}>{student.status}</span>
           </div>
         </div>

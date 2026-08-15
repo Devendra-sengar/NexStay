@@ -897,6 +897,39 @@ export const bulkCreateStudents = async (req: AuthRequest, res: Response): Promi
     const ownerHostelId = req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER' ? req.user.hostelId : (ownerHostel?._id ?? null);
 
     const results: any[] = [];
+    
+    const parseCsvDate = (dateStr: any) => {
+      if (!dateStr) return undefined;
+      const str = String(dateStr).trim();
+      
+      // First, prioritize MM/DD/YYYY (Standard US Format / Default JS Format)
+      const nativeDate = new Date(str);
+      if (!isNaN(nativeDate.getTime())) {
+        return nativeDate;
+      }
+      
+      // If native fails (e.g. they typed DD/MM/YYYY like 25/12/2026 where month > 12)
+      // fallback to DD/MM/YYYY parsing
+      if (str.includes('/')) {
+        const parts = str.split('/');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2];
+          
+          if (year.length === 4) {
+            // YYYY-MM-DD
+            const parsed = new Date(`${year}-${month}-${day}`);
+            if (!isNaN(parsed.getTime()) && Number(month) <= 12 && Number(day) <= 31) {
+              return parsed;
+            }
+          }
+        }
+      }
+      
+      return undefined;
+    };
+
     for (const student of students) {
       const {
         name, phone, email, propertyId, admissionDate,
@@ -929,12 +962,15 @@ export const bulkCreateStudents = async (req: AuthRequest, res: Response): Promi
           await GuestProfile.create({ userId: existingUser._id, tenantId });
         }
 
+        const parsedAdmissionDate = parseCsvDate(admissionDate) || new Date();
+        const parsedDob = parseCsvDate(dateOfBirth);
+
         const newStudent = await HostelStudent.create({
           tenantId, hostelId: ownerHostelId, propertyId, guestId: existingUser._id,
           name, phone, email: email.toLowerCase(),
-          admissionDate: admissionDate ? new Date(admissionDate) : new Date(),
+          admissionDate: parsedAdmissionDate,
           monthlyRent: 0, securityDeposit: 0, status: 'DRAFT', feeBreakdown: [],
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+          dateOfBirth: parsedDob,
           aadhaarNumber, occupation, fatherName, motherName, fatherContact, permanentAddress, organization, bloodGroup, maritalStatus
         });
 
@@ -972,6 +1008,32 @@ export const deleteDraft = async (req: AuthRequest, res: Response): Promise<void
     res.json({ success: true, message: 'Draft deleted successfully' });
   } catch (err: any) {
     console.error('Delete Draft Error:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const bulkDeleteDrafts = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { ids } = req.body;
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ success: false, message: 'No drafts selected for deletion' });
+      return;
+    }
+
+    const HostelStudent = (await import('../models/HostelStudent.model')).HostelStudent;
+    
+    // Only delete documents that belong to this tenant AND are in DRAFT status
+    const result = await HostelStudent.deleteMany({
+      tenantId,
+      _id: { $in: ids },
+      status: 'DRAFT'
+    });
+
+    res.json({ success: true, message: `Successfully deleted ${result.deletedCount} drafts` });
+  } catch (err: any) {
+    console.error('Bulk Delete Drafts Error:', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

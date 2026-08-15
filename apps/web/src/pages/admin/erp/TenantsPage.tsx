@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { BulkUploadModal } from './BulkUploadModal';
 import { FinalizeDraftModal } from './FinalizeDraftModal';
+import { useBulkDeleteDrafts } from '@/lib/adminApi';
 
 const STATUSES = ['ALL', 'ACTIVE', 'DRAFT', 'CHECKED_OUT'];
 
@@ -22,8 +23,10 @@ export default function StudentsPage() {
   const [page, setPage] = useState(1);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [studentToFinalize, setStudentToFinalize] = useState<any>(null);
+  const [selectedDrafts, setSelectedDrafts] = useState<string[]>([]);
 
   const { mutate: deleteDraft, isPending: isDeleting } = useDeleteDraft();
+  const { mutate: bulkDelete, isPending: isBulkDeleting } = useBulkDeleteDrafts();
 
   const { data, isLoading } = useErpStudents({
     search: search || undefined,
@@ -56,6 +59,25 @@ export default function StudentsPage() {
           >
             <UserPlus className="w-4 h-4" />Walk-In Check-In
           </button>
+          
+          {selectedDrafts.length > 0 && (
+            <button
+              className="btn-danger flex items-center gap-2 ml-2"
+              onClick={() => {
+                if (confirm(`Are you sure you want to delete ${selectedDrafts.length} selected drafts?`)) {
+                  bulkDelete(selectedDrafts, {
+                    onSuccess: () => {
+                      toast.success(`Deleted ${selectedDrafts.length} drafts`);
+                      setSelectedDrafts([]);
+                    }
+                  });
+                }
+              }}
+              disabled={isBulkDeleting}
+            >
+              <Trash className="w-4 h-4" />Delete Selected ({selectedDrafts.length})
+            </button>
+          )}
         </div>
       </div>
 
@@ -109,7 +131,23 @@ export default function StudentsPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  {['Tenant', 'College', 'Property', 'Room / Bed', 'Monthly Rent', 'Move-In', 'Status', 'Actions'].map(h => (
+                  <th className="w-10">
+                    {status === 'DRAFT' && students.length > 0 && (
+                      <input 
+                        type="checkbox" 
+                        checked={selectedDrafts.length === students.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedDrafts(students.map((s: any) => s._id));
+                          } else {
+                            setSelectedDrafts([]);
+                          }
+                        }}
+                        className="rounded border-surface-border text-primary focus:ring-primary"
+                      />
+                    )}
+                  </th>
+                  {['Tenant', 'Organization', 'Property', 'Room / Bed', 'Monthly Rent', 'Move-In', 'Status', 'Actions'].map(h => (
                     <th key={h}>{h}</th>
                   ))}
                 </tr>
@@ -121,13 +159,26 @@ export default function StudentsPage() {
                   const bed = s.bedId;
                   return (
                     <tr key={s._id} className="hover:bg-surface-input/40 transition-colors cursor-pointer" onClick={() => navigate(isWarden ? `/warden/students/${s._id}` : `/admin/tenants/${s._id}`)}>
+                      <td className="py-3 px-4 border-b border-surface-border" onClick={e => e.stopPropagation()}>
+                        {s.status === 'DRAFT' && (
+                          <input 
+                            type="checkbox" 
+                            checked={selectedDrafts.includes(s._id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedDrafts(prev => [...prev, s._id]);
+                              else setSelectedDrafts(prev => prev.filter(id => id !== s._id));
+                            }}
+                            className="rounded border-surface-border text-primary focus:ring-primary"
+                          />
+                        )}
+                      </td>
                       <td className="py-3 px-4 border-b border-surface-border">
                         <div>
                           <p className="font-medium text-text-primary text-sm">{s.name}</p>
                           <p className="text-xs text-text-muted">{s.phone}</p>
                         </div>
                       </td>
-                      <td className="py-3 px-4 border-b border-surface-border text-sm text-text-secondary">{s.college || '—'}</td>
+                      <td className="py-3 px-4 border-b border-surface-border text-sm text-text-secondary">{s.organization || s.college || '—'}</td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm">{(s.propertyId as any)?.name || '—'}</td>
                       <td className="py-3 px-4 border-b border-surface-border text-sm">
                         <span className="text-text-secondary">{room?.roomNumber || '—'}</span>

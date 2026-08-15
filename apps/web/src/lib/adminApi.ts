@@ -789,12 +789,23 @@ export function useFinalizeDraft() {
 }
 
 export function useDeleteDraft() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await erp(`/students/${id}/draft`, { method: 'DELETE' });
       return res.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['erp-students'] })
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['erp-students'] }),
+  });
+}
+
+export function useBulkDeleteDrafts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await erp(`/students/drafts/bulk`, { method: 'DELETE', data: { ids } });
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['erp-students'] }),
   });
 }

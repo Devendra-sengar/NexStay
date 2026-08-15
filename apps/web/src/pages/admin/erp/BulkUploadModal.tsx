@@ -30,24 +30,32 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const mappedData = results.data.map((row: any) => ({
-          name: row['Tenant Name'] || '',
-          phone: row['contact no'] || '',
-          dateOfBirth: row['Date of Birth'] || '',
-          admissionDate: row['Date of joining'] || '',
-          aadhaarNumber: row['Aadhar No'] || '',
-          occupation: row['Occupation'] || '',
-          fatherName: row['Father Name'] || '',
-          motherName: row['Mother Name'] || '',
-          fatherContact: row['Father Contact no'] || '',
-          permanentAddress: row['Permanent Address'] || '',
-          organization: row['Organization Name'] || '',
-          bloodGroup: row['Blood Group'] || '',
-          maritalStatus: row['Maritial Status'] || '',
-          email: row['Email Address'] || '',
-          roomId: '',
-          bedId: '',
-        }));
+        const mappedData = results.data.map((rawRow: any) => {
+          // Normalize row keys to lowercase and trim spaces for robust matching
+          const row: any = {};
+          for (const key in rawRow) {
+            row[key.trim().toLowerCase()] = rawRow[key];
+          }
+
+          return {
+            name: row['tenant name'] || row['name'] || '',
+            phone: row['contact no'] || row['phone'] || row['mobile'] || '',
+            dateOfBirth: row['date of birth'] || row['dob'] || '',
+            admissionDate: row['date of joining'] || row['doj'] || row['admission date'] || '',
+            aadhaarNumber: row['aadhar no'] || row['aadhaar'] || row['aadhar number'] || '',
+            occupation: row['occupation'] || '',
+            fatherName: row['father name'] || row["father's name"] || '',
+            motherName: row['mother name'] || row["mother's name"] || '',
+            fatherContact: row['father contact no'] || row['father contact'] || '',
+            permanentAddress: row['permanent address'] || row['address'] || '',
+            organization: row['organization name'] || row['company'] || row['college'] || '',
+            bloodGroup: row['blood group'] || '',
+            maritalStatus: row['maritial status'] || row['marital status'] || '',
+            email: row['email address'] || row['email'] || '',
+            roomId: '',
+            bedId: '',
+          };
+        });
         setParsedData(mappedData);
         setIsParsing(false);
       },
@@ -144,7 +152,8 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
                     <Upload className="w-8 h-8 text-text-muted mx-auto mb-3" />
                   )}
                   <p className="font-medium text-text-primary">{file ? file.name : 'Click or drag CSV file here'}</p>
-                  <p className="text-sm text-text-muted mt-1">Must contain headers like Tenant Name, contact no, Email Address, etc.</p>
+                  <p className="text-sm text-text-muted mt-1">Must contain headers like Tenant Name, contact no, Date of joining, etc.</p>
+                  <p className="text-xs text-text-muted mt-1">(Dates should be in <strong>DD/MM/YYYY</strong> or <strong>MM/DD/YYYY</strong> format)</p>
                 </div>
               </div>
             </div>

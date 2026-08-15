@@ -6,7 +6,7 @@ import {
   createRoom, updateRoom, deleteRoom,
   getErpStudents, getErpStudentById, getStudentRent,
   recordRentPayment, processCheckIn, processCheckOut, getStudentDues, resetStudentPassword,
-  bulkCreateStudents, finalizeDraft, deleteDraft
+  bulkCreateStudents, finalizeDraft, deleteDraft, bulkDeleteDrafts
 } from '../controllers/erpAdmin.controller';
 import { getRentReceipt } from '../controllers/hostelAdmin.controller';
 import {
@@ -58,6 +58,7 @@ router.get('/students', getErpStudents);
 router.post('/students/bulk', bulkCreateStudents);
 router.get('/students/:id', getErpStudentById);
 router.put('/students/:id/finalize', finalizeDraft);
+router.delete('/students/drafts/bulk', bulkDeleteDrafts);
 router.delete('/students/:id/draft', deleteDraft);
 router.post('/students/:id/reset-password', resetStudentPassword);
 router.get('/students/:id/rent', getStudentRent);
