@@ -7,7 +7,7 @@ import { connectDB } from './config/db';
 import authRoutes from './routes/auth.routes'; 
 import marketplaceRoutes from './routes/marketplace.routes';   
 import notificationRoutes from './routes/notification.routes'; 
-import publicRoutes from './routes/public.routes';
+import publicRoutes from './routes/public.routes'; 
 import guestRoutes from './routes/guest.routes'; 
 import hostelAdminRoutes from './routes/hostelAdmin.routes';
 import erpRoutes from './routes/erp.routes';
