@@ -15,15 +15,19 @@ export interface IHostelStudentDoc extends Document {
   guardianPhone?: string;
   guardianAddress?: string;
   aadhaarUrl?: string;
+  isAadhaarVerified?: boolean;
   aadhaarNumber?: string;
   studentIdUrl?: string;
+  isStudentIdVerified?: boolean;
   photoUrl?: string;
+  isPhotoVerified?: boolean;
   admissionDate: Date;
   exitDate?: Date;
   noticePeriodDate?: Date;
   monthlyRent: number;
   securityDeposit: number;
   status: string;
+  registrationAmount?: number;
   // ── Registration Form Fields ───────────────────────────────────────────────
   registrationDate?: Date;
   fatherName?: string;
@@ -60,9 +64,12 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
     guardianPhone: { type: String, default: '', match: [/^(?:\d{10})?$/, 'Guardian phone number must be exactly 10 digits'] },
     guardianAddress: { type: String, default: '' },
     aadhaarUrl: { type: String, default: '' },
+    isAadhaarVerified: { type: Boolean, default: false },
     aadhaarNumber: { type: String, default: '' },
     studentIdUrl: { type: String, default: '' },
+    isStudentIdVerified: { type: Boolean, default: false },
     photoUrl: { type: String, default: '' },
+    isPhotoVerified: { type: Boolean, default: false },
     admissionDate: { type: Date, required: true },
     exitDate: { type: Date },
     noticePeriodDate: { type: Date },
@@ -73,6 +80,7 @@ const HostelStudentSchema = new Schema<IHostelStudentDoc>(
       enum: ['ACTIVE', 'CHECKED_OUT', 'DRAFT'],
       default: 'ACTIVE',
     },
+    registrationAmount: { type: Number, default: 0 },
     // ── Registration Form Fields ─────────────────────────────────────────────
     registrationDate: { type: Date },
     fatherName: { type: String, default: '' },

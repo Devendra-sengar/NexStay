@@ -1,14 +1,15 @@
 import mongoose from 'mongoose';
 
 async function checkAndDrop() {
-  const uri = 'mongodb://localhost:27017';
+  const uri = 'mongodb+srv://joshipranshu111_db_user:6Dy9cZsMZ5zKN0bi@nexstay.rtshfjx.mongodb.net/nexstay?retryWrites=true&w=majority&appName=NexStay';
   
   try {
+    console.log(`Connecting to Atlas...`);
     const conn = await mongoose.createConnection(uri).asPromise();
+    
     // @ts-ignore
     const admin = conn.db.admin();
     const dbs = await admin.listDatabases();
-    console.log('All databases:', dbs.databases.map((d: any) => d.name));
     
     for (const dbInfo of dbs.databases) {
       if (dbInfo.name.toLowerCase() === 'nexstay') {

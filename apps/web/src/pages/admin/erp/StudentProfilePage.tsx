@@ -3,10 +3,10 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, User, FileText, Users, Home, Receipt, MessageSquare,
   Phone, Mail, GraduationCap, MapPin, Calendar, ShieldCheck, ShieldAlert,
-  Upload, Building2, BedDouble, LogOut, CreditCard, CheckCircle2, Clock, Printer, KeyRound
+  Upload, Building2, BedDouble, LogOut, CreditCard, CheckCircle2, Clock, Printer, KeyRound, X, Edit
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useErpStudentById, useStudentRent, useRecordRentPayment, useResetStudentPassword } from '@/lib/adminApi';
+import { useErpStudentById, useStudentRent, useRecordRentPayment, useResetStudentPassword, useUpdateStudentProfile, useVerifyStudentDocument } from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -27,7 +27,7 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function DocCard({ label, url, verified }: { label: string; url?: string; verified?: boolean }) {
+function DocCard({ label, url, verified, onVerify }: { label: string; url?: string; verified?: boolean; onVerify?: () => void }) {
   return (
     <div className="card p-4 flex items-start gap-3">
       <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', url ? 'bg-primary/10' : 'bg-surface-input')}>
@@ -41,11 +41,16 @@ function DocCard({ label, url, verified }: { label: string; url?: string; verifi
           <p className="text-xs text-text-muted">Not uploaded</p>
         )}
       </div>
-      {url && (
-        <span className={cn('badge flex-shrink-0', verified ? 'badge-success' : 'badge-warning')}>
-          {verified ? <><ShieldCheck className="w-3 h-3" /> Verified</> : <><ShieldAlert className="w-3 h-3" /> Pending</>}
-        </span>
-      )}
+      <div className="flex items-center gap-2">
+        {url && onVerify && !verified && (
+          <button onClick={onVerify} className="text-xs btn-primary py-1 px-2">Verify</button>
+        )}
+        {url && (
+          <span className={cn('badge flex-shrink-0', verified ? 'badge-success' : 'badge-warning')}>
+            {verified ? <><ShieldCheck className="w-3 h-3" /> Verified</> : <><ShieldAlert className="w-3 h-3" /> Pending</>}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -108,6 +113,110 @@ function ResetPasswordButton({ id }: { id: string }) {
         </div>
       )}
     </>
+  );
+}
+
+// ─── Edit Tenant Modal ─────────────────────────────────────────────────────────
+function EditTenantModal({ student, onClose }: { student: any; onClose: () => void }) {
+  const [formData, setFormData] = useState({
+    name: student.name || '',
+    phone: student.phone || '',
+    email: student.email || '',
+    registrationAmount: student.registrationAmount || 0,
+    fatherName: student.fatherName || '',
+    motherName: student.motherName || '',
+    dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : '',
+    bloodGroup: student.bloodGroup || '',
+    maritalStatus: student.maritalStatus || '',
+    education: student.education || '',
+    occupation: student.occupation || '',
+    organization: student.organization || '',
+    permanentAddress: student.permanentAddress || '',
+    vehicleNumber: student.vehicleNumber || '',
+    medicalHistory: student.medicalHistory || '',
+    college: student.college || '',
+    guardianName: student.guardianName || '',
+    guardianPhone: student.guardianPhone || '',
+    guardianAddress: student.guardianAddress || '',
+    fatherOccupation: student.fatherOccupation || '',
+    aadhaarNumber: student.aadhaarNumber || '',
+    fatherContact: student.fatherContact || '',
+    stayingPeriod: student.stayingPeriod || '',
+    monthlyRent: student.monthlyRent || 0,
+    securityDeposit: student.securityDeposit || 0,
+    admissionDate: student.admissionDate ? new Date(student.admissionDate).toISOString().split('T')[0] : '',
+  });
+
+  const update = useUpdateStudentProfile();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await update.mutateAsync({ id: student._id, data: formData });
+      toast.success('Tenant profile updated successfully');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Update failed');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-5 border-b border-surface-border">
+          <h2 className="font-bold text-lg text-text-primary">Edit Tenant Profile</h2>
+          <button onClick={onClose} className="p-2 bg-surface-input hover:bg-surface-border text-text-muted rounded-full transition-colors"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="overflow-y-auto p-5 custom-scrollbar">
+          <form id="edit-tenant-form" onSubmit={handleSubmit} className="space-y-4">
+            <h3 className="font-semibold text-sm text-text-primary border-b pb-1">Basic Info</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="form-label">Name</label><input type="text" className="input-field" value={formData.name} onChange={e => setFormData(f => ({ ...f, name: e.target.value }))} /></div>
+              <div><label className="form-label">Phone</label><input type="text" className="input-field" value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} /></div>
+              <div><label className="form-label">Email</label><input type="email" className="input-field" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} /></div>
+              <div><label className="form-label">Registration Amount (₹)</label><input type="number" className="input-field" value={formData.registrationAmount} onChange={e => setFormData(f => ({ ...f, registrationAmount: Number(e.target.value) }))} /></div>
+              <div><label className="form-label">Date of Birth</label><input type="date" className="input-field" value={formData.dateOfBirth} onChange={e => setFormData(f => ({ ...f, dateOfBirth: e.target.value }))} /></div>
+              <div><label className="form-label">Blood Group</label><input type="text" className="input-field" value={formData.bloodGroup} onChange={e => setFormData(f => ({ ...f, bloodGroup: e.target.value }))} /></div>
+            </div>
+
+            <h3 className="font-semibold text-sm text-text-primary border-b pb-1 mt-4">Family Info</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="form-label">Father's Name</label><input type="text" className="input-field" value={formData.fatherName} onChange={e => setFormData(f => ({ ...f, fatherName: e.target.value }))} /></div>
+              <div><label className="form-label">Father's Contact</label><input type="text" className="input-field" value={formData.fatherContact} onChange={e => setFormData(f => ({ ...f, fatherContact: e.target.value }))} /></div>
+              <div><label className="form-label">Mother's Name</label><input type="text" className="input-field" value={formData.motherName} onChange={e => setFormData(f => ({ ...f, motherName: e.target.value }))} /></div>
+              <div><label className="form-label">Father's Occupation</label><input type="text" className="input-field" value={formData.fatherOccupation} onChange={e => setFormData(f => ({ ...f, fatherOccupation: e.target.value }))} /></div>
+              <div><label className="form-label">Guardian Name</label><input type="text" className="input-field" value={formData.guardianName} onChange={e => setFormData(f => ({ ...f, guardianName: e.target.value }))} /></div>
+              <div><label className="form-label">Guardian Phone</label><input type="text" className="input-field" value={formData.guardianPhone} onChange={e => setFormData(f => ({ ...f, guardianPhone: e.target.value }))} /></div>
+            </div>
+
+            <h3 className="font-semibold text-sm text-text-primary border-b pb-1 mt-4">Stay & Financial Details</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="form-label">Admission Date</label><input type="date" className="input-field" value={formData.admissionDate} onChange={e => setFormData(f => ({ ...f, admissionDate: e.target.value }))} /></div>
+              <div><label className="form-label">Staying Period</label><input type="text" className="input-field" value={formData.stayingPeriod} onChange={e => setFormData(f => ({ ...f, stayingPeriod: e.target.value }))} /></div>
+              <div><label className="form-label">Monthly Rent (₹)</label><input type="number" className="input-field" value={formData.monthlyRent} onChange={e => setFormData(f => ({ ...f, monthlyRent: Number(e.target.value) }))} /></div>
+              <div><label className="form-label">Security Deposit (₹)</label><input type="number" className="input-field" value={formData.securityDeposit} onChange={e => setFormData(f => ({ ...f, securityDeposit: Number(e.target.value) }))} /></div>
+            </div>
+
+            <h3 className="font-semibold text-sm text-text-primary border-b pb-1 mt-4">Other Details</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="form-label">College</label><input type="text" className="input-field" value={formData.college} onChange={e => setFormData(f => ({ ...f, college: e.target.value }))} /></div>
+              <div><label className="form-label">Organization</label><input type="text" className="input-field" value={formData.organization} onChange={e => setFormData(f => ({ ...f, organization: e.target.value }))} /></div>
+              <div><label className="form-label">Permanent Address</label><input type="text" className="input-field" value={formData.permanentAddress} onChange={e => setFormData(f => ({ ...f, permanentAddress: e.target.value }))} /></div>
+              <div><label className="form-label">Guardian Address</label><input type="text" className="input-field" value={formData.guardianAddress} onChange={e => setFormData(f => ({ ...f, guardianAddress: e.target.value }))} /></div>
+              <div><label className="form-label">Aadhaar Number</label><input type="text" className="input-field" value={formData.aadhaarNumber} onChange={e => setFormData(f => ({ ...f, aadhaarNumber: e.target.value }))} /></div>
+              <div><label className="form-label">Vehicle Number</label><input type="text" className="input-field" value={formData.vehicleNumber} onChange={e => setFormData(f => ({ ...f, vehicleNumber: e.target.value }))} /></div>
+              <div className="col-span-2"><label className="form-label">Medical History</label><input type="text" className="input-field" value={formData.medicalHistory} onChange={e => setFormData(f => ({ ...f, medicalHistory: e.target.value }))} /></div>
+            </div>
+          </form>
+        </div>
+        <div className="p-5 border-t border-surface-border flex justify-end gap-3 mt-auto">
+          <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+          <button type="submit" form="edit-tenant-form" disabled={update.isPending} className="btn-primary">
+            {update.isPending ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -183,12 +292,37 @@ function PersonalTab({ s }: { s: any }) {
 }
 
 function DocumentsTab({ s }: { s: any }) {
-  const verified = s.bookingId?.documentsVerified;
+  const verifyDoc = useVerifyStudentDocument();
+
+  const handleVerify = async (docType: 'aadhaar' | 'studentId' | 'photo') => {
+    try {
+      await verifyDoc.mutateAsync({ id: s._id, docType, verified: true });
+      toast.success('Document verified successfully');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Verification failed');
+    }
+  };
+
   return (
     <div className="space-y-3">
-      <DocCard label="Aadhaar Card" url={s.aadhaarUrl} verified={!!verified} />
-      <DocCard label="Tenant ID Card" url={s.studentIdUrl} verified={!!verified} />
-      <DocCard label="Passport Photo" url={s.photoUrl} verified={!!verified} />
+      <DocCard 
+        label="Aadhaar Card" 
+        url={s.aadhaarUrl} 
+        verified={s.isAadhaarVerified} 
+        onVerify={() => handleVerify('aadhaar')} 
+      />
+      <DocCard 
+        label="Tenant ID Card" 
+        url={s.studentIdUrl} 
+        verified={s.isStudentIdVerified} 
+        onVerify={() => handleVerify('studentId')} 
+      />
+      <DocCard 
+        label="Passport Photo" 
+        url={s.photoUrl} 
+        verified={s.isPhotoVerified} 
+        onVerify={() => handleVerify('photo')} 
+      />
     </div>
   );
 }
@@ -308,6 +442,7 @@ export default function StudentProfilePage() {
   const { pathname } = useLocation();
   const isWarden = pathname.startsWith('/warden');
   const [activeTab, setActiveTab] = useState('personal');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { data: student, isLoading } = useErpStudentById(id);
 
@@ -345,6 +480,12 @@ export default function StudentProfilePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="btn-secondary flex items-center gap-2 bg-surface text-text-primary hover:bg-surface-input"
+          >
+            <Edit className="w-4 h-4" />Edit Tenant
+          </button>
           <button
             onClick={() => navigate(isWarden ? `/warden/print/${student._id}` : `/admin/print-preview/${student._id}`)}
             className="btn-secondary flex items-center gap-2 bg-surface text-text-primary hover:bg-surface-input"
@@ -390,6 +531,7 @@ export default function StudentProfilePage() {
           {activeTab === 'complaints' && <ComplaintsTab complaints={student.complaints ?? []} />}
         </div>
       </div>
+      {isEditModalOpen && <EditTenantModal student={student} onClose={() => setIsEditModalOpen(false)} />}
     </div>
   );
 }

@@ -230,6 +230,33 @@ export function useErpStudentById(id?: string) {
   });
 }
 
+export function useUpdateStudentProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const res = await erp(`/students/${id}`, { method: 'PUT', data });
+      return res.data;
+    },
+    onSuccess: (_d, { id }) => {
+      qc.invalidateQueries({ queryKey: ['erp-students'] });
+      qc.invalidateQueries({ queryKey: ['erp-student', id] });
+    }
+  });
+}
+
+export function useVerifyStudentDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, docType, verified }: { id: string; docType: 'aadhaar' | 'studentId' | 'photo'; verified: boolean }) => {
+      const res = await erp(`/students/${id}/verify-document`, { method: 'PUT', data: { docType, verified } });
+      return res.data;
+    },
+    onSuccess: (_d, { id }) => {
+      qc.invalidateQueries({ queryKey: ['erp-student', id] });
+    }
+  });
+}
+
 export function useStudentDues(studentId?: string) {
   return useQuery({
     queryKey: ['student-dues', studentId],

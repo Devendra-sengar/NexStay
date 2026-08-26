@@ -1,9 +1,79 @@
 import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { User, Phone, Mail, Key, Users } from 'lucide-react';
+import { useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { User, Phone, Mail, Key, Users, FileText, Upload, CheckCircle2 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
+
+function DocUpload({ label, value, verified, onChange }: { label: string; value?: string; verified?: boolean; onChange: (url: string) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      toast.error('Only images and PDF accepted'); return;
+    }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Max file size is 5MB'); return; }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await api.post('/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onChange(res.data.url);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#f8fafc', borderRadius: 8, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: 40, height: 40, background: value ? '#eff6ff' : '#f1f5f9', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <FileText size={20} color={value ? '#1d4ed8' : '#94a3b8'} />
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{label}</p>
+          {value ? (
+            <a href={value} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#1d4ed8', textDecoration: 'none' }}>View Document ↗</a>
+          ) : (
+            <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Not uploaded</p>
+          )}
+        </div>
+      </div>
+      <div>
+        {verified ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#16a34a', fontSize: 13, fontWeight: 500 }}>
+            <CheckCircle2 size={16} /> Verified
+          </div>
+        ) : (
+          <>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              accept="image/*,application/pdf"
+              onChange={(e) => {
+                if (e.target.files?.[0]) handleFile(e.target.files[0]);
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              style={{ padding: '6px 12px', background: 'white', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, fontWeight: 500, cursor: uploading ? 'not-allowed' : 'pointer', color: '#0f172a' }}
+            >
+              {uploading ? 'Uploading...' : value ? 'Change' : 'Upload'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function StudentProfilePage() {
   const { user } = useAuth();
@@ -12,6 +82,16 @@ export default function StudentProfilePage() {
 
   const { data } = useQuery({ queryKey: ['student-profile'], queryFn: () => api.get('/student/profile').then(r => r.data.data) });
   const { data: roommates } = useQuery({ queryKey: ['student-roommates'], queryFn: () => api.get('/student/roommates').then(r => r.data.data) });
+
+  const qc = useQueryClient();
+  const updateDoc = useMutation({
+    mutationFn: (data: { aadhaarUrl?: string; studentIdUrl?: string; photoUrl?: string }) => api.patch('/student/profile', data),
+    onSuccess: () => {
+      toast.success('Document updated successfully');
+      qc.invalidateQueries({ queryKey: ['student-profile'] });
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to update document')
+  });
 
   const pwMutation = useMutation({
     mutationFn: () => {
@@ -55,6 +135,31 @@ export default function StudentProfilePage() {
           ))}
         </div>
       </div>
+
+      {/* Documents */}
+      {sr && (
+        <div style={{ background: 'white', borderRadius: 12, padding: '16px', border: '1px solid #f1f5f9', marginBottom: 16 }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><FileText size={16} /> My Documents</h3>
+          <DocUpload 
+            label="Aadhaar Card" 
+            value={sr.aadhaarUrl} 
+            verified={sr.isAadhaarVerified} 
+            onChange={(url) => updateDoc.mutate({ aadhaarUrl: url })} 
+          />
+          <DocUpload 
+            label="Tenant ID Card" 
+            value={sr.studentIdUrl} 
+            verified={sr.isStudentIdVerified} 
+            onChange={(url) => updateDoc.mutate({ studentIdUrl: url })} 
+          />
+          <DocUpload 
+            label="Passport Photo" 
+            value={sr.photoUrl} 
+            verified={sr.isPhotoVerified} 
+            onChange={(url) => updateDoc.mutate({ photoUrl: url })} 
+          />
+        </div>
+      )}
 
       {/* Stay info */}
       {sr && (

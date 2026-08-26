@@ -36,6 +36,7 @@ export function FinalizeDraftModal({ student, onClose }: FinalizeDraftModalProps
     fatherOccupation: student.fatherOccupation || '',
     college: student.college || '',
     initialPaidAmount: '0',
+    registrationAmount: student.registrationAmount?.toString() || '0',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -148,6 +149,10 @@ export function FinalizeDraftModal({ student, onClose }: FinalizeDraftModalProps
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-secondary">Security Deposit (₹)</label>
                 <input type="number" name="securityDeposit" value={formData.securityDeposit} onChange={handleChange} className="input-field" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-secondary">Registration Amount (₹)</label>
+                <input type="number" name="registrationAmount" value={formData.registrationAmount} onChange={handleChange} className="input-field" placeholder="One-time fee..." />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-secondary">Initial Paid Amount (₹)</label>

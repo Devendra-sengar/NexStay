@@ -252,6 +252,7 @@ export default function CheckInPage() {
     maritalStatus: '', education: '', occupation: '', organization: '',
     permanentAddress: '', vehicleNumber: '', medicalHistory: '',
     registrationDate: new Date().toISOString().split('T')[0],
+    registrationAmount: '',
   });
   const [walkinDocs, setWalkinDocs] = useState({ aadhaarUrl: '', studentIdUrl: '', photoUrl: '' });
   const [stayingPeriod, setStayingPeriod] = useState('');
@@ -647,6 +648,7 @@ export default function CheckInPage() {
               <div className="grid grid-cols-2 gap-3">
                 {([
                   ['registrationDate', 'Registration Date', 'date'],
+                  ['registrationAmount', 'Registration Amount (₹)', 'number'],
                   ['fatherName', "Father's Name", 'text'],
                   ['fatherOccupation', "Father's Occupation", 'text'],
                   ['fatherContact', "Father's Contact", 'tel'],

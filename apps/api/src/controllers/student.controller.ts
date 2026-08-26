@@ -126,12 +126,39 @@ export const getMyProfile = async (req: AuthRequest, res: Response): Promise<voi
 // ─── PATCH /api/student/profile ───────────────────────────────────────────────
 export const updateMyProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, email } = req.body;
+    const { name, email, aadhaarUrl, studentIdUrl, photoUrl } = req.body;
     const user = await User.findById(req.user?.id);
     if (!user) { res.status(404).json({ success: false, message: 'User not found' }); return; }
+    
     if (name) user.name = name;
     if (email) user.email = email.toLowerCase();
     await user.save();
+
+    if (aadhaarUrl || studentIdUrl || photoUrl) {
+      const studentRecord = await HostelStudent.findOne({ guestId: user._id, status: 'ACTIVE' });
+      if (studentRecord) {
+        if (aadhaarUrl !== undefined) {
+          if (studentRecord.isAadhaarVerified) {
+            return void res.status(403).json({ success: false, message: 'Aadhaar is already verified and cannot be changed' });
+          }
+          studentRecord.aadhaarUrl = aadhaarUrl;
+        }
+        if (studentIdUrl !== undefined) {
+          if (studentRecord.isStudentIdVerified) {
+            return void res.status(403).json({ success: false, message: 'Tenant ID is already verified and cannot be changed' });
+          }
+          studentRecord.studentIdUrl = studentIdUrl;
+        }
+        if (photoUrl !== undefined) {
+          if (studentRecord.isPhotoVerified) {
+            return void res.status(403).json({ success: false, message: 'Photo is already verified and cannot be changed' });
+          }
+          studentRecord.photoUrl = photoUrl;
+        }
+        await studentRecord.save();
+      }
+    }
+
     res.json({ success: true, message: 'Profile updated' });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };

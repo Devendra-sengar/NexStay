@@ -461,6 +461,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       education, occupation, organization,
       permanentAddress, guardianAddress, vehicleNumber,
       medicalHistory, stayingPeriod,
+      registrationAmount,
       initialRentAmount, initialExtraCharges, initialPaidAmount,
       // ── Old Tenant Fields ────────────────────────────────────────────────────
       isOldTenant, lockInPeriod, currentMonthStartDate
@@ -629,6 +630,7 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       status: 'ACTIVE',
       stayingPeriod: isOldTenant && lockInPeriod ? `${lockInPeriod} Months` : stayingPeriod,
       // ── Extended Fields ──
+      registrationAmount: registrationAmount ? Number(registrationAmount) : 0,
       registrationDate: registrationDate ? new Date(registrationDate) : undefined,
       fatherName: fatherName ?? '',
       fatherOccupation: fatherOccupation ?? '',
@@ -781,6 +783,46 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
       if (invoicesToCreate.length > 0) {
         await RentRecord.insertMany(invoicesToCreate, { session });
       }
+    }
+
+    // Process Registration Amount (Separate Invoice & Transaction)
+    const regAmountNum = registrationAmount ? Number(registrationAmount) : 0;
+    if (regAmountNum > 0) {
+      const regRecord = await RentRecord.create([{
+        tenantId, propertyId: finalPropertyId,
+        roomId: (await Bed.findById(finalBedId))?.roomId,
+        hostelStudentId: student[0]._id, bookingId: booking._id,
+        month: 'Registration Fee',
+        amount: regAmountNum,
+        paidAmount: regAmountNum,
+        fine: 0,
+        dueDate: moveIn,
+        status: 'PAID',
+        paidAt: new Date(),
+        feeBreakdown: [{ description: 'Registration Fee (Non-Refundable)', amount: regAmountNum }]
+      }], { session });
+
+      const pTxReg = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
+        transactionId: `TXN-REG-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        tenantId, propertyId: finalPropertyId,
+        invoiceId: regRecord[0]._id,
+        residentId: student[0]._id,
+        settledAmount: regAmountNum,
+        paymentMode: preBookingDoc?.tokenPaymentMethod || 'CASH',
+        status: 'SUCCESS'
+      }], { session });
+
+      await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
+        tenantId, propertyId: finalPropertyId,
+        residentId: student[0]._id,
+        invoiceId: regRecord[0]._id,
+        transactionId: pTxReg[0]._id,
+        credit: regAmountNum, debit: 0,
+        balance: 0,
+        source: preBookingDoc?.tokenPaymentMethod || 'CASH',
+        verifiedBy: req.user!.id,
+        notes: 'Non-refundable registration amount'
+      }], { session });
     }
 
     if (session) await session.commitTransaction();
@@ -1055,6 +1097,7 @@ export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<vo
       education, occupation, organization, permanentAddress,
       vehicleNumber, medicalHistory, college, guardianName,
       guardianPhone, guardianAddress, fatherOccupation, aadhaarNumber,
+      registrationAmount,
       initialPaidAmount
     } = req.body;
 
@@ -1080,6 +1123,7 @@ export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     if (securityDeposit !== undefined) student.securityDeposit = Number(securityDeposit);
+    if (registrationAmount !== undefined) student.registrationAmount = Number(registrationAmount);
     
     if (fatherName) student.fatherName = fatherName;
     if (motherName) student.motherName = motherName;
@@ -1167,6 +1211,46 @@ export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<vo
       }], { session });
     }
 
+    // Process Registration Amount (Separate Invoice & Transaction)
+    const regAmountNum = registrationAmount ? Number(registrationAmount) : 0;
+    if (regAmountNum > 0) {
+      const regRecord = await RentRecord.create([{
+        tenantId: student.tenantId, propertyId: student.propertyId,
+        roomId: bed?.roomId,
+        hostelStudentId: student._id, bookingId: student.bookingId,
+        month: 'Registration Fee',
+        amount: regAmountNum,
+        paidAmount: regAmountNum,
+        fine: 0,
+        dueDate: moveIn,
+        status: 'PAID',
+        paidAt: new Date(),
+        feeBreakdown: [{ description: 'Registration Fee (Non-Refundable)', amount: regAmountNum }]
+      }], { session });
+
+      const pTxReg = await (await import('../models/PaymentTransaction.model')).PaymentTransaction.create([{
+        transactionId: `TXN-REG-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        tenantId, propertyId: student.propertyId,
+        invoiceId: regRecord[0]._id,
+        residentId: student._id,
+        settledAmount: regAmountNum,
+        paymentMode: 'CASH',
+        status: 'SUCCESS'
+      }], { session });
+
+      await (await import('../models/LedgerEntry.model')).LedgerEntry.create([{
+        tenantId, propertyId: student.propertyId,
+        residentId: student._id,
+        invoiceId: regRecord[0]._id,
+        transactionId: pTxReg[0]._id,
+        credit: regAmountNum, debit: 0,
+        balance: 0,
+        source: 'CASH',
+        verifiedBy: req.user!.id,
+        notes: 'Non-refundable registration amount'
+      }], { session });
+    }
+
     await student.save({ session });
 
     if (session) { await session.commitTransaction(); session.endSession(); }
@@ -1178,3 +1262,91 @@ export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
+export const updateStudentProfile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { id } = req.params;
+    
+    const HostelStudent = (await import('../models/HostelStudent.model')).HostelStudent;
+    const student = await HostelStudent.findOne({ _id: id, tenantId });
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' });
+      return;
+    }
+
+    const {
+      name, phone, email, registrationAmount, fatherName, motherName,
+      dateOfBirth, bloodGroup, maritalStatus, education, occupation,
+      organization, permanentAddress, vehicleNumber, medicalHistory,
+      college, guardianName, guardianPhone, guardianAddress, fatherOccupation,
+      aadhaarNumber, fatherContact, stayingPeriod, monthlyRent, securityDeposit,
+      admissionDate
+    } = req.body;
+
+    if (name) student.name = name;
+    if (phone) student.phone = phone;
+    if (email) student.email = email;
+    if (registrationAmount !== undefined) student.registrationAmount = Number(registrationAmount);
+    
+    if (fatherName !== undefined) student.fatherName = fatherName;
+    if (motherName !== undefined) student.motherName = motherName;
+    if (dateOfBirth !== undefined) student.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : undefined;
+    if (bloodGroup !== undefined) student.bloodGroup = bloodGroup;
+    if (maritalStatus !== undefined) student.maritalStatus = maritalStatus;
+    if (education !== undefined) student.education = education;
+    if (occupation !== undefined) student.occupation = occupation;
+    if (organization !== undefined) student.organization = organization;
+    if (permanentAddress !== undefined) student.permanentAddress = permanentAddress;
+    if (vehicleNumber !== undefined) student.vehicleNumber = vehicleNumber;
+    if (medicalHistory !== undefined) student.medicalHistory = medicalHistory;
+    if (college !== undefined) student.college = college;
+    if (guardianName !== undefined) student.guardianName = guardianName;
+    if (guardianPhone !== undefined) student.guardianPhone = guardianPhone;
+    if (guardianAddress !== undefined) student.guardianAddress = guardianAddress;
+    if (fatherOccupation !== undefined) student.fatherOccupation = fatherOccupation;
+    if (aadhaarNumber !== undefined) student.aadhaarNumber = aadhaarNumber;
+    if (fatherContact !== undefined) student.fatherContact = fatherContact;
+    if (stayingPeriod !== undefined) student.stayingPeriod = stayingPeriod;
+    if (monthlyRent !== undefined) student.monthlyRent = Number(monthlyRent);
+    if (securityDeposit !== undefined) student.securityDeposit = Number(securityDeposit);
+    if (admissionDate !== undefined) student.admissionDate = admissionDate ? new Date(admissionDate) : student.admissionDate;
+
+    await student.save();
+    res.json({ success: true, message: 'Student profile updated successfully', data: student });
+  } catch (err: any) {
+    console.error('Update Student Profile Error:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// ─── PUT /api/hostel-admin/erp/students/:id/verify-document ──────────────────
+export const verifyStudentDocument = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { id } = req.params;
+    const { docType, verified } = req.body;
+
+    const student = await HostelStudent.findOne({ _id: id, propertyId: { $in: await Property.find({ tenantId }).distinct('_id') } });
+    if (!student) {
+      res.status(404).json({ success: false, message: 'Student not found' });
+      return;
+    }
+
+    if (docType === 'aadhaar') {
+      student.isAadhaarVerified = verified;
+    } else if (docType === 'studentId') {
+      student.isStudentIdVerified = verified;
+    } else if (docType === 'photo') {
+      student.isPhotoVerified = verified;
+    } else {
+      res.status(400).json({ success: false, message: 'Invalid document type' });
+      return;
+    }
+
+    await student.save();
+    res.json({ success: true, message: `Document verification status updated to ${verified}` });
+  } catch (err) {
+    console.error('Verify Document Error:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
