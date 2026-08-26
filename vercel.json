@@ -1,9 +1,9 @@
 {
     "rewrites": [
         {
-            "source": "/api/:path*", 
+            "source": "/api/:path*",  
             "destination": "https://nexstay-oj8v.onrender.com/api/:path*"
-        },
+        }, 
         {
             "source": "/(.*)",  
             "destination": "/index.html"
