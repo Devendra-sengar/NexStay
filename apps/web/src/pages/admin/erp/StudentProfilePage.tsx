@@ -316,7 +316,11 @@ function RelocateTenantModal({ s, onClose }: { s: any; onClose: () => void }) {
             <label className="form-label">Room</label>
             <select className="input-field w-full" value={roomId} onChange={(e) => { setRoomId(e.target.value); setBedId(''); }} disabled={!propertyId || !rooms}>
               <option value="">Select Room...</option>
-              {rooms?.map((r: any) => <option key={r._id} value={r._id}>Room {r.roomNumber}</option>)}
+              {rooms?.map((floor: any) => (
+                <optgroup key={floor._id} label={floor.name}>
+                  {floor.rooms?.map((r: any) => <option key={r._id} value={r._id}>Room {r.roomNumber}</option>)}
+                </optgroup>
+              ))}
             </select>
           </div>
           <div>
