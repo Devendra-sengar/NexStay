@@ -67,6 +67,41 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
     });
   };
 
+  const handleDownloadFormat = () => {
+    const headers = [
+      'Name', 'Phone', 'Email', 'Date of Birth', 'Admission Date', 
+      'Aadhaar Number', 'Occupation', 'Father Name', 'Mother Name',
+      'Father Contact', 'Permanent Address', 'Organization', 'Blood Group',
+      'Marital Status', 'Registration Amount', 'Registration Date',
+      'Monthly Rent', 'Security Deposit', 'Staying Period', 'Education',
+      'Medical History', 'Vehicle Number', 'College', 'Guardian Name',
+      'Guardian Phone', 'Guardian Address', 'Father Occupation'
+    ];
+    
+    // Sample row
+    const sampleRow = [
+      'John Doe', '9876543210', 'john@example.com', '1999-05-15', '2026-09-01',
+      '123456789012', 'Software Developer', 'Robert Doe', 'Jane Doe',
+      '9876543211', '123 Main St, City', 'Tech Corp', 'O+',
+      'Single', '500', '2026-08-27',
+      '10000', '20000', '12', 'B.Tech',
+      'None', 'MH-12-AB-1234', 'Engineering College', 'Alice Smith',
+      '9876543212', '456 Local St, City', 'Engineer'
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(',') + "\n"
+      + sampleRow.join(',');
+      
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "NexStay_Bulk_Upload_Template.csv");
+    document.body.appendChild(link); // Required for FF
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
 
   const handleSubmit = () => {
@@ -137,7 +172,15 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
             )}
 
             <div className="space-y-2">
-              <label className="form-label font-medium text-text-primary">CSV File</label>
+              <div className="flex items-center justify-between">
+                <label className="form-label font-medium text-text-primary">CSV File</label>
+                <button 
+                  onClick={handleDownloadFormat}
+                  className="text-xs font-medium text-primary hover:text-primary-focus flex items-center gap-1"
+                >
+                  <FileUp className="w-3.5 h-3.5" /> Download Template
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type="file"

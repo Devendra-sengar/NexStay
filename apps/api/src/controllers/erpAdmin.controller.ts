@@ -976,7 +976,10 @@ export const bulkCreateStudents = async (req: AuthRequest, res: Response): Promi
       const {
         name, phone, email, propertyId, admissionDate,
         dateOfBirth, aadhaarNumber, occupation, fatherName, motherName,
-        fatherContact, permanentAddress, organization, bloodGroup, maritalStatus
+        fatherContact, permanentAddress, organization, bloodGroup, maritalStatus,
+        registrationAmount, registrationDate, monthlyRent, securityDeposit,
+        stayingPeriod, education, medicalHistory, vehicleNumber, college,
+        guardianName, guardianPhone, guardianAddress, fatherOccupation
       } = student;
 
       try {
@@ -1006,14 +1009,21 @@ export const bulkCreateStudents = async (req: AuthRequest, res: Response): Promi
 
         const parsedAdmissionDate = parseCsvDate(admissionDate) || new Date();
         const parsedDob = parseCsvDate(dateOfBirth);
+        const parsedRegDate = parseCsvDate(registrationDate);
 
         const newStudent = await HostelStudent.create({
           tenantId, hostelId: ownerHostelId, propertyId, guestId: existingUser._id,
           name, phone, email: email.toLowerCase(),
           admissionDate: parsedAdmissionDate,
-          monthlyRent: 0, securityDeposit: 0, status: 'DRAFT', feeBreakdown: [],
+          monthlyRent: Number(monthlyRent) || 0,
+          securityDeposit: Number(securityDeposit) || 0,
+          status: 'DRAFT', feeBreakdown: [],
           dateOfBirth: parsedDob,
-          aadhaarNumber, occupation, fatherName, motherName, fatherContact, permanentAddress, organization, bloodGroup, maritalStatus
+          aadhaarNumber, occupation, fatherName, motherName, fatherContact, permanentAddress, organization, bloodGroup, maritalStatus,
+          registrationAmount: Number(registrationAmount) || 0,
+          registrationDate: parsedRegDate,
+          stayingPeriod, education, medicalHistory, vehicleNumber, college,
+          guardianName, guardianPhone, guardianAddress, fatherOccupation
         });
 
         results.push({ success: true, phone, name, id: newStudent._id });
@@ -1097,7 +1107,7 @@ export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<vo
       education, occupation, organization, permanentAddress,
       vehicleNumber, medicalHistory, college, guardianName,
       guardianPhone, guardianAddress, fatherOccupation, aadhaarNumber,
-      registrationAmount,
+      registrationAmount, registrationDate, fatherContact,
       initialPaidAmount
     } = req.body;
 
@@ -1124,6 +1134,8 @@ export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<vo
 
     if (securityDeposit !== undefined) student.securityDeposit = Number(securityDeposit);
     if (registrationAmount !== undefined) student.registrationAmount = Number(registrationAmount);
+    if (registrationDate) student.registrationDate = new Date(registrationDate);
+    if (fatherContact) student.fatherContact = fatherContact;
     
     if (fatherName) student.fatherName = fatherName;
     if (motherName) student.motherName = motherName;

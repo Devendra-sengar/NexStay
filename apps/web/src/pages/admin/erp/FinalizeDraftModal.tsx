@@ -37,6 +37,8 @@ export function FinalizeDraftModal({ student, onClose }: FinalizeDraftModalProps
     college: student.college || '',
     initialPaidAmount: '0',
     registrationAmount: student.registrationAmount?.toString() || '0',
+    registrationDate: student.registrationDate ? new Date(student.registrationDate).toISOString().slice(0, 10) : '',
+    fatherContact: student.fatherContact || '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -155,6 +157,10 @@ export function FinalizeDraftModal({ student, onClose }: FinalizeDraftModalProps
                 <input type="number" name="registrationAmount" value={formData.registrationAmount} onChange={handleChange} className="input-field" placeholder="One-time fee..." />
               </div>
               <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-secondary">Registration Date</label>
+                <input type="date" name="registrationDate" value={formData.registrationDate} onChange={handleChange} className="input-field" />
+              </div>
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-secondary">Initial Paid Amount (₹)</label>
                 <input type="number" name="initialPaidAmount" value={formData.initialPaidAmount} onChange={handleChange} className="input-field" placeholder="Amount paid now..." />
               </div>
@@ -182,6 +188,10 @@ export function FinalizeDraftModal({ student, onClose }: FinalizeDraftModalProps
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-secondary">Father's Name</label>
                 <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} className="input-field" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-text-secondary">Father's Contact</label>
+                <input type="text" name="fatherContact" value={formData.fatherContact} onChange={handleChange} className="input-field" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-secondary">Father's Occupation</label>
