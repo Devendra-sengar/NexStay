@@ -68,12 +68,16 @@ export default function ModernTemplate({ student, hostel }: PrintData) {
         {/* Lock-in Period */}
         <div style={{ marginTop:16, padding:"10px 14px", background:lightAccent, borderRadius:6, border:`1px solid ${accentColor}20` }}>
           <span style={{ fontWeight:700, fontSize:10, color:accentColor, marginRight:16 }}>Lock-in Period</span>
-          {[["6_MONTHS","6 Months"],["12_MONTHS","12 Months"],["OTHER","Other"]].map(([val,lbl]) => (
-            <label key={val} style={{ display:"inline-flex", alignItems:"center", gap:5, marginRight:16, fontSize:10, cursor:"default" }}>
-              <span style={{ width:14, height:14, borderRadius:3, border:`2px solid ${accentColor}`, background:student?.stayingPeriod===val?accentColor:"transparent", display:"inline-block", flexShrink:0 }} />{lbl}
-            </label>
-          ))}
-          {student?.stayingPeriod && <span style={{ fontSize:9, color:"#64748b", marginLeft:8 }}>Selected: <strong>{STAY_LABEL[student.stayingPeriod]}</strong></span>}
+          {[["6","6 Months"],["12","12 Months"],["OTHER","Other"]].map(([val,lbl]) => {
+            const sp = String(student?.stayingPeriod || "");
+            const isMatch = val === "OTHER" ? (sp && sp !== "6" && sp !== "12") : sp === val;
+            return (
+              <label key={val} style={{ display:"inline-flex", alignItems:"center", gap:5, marginRight:16, fontSize:10, cursor:"default" }}>
+                <span style={{ width:14, height:14, borderRadius:3, border:`2px solid ${accentColor}`, background:isMatch?accentColor:"transparent", display:"inline-block", flexShrink:0 }} />
+                {lbl} {val === "OTHER" && isMatch ? `(${sp} Months)` : ""}
+              </label>
+            );
+          })}
         </div>
         {/* Signatures */}
         <div style={{ marginTop:32, display:"flex", justifyContent:"space-between", fontSize:10 }}>

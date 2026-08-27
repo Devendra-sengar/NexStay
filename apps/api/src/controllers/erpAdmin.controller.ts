@@ -1292,7 +1292,7 @@ export const updateStudentProfile = async (req: AuthRequest, res: Response): Pro
       organization, permanentAddress, vehicleNumber, medicalHistory,
       college, guardianName, guardianPhone, guardianAddress, fatherOccupation,
       aadhaarNumber, fatherContact, stayingPeriod, monthlyRent, securityDeposit,
-      admissionDate
+      admissionDate, aadhaarUrl, studentIdUrl, photoUrl
     } = req.body;
 
     if (name) student.name = name;
@@ -1322,6 +1322,10 @@ export const updateStudentProfile = async (req: AuthRequest, res: Response): Pro
     if (monthlyRent !== undefined) student.monthlyRent = Number(monthlyRent);
     if (securityDeposit !== undefined) student.securityDeposit = Number(securityDeposit);
     if (admissionDate !== undefined) student.admissionDate = admissionDate ? new Date(admissionDate) : student.admissionDate;
+
+    if (aadhaarUrl !== undefined) student.aadhaarUrl = aadhaarUrl;
+    if (studentIdUrl !== undefined) student.studentIdUrl = studentIdUrl;
+    if (photoUrl !== undefined) student.photoUrl = photoUrl;
 
     await student.save();
     res.json({ success: true, message: 'Student profile updated successfully', data: student });
@@ -1386,7 +1390,6 @@ export const relocateTenant = async (req: AuthRequest, res: Response): Promise<v
 
     const student = await HostelStudent.findOne({ _id: id, tenantId }).session(session);
     if (!student) throw new Error('Student not found');
-    if (student.status !== 'ACTIVE') throw new Error('Only active students can be relocated');
 
     const newBed = await Bed.findOne({ _id: newBedId, roomId: newRoomId, propertyId: newPropertyId, tenantId }).session(session);
     if (!newBed) throw new Error('Selected bed not found');

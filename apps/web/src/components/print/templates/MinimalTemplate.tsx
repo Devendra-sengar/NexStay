@@ -56,11 +56,16 @@ export default function MinimalTemplate({ student, hostel }: PrintData) {
       {/* Lock-in */}
       <div style={{ marginTop:14, borderTop:"1px solid #ddd", paddingTop:10, display:"flex", gap:20, alignItems:"center", fontSize:10 }}>
         <span style={{ fontWeight:700 }}>Lock-in Period:</span>
-        {[["6_MONTHS","6 Months"],["12_MONTHS","12 Months"],["OTHER","Other"]].map(([val,lbl]) => (
-          <label key={val} style={{ display:"flex", alignItems:"center", gap:4 }}>
-            <span style={{ width:10, height:10, border:"1px solid #111", display:"inline-block", background:student?.stayingPeriod===val?"#111":"transparent" }} />{lbl}
-          </label>
-        ))}
+        {[["6","6 Months"],["12","12 Months"],["OTHER","Other"]].map(([val,lbl]) => {
+          const sp = String(student?.stayingPeriod || "");
+          const isMatch = val === "OTHER" ? (sp && sp !== "6" && sp !== "12") : sp === val;
+          return (
+            <label key={val} style={{ display:"flex", alignItems:"center", gap:4 }}>
+              <span style={{ width:10, height:10, border:"1px solid #111", display:"inline-block", background:isMatch?"#111":"transparent" }} />
+              {lbl} {val === "OTHER" && isMatch ? `(${sp} Months)` : ""}
+            </label>
+          );
+        })}
       </div>
       {/* Signatures */}
       <div style={{ marginTop:40, display:"flex", justifyContent:"space-between", fontSize:10 }}>

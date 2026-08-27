@@ -121,14 +121,20 @@ export default function K1Template({ student, hostel }: PrintData) {
           <div style={{ marginTop: 25, display: "flex", alignItems: "center", gap: 80, fontSize: 14, fontWeight: 700 }}>
             <span>Lock-in Period</span>
             <div style={{ display: "flex", gap: 50 }}>
-              {[["6_MONTHS", "6 Month"], ["12_MONTHS", "12 Month"]].map(([val, lbl]) => (
-                <label key={val} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                  {lbl}
-                  <div style={{ width: 35, height: 16, border: "2px solid #333", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {student?.stayingPeriod === val && <span style={{ display: "inline-block", width: 27, height: 10, background: "#000" }} />}
-                  </div>
-                </label>
-              ))}
+              {[["6", "6 Month"], ["12", "12 Month"], ["OTHER", "Other"]].map(([val, lbl]) => {
+                const sp = String(student?.stayingPeriod || "");
+                const isMatch = val === "OTHER" ? (sp && sp !== "6" && sp !== "12") : sp === val;
+                return (
+                  <label key={val} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      {lbl} {val === "OTHER" && isMatch ? `(${sp} Months)` : ""}
+                    </div>
+                    <div style={{ width: 35, height: 16, border: "2px solid #333", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {isMatch && <span style={{ display: "inline-block", width: 27, height: 10, background: "#000" }} />}
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 

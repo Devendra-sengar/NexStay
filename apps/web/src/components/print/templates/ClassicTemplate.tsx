@@ -70,12 +70,16 @@ export default function ClassicTemplate({ student, hostel }: PrintData) {
         </div>
         <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 24, fontSize: 10 }}>
           <span style={{ fontWeight: 700 }}>Lock-in Period</span>
-          {[["6_MONTHS", "6 Month"], ["12_MONTHS", "12 Month"], ["OTHER", "Other"]].map(([val, lbl]) => (
-            <label key={val} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ width: 13, height: 13, border: "1.5px solid #000", display: "inline-block", background: student?.stayingPeriod === val ? "#000" : "transparent", flexShrink: 0 }} />
-              {lbl}
-            </label>
-          ))}
+          {[["6", "6 Month"], ["12", "12 Month"], ["OTHER", "Other"]].map(([val, lbl]) => {
+            const sp = String(student?.stayingPeriod || "");
+            const isMatch = val === "OTHER" ? (sp && sp !== "6" && sp !== "12") : sp === val;
+            return (
+              <label key={val} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 13, height: 13, border: "1.5px solid #000", display: "inline-block", background: isMatch ? "#000" : "transparent", flexShrink: 0 }} />
+                {lbl} {val === "OTHER" && isMatch ? `(${sp} Months)` : ""}
+              </label>
+            );
+          })}
         </div>
         <div style={{ marginTop: 32, display: "flex", justifyContent: "space-between", fontSize: 10 }}>
           <div style={{ textAlign: "center", minWidth: 140 }}><div style={{ borderTop: "1.5px solid #000", marginBottom: 5 }} /><strong>Signature of Owner</strong></div>

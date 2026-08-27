@@ -97,7 +97,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const { stats, properties, recentBookings, recentComplaints, overdueRent, occupancyTrend, revenueTrend } = data;
+  const { stats, properties, recentTenants, recentComplaints, overdueRent, occupancyTrend, revenueTrend } = data;
   const activeProp = selectedProperty ? properties.find((p: any) => p._id === selectedProperty) : properties[0];
 
   return (
@@ -184,18 +184,18 @@ export default function AdminDashboardPage() {
 
       {/* Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Recent Bookings */}
+        {/* Recent Tenants */}
         <div className="card p-5 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-primary" /> Recent Bookings
+              <BookOpen className="w-4 h-4 text-primary" /> Recent Tenants
             </h2>
-            <button onClick={() => navigate('/admin/bookings')} className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5">
+            <button onClick={() => navigate('/admin/tenants')} className="text-xs text-primary font-medium hover:underline flex items-center gap-0.5">
               View all <ChevronRight className="w-3 h-3" />
             </button>
           </div>
-          {recentBookings.length === 0 ? (
-            <p className="text-text-muted text-sm text-center py-6">No bookings yet</p>
+          {!recentTenants || recentTenants.length === 0 ? (
+            <p className="text-text-muted text-sm text-center py-6">No tenants yet</p>
           ) : (
             <div className="overflow-x-auto -mx-1">
               <table className="w-full text-xs">
@@ -207,18 +207,18 @@ export default function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-surface-border">
-                  {recentBookings.map((b: any) => (
-                    <tr key={b._id} className="hover:bg-surface cursor-pointer" onClick={() => navigate('/admin/bookings')}>
-                      <td className="py-2 px-2 font-medium text-text-primary">{b.guestId?.name ?? '—'}</td>
-                      <td className="py-2 px-2 text-text-secondary truncate max-w-[100px]">{b.propertyId?.name ?? '—'}</td>
-                      <td className="py-2 px-2 text-text-muted">{b.bedId?.bedNumber ?? '—'}</td>
+                  {recentTenants?.map((t: any) => (
+                    <tr key={t._id} className="hover:bg-surface cursor-pointer" onClick={() => navigate('/admin/tenants')}>
+                      <td className="py-2 px-2 font-medium text-text-primary">{t.name ?? '—'}</td>
+                      <td className="py-2 px-2 text-text-secondary truncate max-w-[100px]">{t.propertyId?.name ?? '—'}</td>
+                      <td className="py-2 px-2 text-text-muted">{t.bedId?.bedNumber ?? '—'}</td>
                       <td className="py-2 px-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[b.status] ?? 'bg-slate-100 text-slate-600'}`}>
-                          {b.status}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLORS[t.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                          {t.status}
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-text-muted">{new Date(b.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short' })}</td>
-                      <td className="py-2 px-2 font-semibold text-text-primary">₹{(b.monthlyRent ?? 0).toLocaleString('en-IN')}</td>
+                      <td className="py-2 px-2 text-text-muted">{t.admissionDate ? new Date(t.admissionDate).toLocaleDateString('en-IN', { day:'2-digit', month:'short' }) : '—'}</td>
+                      <td className="py-2 px-2 font-semibold text-text-primary">₹{(t.monthlyRent ?? 0).toLocaleString('en-IN')}</td>
                     </tr>
                   ))}
                 </tbody>

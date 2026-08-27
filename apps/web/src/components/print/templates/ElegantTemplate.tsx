@@ -86,11 +86,16 @@ export default function ElegantTemplate({ student, hostel }: PrintData) {
         {/* Lock-in */}
         <div style={{ marginTop:14, padding:"8px 12px", border:`1px solid ${gold}50`, background:"#fdf3dc", fontSize:10, display:"flex", alignItems:"center", gap:20 }}>
           <span style={{ fontWeight:700, color:darkGold }}>Lock-in Period</span>
-          {[["6_MONTHS","6 Months"],["12_MONTHS","12 Months"],["OTHER","Other"]].map(([val,lbl]) => (
-            <label key={val} style={{ display:"flex", alignItems:"center", gap:5, cursor:"default" }}>
-              <span style={{ width:12, height:12, border:`1.5px solid ${gold}`, display:"inline-block", background:student?.stayingPeriod===val?gold:"transparent", flexShrink:0 }} />{lbl}
-            </label>
-          ))}
+          {[["6","6 Months"],["12","12 Months"],["OTHER","Other"]].map(([val,lbl]) => {
+            const sp = String(student?.stayingPeriod || "");
+            const isMatch = val === "OTHER" ? (sp && sp !== "6" && sp !== "12") : sp === val;
+            return (
+              <label key={val} style={{ display:"flex", alignItems:"center", gap:5, cursor:"default" }}>
+                <span style={{ width:12, height:12, border:`1.5px solid ${gold}`, display:"inline-block", background:isMatch?gold:"transparent", flexShrink:0 }} />
+                {lbl} {val === "OTHER" && isMatch ? `(${sp} Months)` : ""}
+              </label>
+            );
+          })}
         </div>
         {/* Divider */}
         <div style={{ textAlign:"center", margin:"20px 0 16px" }}>

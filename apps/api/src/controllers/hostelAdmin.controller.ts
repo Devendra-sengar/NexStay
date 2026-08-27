@@ -81,11 +81,9 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
     const monthlyRevenue = paidRent.reduce((s, r) => s + (r.paidAmount ?? 0), 0);
     const dueRent = unpaidRent.reduce((s, r) => s + Math.max(0, (r.amount ?? 0) - (r.paidAmount ?? 0)), 0);
 
-    // Recent bookings (last 5)
-    const recentBookings = await Booking.find({ tenantId, propertyId: { $in: filteredPropertyIds } })
-      .populate('guestId', 'name email')
+    // Recent tenants (last 5)
+    const recentTenants = await HostelStudent.find({ tenantId, propertyId: { $in: filteredPropertyIds } })
       .populate('propertyId', 'name city')
-      .populate('roomId', 'roomNumber roomType')
       .populate('bedId', 'bedNumber')
       .sort({ createdAt: -1 })
       .limit(5)
@@ -159,7 +157,7 @@ export const getAdminDashboard = async (req: AuthRequest, res: Response): Promis
           const h = allHostels.find(hostel => String(hostel.propertyId) === String(p._id));
           return { _id: p._id, name: p.name, hostelCode: h ? h.hostelCode : null };
         }),
-        recentBookings,
+        recentTenants,
         recentComplaints,
         overdueRent,
         occupancyTrend,

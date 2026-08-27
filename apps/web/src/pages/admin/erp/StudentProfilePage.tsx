@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft, User, FileText, Users, Home, Receipt, MessageSquare,
@@ -11,6 +11,7 @@ import {
   useResetStudentPassword, useUpdateStudentProfile, useVerifyStudentDocument,
   useRelocateTenant, useAdminProperties, useErpRooms, useRoomBeds
 } from '@/lib/adminApi';
+import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -31,7 +32,48 @@ function InfoRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-function DocCard({ label, url, verified, onVerify }: { label: string; url?: string; verified?: boolean; onVerify?: () => void }) {
+function EditableField({ label, type = 'text', value, onChange, isEditing, options }: any) {
+  if (!isEditing) return <InfoRow label={label} value={type === 'date' && value ? new Date(value).toLocaleDateString('en-IN') : value} />;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-semibold text-text-muted uppercase tracking-wide">{label}</span>
+      {options ? (
+        <select className="input-field py-1 px-2 text-sm" value={value || ''} onChange={e => onChange(e.target.value)}>
+          <option value="">Select...</option>
+          {options.map((o: string) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input type={type} className="input-field py-1 px-2 text-sm" value={value || ''} onChange={e => onChange(e.target.value)} />
+      )}
+    </div>
+  );
+}
+
+function DocCard({ label, url, verified, onVerify, isEditing, onChange }: { label: string; url?: string; verified?: boolean; onVerify?: () => void; isEditing?: boolean; onChange?: (url: string) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      toast.error('Only images and PDF accepted'); return;
+    }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Max file size is 5MB'); return; }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await api.post('/upload/image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (onChange) onChange(res.data.url);
+      toast.success('File uploaded successfully');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="card p-4 flex items-start gap-3">
       <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', url ? 'bg-primary/10' : 'bg-surface-input')}>
@@ -46,13 +88,36 @@ function DocCard({ label, url, verified, onVerify }: { label: string; url?: stri
         )}
       </div>
       <div className="flex items-center gap-2">
-        {url && onVerify && !verified && (
-          <button onClick={onVerify} className="text-xs btn-primary py-1 px-2">Verify</button>
-        )}
-        {url && (
-          <span className={cn('badge flex-shrink-0', verified ? 'badge-success' : 'badge-warning')}>
-            {verified ? <><ShieldCheck className="w-3 h-3" /> Verified</> : <><ShieldAlert className="w-3 h-3" /> Pending</>}
-          </span>
+        {isEditing && onChange ? (
+          <>
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              accept="image/*,application/pdf"
+              onChange={(e) => {
+                if (e.target.files?.[0]) handleFile(e.target.files[0]);
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="text-xs btn-secondary py-1 px-2"
+            >
+              {uploading ? 'Uploading...' : url ? 'Change File' : 'Upload File'}
+            </button>
+          </>
+        ) : (
+          <>
+            {url && onVerify && !verified && (
+              <button onClick={onVerify} className="text-xs btn-primary py-1 px-2">Verify</button>
+            )}
+            {url && (
+              <span className={cn('badge flex-shrink-0', verified ? 'badge-success' : 'badge-warning')}>
+                {verified ? <><ShieldCheck className="w-3 h-3" /> Verified</> : <><ShieldAlert className="w-3 h-3" /> Pending</>}
+              </span>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -120,109 +185,7 @@ function ResetPasswordButton({ id }: { id: string }) {
   );
 }
 
-// ─── Edit Tenant Modal ─────────────────────────────────────────────────────────
-function EditTenantModal({ student, onClose }: { student: any; onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    name: student.name || '',
-    phone: student.phone || '',
-    email: student.email || '',
-    registrationAmount: student.registrationAmount || 0,
-    fatherName: student.fatherName || '',
-    motherName: student.motherName || '',
-    dateOfBirth: student.dateOfBirth ? new Date(student.dateOfBirth).toISOString().split('T')[0] : '',
-    bloodGroup: student.bloodGroup || '',
-    maritalStatus: student.maritalStatus || '',
-    education: student.education || '',
-    occupation: student.occupation || '',
-    organization: student.organization || '',
-    permanentAddress: student.permanentAddress || '',
-    vehicleNumber: student.vehicleNumber || '',
-    medicalHistory: student.medicalHistory || '',
-    college: student.college || '',
-    guardianName: student.guardianName || '',
-    guardianPhone: student.guardianPhone || '',
-    guardianAddress: student.guardianAddress || '',
-    fatherOccupation: student.fatherOccupation || '',
-    aadhaarNumber: student.aadhaarNumber || '',
-    fatherContact: student.fatherContact || '',
-    stayingPeriod: student.stayingPeriod || '',
-    monthlyRent: student.monthlyRent || 0,
-    securityDeposit: student.securityDeposit || 0,
-    admissionDate: student.admissionDate ? new Date(student.admissionDate).toISOString().split('T')[0] : '',
-  });
 
-  const update = useUpdateStudentProfile();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await update.mutateAsync({ id: student._id, data: formData });
-      toast.success('Tenant profile updated successfully');
-      onClose();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Update failed');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
-        <div className="flex justify-between items-center p-5 border-b border-surface-border">
-          <h2 className="font-bold text-lg text-text-primary">Edit Tenant Profile</h2>
-          <button onClick={onClose} className="p-2 bg-surface-input hover:bg-surface-border text-text-muted rounded-full transition-colors"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="overflow-y-auto p-5 custom-scrollbar">
-          <form id="edit-tenant-form" onSubmit={handleSubmit} className="space-y-4">
-            <h3 className="font-semibold text-sm text-text-primary border-b pb-1">Basic Info</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="form-label">Name</label><input type="text" className="input-field" value={formData.name} onChange={e => setFormData(f => ({ ...f, name: e.target.value }))} /></div>
-              <div><label className="form-label">Phone</label><input type="text" className="input-field" value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} /></div>
-              <div><label className="form-label">Email</label><input type="email" className="input-field" value={formData.email} onChange={e => setFormData(f => ({ ...f, email: e.target.value }))} /></div>
-              <div><label className="form-label">Registration Amount (₹)</label><input type="number" className="input-field" value={formData.registrationAmount} onChange={e => setFormData(f => ({ ...f, registrationAmount: Number(e.target.value) }))} /></div>
-              <div><label className="form-label">Date of Birth</label><input type="date" className="input-field" value={formData.dateOfBirth} onChange={e => setFormData(f => ({ ...f, dateOfBirth: e.target.value }))} /></div>
-              <div><label className="form-label">Blood Group</label><input type="text" className="input-field" value={formData.bloodGroup} onChange={e => setFormData(f => ({ ...f, bloodGroup: e.target.value }))} /></div>
-            </div>
-
-            <h3 className="font-semibold text-sm text-text-primary border-b pb-1 mt-4">Family Info</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="form-label">Father's Name</label><input type="text" className="input-field" value={formData.fatherName} onChange={e => setFormData(f => ({ ...f, fatherName: e.target.value }))} /></div>
-              <div><label className="form-label">Father's Contact</label><input type="text" className="input-field" value={formData.fatherContact} onChange={e => setFormData(f => ({ ...f, fatherContact: e.target.value }))} /></div>
-              <div><label className="form-label">Mother's Name</label><input type="text" className="input-field" value={formData.motherName} onChange={e => setFormData(f => ({ ...f, motherName: e.target.value }))} /></div>
-              <div><label className="form-label">Father's Occupation</label><input type="text" className="input-field" value={formData.fatherOccupation} onChange={e => setFormData(f => ({ ...f, fatherOccupation: e.target.value }))} /></div>
-              <div><label className="form-label">Guardian Name</label><input type="text" className="input-field" value={formData.guardianName} onChange={e => setFormData(f => ({ ...f, guardianName: e.target.value }))} /></div>
-              <div><label className="form-label">Guardian Phone</label><input type="text" className="input-field" value={formData.guardianPhone} onChange={e => setFormData(f => ({ ...f, guardianPhone: e.target.value }))} /></div>
-            </div>
-
-            <h3 className="font-semibold text-sm text-text-primary border-b pb-1 mt-4">Stay & Financial Details</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="form-label">Admission Date</label><input type="date" className="input-field" value={formData.admissionDate} onChange={e => setFormData(f => ({ ...f, admissionDate: e.target.value }))} /></div>
-              <div><label className="form-label">Staying Period</label><input type="text" className="input-field" value={formData.stayingPeriod} onChange={e => setFormData(f => ({ ...f, stayingPeriod: e.target.value }))} /></div>
-              <div><label className="form-label">Monthly Rent (₹)</label><input type="number" className="input-field" value={formData.monthlyRent} onChange={e => setFormData(f => ({ ...f, monthlyRent: Number(e.target.value) }))} /></div>
-              <div><label className="form-label">Security Deposit (₹)</label><input type="number" className="input-field" value={formData.securityDeposit} onChange={e => setFormData(f => ({ ...f, securityDeposit: Number(e.target.value) }))} /></div>
-            </div>
-
-            <h3 className="font-semibold text-sm text-text-primary border-b pb-1 mt-4">Other Details</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="form-label">College</label><input type="text" className="input-field" value={formData.college} onChange={e => setFormData(f => ({ ...f, college: e.target.value }))} /></div>
-              <div><label className="form-label">Organization</label><input type="text" className="input-field" value={formData.organization} onChange={e => setFormData(f => ({ ...f, organization: e.target.value }))} /></div>
-              <div><label className="form-label">Permanent Address</label><input type="text" className="input-field" value={formData.permanentAddress} onChange={e => setFormData(f => ({ ...f, permanentAddress: e.target.value }))} /></div>
-              <div><label className="form-label">Guardian Address</label><input type="text" className="input-field" value={formData.guardianAddress} onChange={e => setFormData(f => ({ ...f, guardianAddress: e.target.value }))} /></div>
-              <div><label className="form-label">Aadhaar Number</label><input type="text" className="input-field" value={formData.aadhaarNumber} onChange={e => setFormData(f => ({ ...f, aadhaarNumber: e.target.value }))} /></div>
-              <div><label className="form-label">Vehicle Number</label><input type="text" className="input-field" value={formData.vehicleNumber} onChange={e => setFormData(f => ({ ...f, vehicleNumber: e.target.value }))} /></div>
-              <div className="col-span-2"><label className="form-label">Medical History</label><input type="text" className="input-field" value={formData.medicalHistory} onChange={e => setFormData(f => ({ ...f, medicalHistory: e.target.value }))} /></div>
-            </div>
-          </form>
-        </div>
-        <div className="p-5 border-t border-surface-border flex justify-end gap-3 mt-auto">
-          <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-          <button type="submit" form="edit-tenant-form" disabled={update.isPending} className="btn-primary">
-            {update.isPending ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Rent Payment Modal ───────────────────────────────────────────────────────
 function PayRentModal({ record, studentId, onClose }: { record: any; studentId: string; onClose: () => void }) {
@@ -347,23 +310,69 @@ function RelocateTenantModal({ s, onClose }: { s: any; onClose: () => void }) {
 
 // ─── Tab Views ────────────────────────────────────────────────────────────────
 function PersonalTab({ s }: { s: any }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: s.name || '',
+    phone: s.phone || '',
+    email: s.email || '',
+    aadhaarNumber: s.aadhaarNumber || '',
+    organization: s.organization || s.college || '',
+    dateOfBirth: s.dateOfBirth ? new Date(s.dateOfBirth).toISOString().split('T')[0] : '',
+    maritalStatus: s.maritalStatus || '',
+    bloodGroup: s.bloodGroup || '',
+    medicalHistory: s.medicalHistory || '',
+  });
+
+  const update = useUpdateStudentProfile();
+
+  const handleSave = async () => {
+    try {
+      await update.mutateAsync({ id: s._id, data: formData });
+      toast.success('Personal info updated');
+      setIsEditing(false);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Update failed');
+    }
+  };
+
   const initials = s.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
   return (
     <div>
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-primary text-white text-xl font-bold flex items-center justify-center flex-shrink-0">{initials}</div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-primary text-white text-xl font-bold flex items-center justify-center flex-shrink-0">{initials}</div>
+          <div>
+            <h2 className="text-xl font-bold text-text-primary">{s.name}</h2>
+            <p className="text-sm text-text-muted">{s.email}</p>
+          </div>
+        </div>
         <div>
-          <h2 className="text-xl font-bold text-text-primary">{s.name}</h2>
-          <p className="text-sm text-text-muted">{s.email}</p>
+          {!isEditing ? (
+            <button onClick={() => setIsEditing(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+              <Edit className="w-3.5 h-3.5" /> Edit Info
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button onClick={() => setIsEditing(false)} className="btn-secondary text-xs py-1.5 px-3">Cancel</button>
+              <button onClick={handleSave} disabled={update.isPending} className="btn-primary text-xs py-1.5 px-3">
+                {update.isPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <InfoRow label="Phone" value={s.phone} />
-        <InfoRow label="Email" value={s.email} />
-        <InfoRow label="Aadhaar Number" value={s.aadhaarNumber} />
-        <InfoRow label="Organization" value={s.organization || s.college} />
-        <InfoRow label="Date of Birth" value={s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString('en-IN') : undefined} />
-        <InfoRow label="Marital Status" value={s.maritalStatus} />
+        <EditableField label="Name" value={formData.name} onChange={(v: string) => setFormData(f => ({ ...f, name: v }))} isEditing={isEditing} />
+        <EditableField label="Phone" value={formData.phone} onChange={(v: string) => setFormData(f => ({ ...f, phone: v }))} isEditing={isEditing} />
+        <EditableField label="Email" value={formData.email} onChange={(v: string) => setFormData(f => ({ ...f, email: v }))} isEditing={isEditing} />
+        <EditableField label="Aadhaar Number" value={formData.aadhaarNumber} onChange={(v: string) => setFormData(f => ({ ...f, aadhaarNumber: v }))} isEditing={isEditing} />
+        <EditableField label="Organization / College" value={formData.organization} onChange={(v: string) => setFormData(f => ({ ...f, organization: v }))} isEditing={isEditing} />
+        <EditableField label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={(v: string) => setFormData(f => ({ ...f, dateOfBirth: v }))} isEditing={isEditing} />
+        <EditableField label="Marital Status" value={formData.maritalStatus} onChange={(v: string) => setFormData(f => ({ ...f, maritalStatus: v }))} isEditing={isEditing} options={['Single', 'Married', 'Divorced', 'Widowed']} />
+        <EditableField label="Blood Group" value={formData.bloodGroup} onChange={(v: string) => setFormData(f => ({ ...f, bloodGroup: v }))} isEditing={isEditing} options={['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']} />
+        <div className="col-span-full">
+          <EditableField label="Medical History" value={formData.medicalHistory} onChange={(v: string) => setFormData(f => ({ ...f, medicalHistory: v }))} isEditing={isEditing} />
+        </div>
         <InfoRow label="Status" value={s.status} />
       </div>
       <div className="mt-6 border-t border-surface-border pt-6">
@@ -375,6 +384,13 @@ function PersonalTab({ s }: { s: any }) {
 
 function DocumentsTab({ s }: { s: any }) {
   const verifyDoc = useVerifyStudentDocument();
+  const update = useUpdateStudentProfile();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    aadhaarUrl: s.aadhaarUrl || '',
+    studentIdUrl: s.studentIdUrl || '',
+    photoUrl: s.photoUrl || '',
+  });
 
   const handleVerify = async (docType: 'aadhaar' | 'studentId' | 'photo') => {
     try {
@@ -385,71 +401,180 @@ function DocumentsTab({ s }: { s: any }) {
     }
   };
 
+  const handleSave = async () => {
+    try {
+      await update.mutateAsync({ id: s._id, data: formData });
+      toast.success('Documents updated successfully');
+      setIsEditing(false);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Update failed');
+    }
+  };
+
   return (
-    <div className="space-y-3">
-      <DocCard 
-        label="Aadhaar Card" 
-        url={s.aadhaarUrl} 
-        verified={s.isAadhaarVerified} 
-        onVerify={() => handleVerify('aadhaar')} 
-      />
-      <DocCard 
-        label="Tenant ID Card" 
-        url={s.studentIdUrl} 
-        verified={s.isStudentIdVerified} 
-        onVerify={() => handleVerify('studentId')} 
-      />
-      <DocCard 
-        label="Passport Photo" 
-        url={s.photoUrl} 
-        verified={s.isPhotoVerified} 
-        onVerify={() => handleVerify('photo')} 
-      />
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold text-text-primary text-sm">Tenant Documents</h3>
+        {!isEditing ? (
+          <button onClick={() => setIsEditing(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+            <Edit className="w-3.5 h-3.5" /> Edit Links
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsEditing(false)} className="btn-secondary text-xs py-1.5 px-3">Cancel</button>
+            <button onClick={handleSave} disabled={update.isPending} className="btn-primary text-xs py-1.5 px-3">
+              {update.isPending ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {!isEditing ? (
+        <div className="space-y-3">
+          <DocCard label="Aadhaar Card" url={s.aadhaarUrl} verified={s.isAadhaarVerified} onVerify={() => handleVerify('aadhaar')} />
+          <DocCard label="Tenant ID Card" url={s.studentIdUrl} verified={s.isStudentIdVerified} onVerify={() => handleVerify('studentId')} />
+          <DocCard label="Passport Photo" url={s.photoUrl} verified={s.isPhotoVerified} onVerify={() => handleVerify('photo')} />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <DocCard label="Aadhaar Card" url={formData.aadhaarUrl} isEditing={true} onChange={(v: string) => setFormData(f => ({ ...f, aadhaarUrl: v }))} />
+          <DocCard label="Tenant ID Card" url={formData.studentIdUrl} isEditing={true} onChange={(v: string) => setFormData(f => ({ ...f, studentIdUrl: v }))} />
+          <DocCard label="Passport Photo" url={formData.photoUrl} isEditing={true} onChange={(v: string) => setFormData(f => ({ ...f, photoUrl: v }))} />
+        </div>
+      )}
     </div>
   );
 }
 
 function GuardianTab({ s }: { s: any }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    guardianName: s.guardianName || '',
+    guardianPhone: s.guardianPhone || '',
+    guardianAddress: s.guardianAddress || '',
+    fatherName: s.fatherName || '',
+    fatherContact: s.fatherContact || '',
+    motherName: s.motherName || '',
+    fatherOccupation: s.fatherOccupation || '',
+  });
+
+  const update = useUpdateStudentProfile();
+
+  const handleSave = async () => {
+    try {
+      await update.mutateAsync({ id: s._id, data: formData });
+      toast.success('Guardian info updated');
+      setIsEditing(false);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Update failed');
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <InfoRow label="Guardian Name" value={s.guardianName} />
-      <InfoRow label="Guardian Phone" value={s.guardianPhone} />
-      <InfoRow label="Guardian Address" value={s.guardianAddress} />
-      <div className="col-span-full border-t border-surface-border my-2" />
-      <InfoRow label="Father's Name" value={s.fatherName} />
-      <InfoRow label="Father's Contact" value={s.fatherContact} />
-      <InfoRow label="Mother's Name" value={s.motherName} />
-      <InfoRow label="Father's Occupation" value={s.fatherOccupation} />
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold text-text-primary text-sm">Family & Guardian Info</h3>
+        {!isEditing ? (
+          <button onClick={() => setIsEditing(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+            <Edit className="w-3.5 h-3.5" /> Edit Info
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsEditing(false)} className="btn-secondary text-xs py-1.5 px-3">Cancel</button>
+            <button onClick={handleSave} disabled={update.isPending} className="btn-primary text-xs py-1.5 px-3">
+              {update.isPending ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <EditableField label="Guardian Name" value={formData.guardianName} onChange={(v: string) => setFormData(f => ({ ...f, guardianName: v }))} isEditing={isEditing} />
+        <EditableField label="Guardian Phone" value={formData.guardianPhone} onChange={(v: string) => setFormData(f => ({ ...f, guardianPhone: v }))} isEditing={isEditing} />
+        <div className="col-span-full">
+          <EditableField label="Guardian Address" value={formData.guardianAddress} onChange={(v: string) => setFormData(f => ({ ...f, guardianAddress: v }))} isEditing={isEditing} />
+        </div>
+        <div className="col-span-full border-t border-surface-border my-2" />
+        <EditableField label="Father's Name" value={formData.fatherName} onChange={(v: string) => setFormData(f => ({ ...f, fatherName: v }))} isEditing={isEditing} />
+        <EditableField label="Father's Contact" value={formData.fatherContact} onChange={(v: string) => setFormData(f => ({ ...f, fatherContact: v }))} isEditing={isEditing} />
+        <EditableField label="Mother's Name" value={formData.motherName} onChange={(v: string) => setFormData(f => ({ ...f, motherName: v }))} isEditing={isEditing} />
+        <EditableField label="Father's Occupation" value={formData.fatherOccupation} onChange={(v: string) => setFormData(f => ({ ...f, fatherOccupation: v }))} isEditing={isEditing} />
+      </div>
     </div>
   );
 }
 
 function StayTab({ s }: { s: any }) {
   const [showRelocateModal, setShowRelocateModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    admissionDate: s.admissionDate ? new Date(s.admissionDate).toISOString().split('T')[0] : '',
+    stayingPeriod: s.stayingPeriod || '',
+    monthlyRent: s.monthlyRent || 0,
+    securityDeposit: s.securityDeposit || 0,
+    registrationAmount: s.registrationAmount || 0,
+    vehicleNumber: s.vehicleNumber || '',
+  });
+
   const prop = s.propertyId as any;
   const room = s.room;
   const floor = s.floor;
   const bed = s.bedId as any;
+
+  const update = useUpdateStudentProfile();
+
+  const handleSave = async () => {
+    try {
+      await update.mutateAsync({ id: s._id, data: {
+        ...formData,
+        monthlyRent: Number(formData.monthlyRent),
+        securityDeposit: Number(formData.securityDeposit),
+        registrationAmount: Number(formData.registrationAmount)
+      } });
+      toast.success('Stay details updated');
+      setIsEditing(false);
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Update failed');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold text-text-primary text-sm">Accommodation Details</h3>
-        <button onClick={() => setShowRelocateModal(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
-          <Edit className="w-3.5 h-3.5" /> Relocate / Change Bed
-        </button>
+        <div className="flex gap-2">
+          {!isEditing ? (
+            <button onClick={() => setIsEditing(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+              <Edit className="w-3.5 h-3.5" /> Edit Info
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button onClick={() => setIsEditing(false)} className="btn-secondary text-xs py-1.5 px-3">Cancel</button>
+              <button onClick={handleSave} disabled={update.isPending} className="btn-primary text-xs py-1.5 px-3">
+                {update.isPending ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          )}
+          <button onClick={() => setShowRelocateModal(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+            <Edit className="w-3.5 h-3.5" /> Relocate / Change Bed
+          </button>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InfoRow label="Property" value={prop?.name} />
         <InfoRow label="Floor" value={floor?.name} />
         <InfoRow label="Room" value={room?.roomNumber} />
         <InfoRow label="Bed" value={bed?.bedNumber} />
-        <InfoRow label="Move-In Date" value={s.admissionDate ? new Date(s.admissionDate).toLocaleDateString('en-IN') : undefined} />
-        <InfoRow label="Lock-in Period" value={s.stayingPeriod ? `${s.stayingPeriod} Months` : '—'} />
+        
+        <EditableField type="date" label="Move-In Date" value={formData.admissionDate} onChange={(v: string) => setFormData(f => ({ ...f, admissionDate: v }))} isEditing={isEditing} />
+        <EditableField label="Lock-in Period (Months)" value={formData.stayingPeriod} onChange={(v: string) => setFormData(f => ({ ...f, stayingPeriod: v }))} isEditing={isEditing} />
+        
         <InfoRow label="Notice Period Date" value={s.noticePeriodDate ? new Date(s.noticePeriodDate).toLocaleDateString('en-IN') : undefined} />
         <InfoRow label="Expected Exit" value={s.exitDate ? new Date(s.exitDate).toLocaleDateString('en-IN') : 'Active'} />
-        <InfoRow label="Monthly Rent" value={`₹${s.monthlyRent?.toLocaleString('en-IN')}`} />
-        <InfoRow label="Security Deposit" value={`₹${s.securityDeposit?.toLocaleString('en-IN') ?? 0}`} />
-        <InfoRow label="Deposit Status" value="Held" />
+        
+        <EditableField type="number" label="Monthly Rent (₹)" value={formData.monthlyRent} onChange={(v: string) => setFormData(f => ({ ...f, monthlyRent: Number(v) }))} isEditing={isEditing} />
+        <EditableField type="number" label="Security Deposit (₹)" value={formData.securityDeposit} onChange={(v: string) => setFormData(f => ({ ...f, securityDeposit: Number(v) }))} isEditing={isEditing} />
+        <EditableField type="number" label="Registration Amount (₹)" value={formData.registrationAmount} onChange={(v: string) => setFormData(f => ({ ...f, registrationAmount: Number(v) }))} isEditing={isEditing} />
+        <EditableField label="Vehicle Number" value={formData.vehicleNumber} onChange={(v: string) => setFormData(f => ({ ...f, vehicleNumber: v }))} isEditing={isEditing} />
       </div>
       {showRelocateModal && <RelocateTenantModal s={s} onClose={() => setShowRelocateModal(false)} />}
     </div>
@@ -570,12 +695,7 @@ export default function StudentProfilePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="btn-secondary flex items-center gap-2 bg-surface text-text-primary hover:bg-surface-input"
-          >
-            <Edit className="w-4 h-4" />Edit Tenant
-          </button>
+          {/* Edit Tenant button removed as requested, now inline per tab */}
           <button
             onClick={() => navigate(isWarden ? `/warden/print/${student._id}` : `/admin/print-preview/${student._id}`)}
             className="btn-secondary flex items-center gap-2 bg-surface text-text-primary hover:bg-surface-input"

@@ -34,13 +34,6 @@ export default function ReceiptModal({ url, onClose, fileName }: ReceiptModalPro
     setDownloading(true);
     const toastId = toast.loading('Generating PDF...');
     try {
-      const container = document.createElement('div');
-      container.innerHTML = html;
-      // Append to body off-screen to allow CSS computation for html2pdf
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      document.body.appendChild(container);
-
       const html2pdf = (await import('html2pdf.js')).default;
       const opt = {
         margin: 10,
@@ -50,10 +43,8 @@ export default function ReceiptModal({ url, onClose, fileName }: ReceiptModalPro
         jsPDF: { unit: "mm" as const, format: "a4" as const, orientation: "portrait" as const },
       };
       
-      await html2pdf().set(opt).from(container).save();
+      await html2pdf().set(opt).from(html).save();
       
-      // Cleanup
-      document.body.removeChild(container);
       toast.success('Downloaded successfully!', { id: toastId });
     } catch (error) {
       toast.error('Failed to generate PDF', { id: toastId });
