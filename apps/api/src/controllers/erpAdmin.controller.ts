@@ -1362,3 +1362,72 @@ export const verifyStudentDocument = async (req: AuthRequest, res: Response): Pr
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+export const relocateTenant = async (req: AuthRequest, res: Response): Promise<void> => {
+  const mongoose = require('mongoose');
+  const supportsTx = (mongoose.connection.getClient() as any)?.topology?.description?.type !== 'Single';
+  const session = supportsTx ? await mongoose.startSession() : null;
+  if (session) session.startTransaction();
+
+  try {
+    const tenantId = req.user!.tenantId || req.user!.id;
+    const { id } = req.params;
+    const { newPropertyId, newRoomId, newBedId } = req.body;
+
+    if (!newPropertyId || !newRoomId || !newBedId) {
+      if (session) await session.abortTransaction();
+      res.status(400).json({ success: false, message: 'Missing required fields: newPropertyId, newRoomId, newBedId' });
+      return;
+    }
+
+    const HostelStudent = (await import('../models/HostelStudent.model')).HostelStudent;
+    const Bed = (await import('../models/Bed.model')).Bed;
+    const Booking = (await import('../models/Booking.model')).Booking;
+
+    const student = await HostelStudent.findOne({ _id: id, tenantId }).session(session);
+    if (!student) throw new Error('Student not found');
+    if (student.status !== 'ACTIVE') throw new Error('Only active students can be relocated');
+
+    const newBed = await Bed.findOne({ _id: newBedId, roomId: newRoomId, propertyId: newPropertyId, tenantId }).session(session);
+    if (!newBed) throw new Error('Selected bed not found');
+    if (newBed.status !== 'AVAILABLE') throw new Error('Selected bed is not available');
+
+    const oldBedId = student.bedId;
+    if (String(oldBedId) === String(newBedId)) {
+      throw new Error('Tenant is already in this bed');
+    }
+
+    // Free old bed
+    if (oldBedId) {
+      await Bed.updateOne({ _id: oldBedId }, { status: 'AVAILABLE' }, { session });
+    }
+
+    // Occupy new bed
+    newBed.status = 'OCCUPIED';
+    await newBed.save({ session });
+
+    // Update student
+    student.propertyId = newPropertyId;
+    student.bedId = newBedId;
+    await student.save({ session });
+
+    // Update active booking if exists
+    const activeBooking = await Booking.findOne({ guestId: student.guestId, status: 'CHECKED_IN', tenantId }).session(session);
+    if (activeBooking) {
+      activeBooking.propertyId = newPropertyId;
+      activeBooking.roomId = newRoomId;
+      activeBooking.bedId = newBedId;
+      await activeBooking.save({ session });
+    }
+
+    if (session) await session.commitTransaction();
+    if (session) session.endSession();
+
+    res.json({ success: true, message: 'Tenant relocated successfully' });
+  } catch (err: any) {
+    if (session) await session.abortTransaction();
+    if (session) session.endSession();
+    console.error('Relocate Tenant Error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+  }
+};

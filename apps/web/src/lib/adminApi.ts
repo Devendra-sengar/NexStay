@@ -244,6 +244,20 @@ export function useUpdateStudentProfile() {
   });
 }
 
+export function useRelocateTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { newPropertyId: string; newRoomId: string; newBedId: string } }) => {
+      const res = await erp(`/students/${id}/relocate`, { method: 'POST', data });
+      return res.data;
+    },
+    onSuccess: (_d, { id }) => {
+      qc.invalidateQueries({ queryKey: ['erp-students'] });
+      qc.invalidateQueries({ queryKey: ['erp-student', id] });
+    }
+  });
+}
+
 export function useVerifyStudentDocument() {
   const qc = useQueryClient();
   return useMutation({

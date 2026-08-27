@@ -6,7 +6,11 @@ import {
   Upload, Building2, BedDouble, LogOut, CreditCard, CheckCircle2, Clock, Printer, KeyRound, X, Edit
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useErpStudentById, useStudentRent, useRecordRentPayment, useResetStudentPassword, useUpdateStudentProfile, useVerifyStudentDocument } from '@/lib/adminApi';
+import { 
+  useErpStudentById, useStudentRent, useRecordRentPayment, 
+  useResetStudentPassword, useUpdateStudentProfile, useVerifyStudentDocument,
+  useRelocateTenant, useAdminProperties, useErpRooms, useRoomBeds
+} from '@/lib/adminApi';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -263,6 +267,80 @@ function PayRentModal({ record, studentId, onClose }: { record: any; studentId: 
   );
 }
 
+// ─── Relocate Tenant Modal ───────────────────────────────────────────────────
+function RelocateTenantModal({ s, onClose }: { s: any; onClose: () => void }) {
+  const [propertyId, setPropertyId] = useState(s.propertyId?._id || '');
+  const [roomId, setRoomId] = useState(s.room?._id || '');
+  const [bedId, setBedId] = useState(s.bedId?._id || '');
+
+  const { data: propertiesRes } = useAdminProperties();
+  const properties = propertiesRes?.data || [];
+  const { data: rooms } = useErpRooms(propertyId);
+  const { data: beds } = useRoomBeds(roomId);
+
+  const relocate = useRelocateTenant();
+
+  const submit = async () => {
+    if (!propertyId || !roomId || !bedId) return toast.error('Select property, room, and bed');
+    if (String(bedId) === String(s.bedId?._id)) return toast.error('Select a different bed to relocate');
+
+    try {
+      await relocate.mutateAsync({ id: s._id, data: { newPropertyId: propertyId, newRoomId: roomId, newBedId: bedId } });
+      toast.success('Tenant relocated successfully');
+      onClose();
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || 'Failed to relocate tenant');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div className="flex justify-between items-center mb-4 border-b pb-2">
+          <h3 className="font-bold text-lg text-text-primary">Relocate Tenant</h3>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary"><X className="w-5 h-5" /></button>
+        </div>
+        <p className="text-sm text-text-muted mb-4">
+          Move <strong>{s.name}</strong> to a different bed, room, or property.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="form-label">Property</label>
+            <select className="input-field w-full" value={propertyId} onChange={(e) => { setPropertyId(e.target.value); setRoomId(''); setBedId(''); }}>
+              <option value="">Select Property...</option>
+              {properties.map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Room</label>
+            <select className="input-field w-full" value={roomId} onChange={(e) => { setRoomId(e.target.value); setBedId(''); }} disabled={!propertyId || !rooms}>
+              <option value="">Select Room...</option>
+              {rooms?.map((r: any) => <option key={r._id} value={r._id}>Room {r.roomNumber}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="form-label">Bed</label>
+            <select className="input-field w-full" value={bedId} onChange={(e) => setBedId(e.target.value)} disabled={!roomId || !beds}>
+              <option value="">Select Bed...</option>
+              {beds?.filter((b: any) => b.status === 'AVAILABLE' || b._id === s.bedId?._id).map((b: any) => (
+                <option key={b._id} value={b._id}>{b.bedNumber} {b._id === s.bedId?._id ? '(Current)' : ''}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="flex gap-3 mt-6">
+          <button className="btn-secondary flex-1" onClick={onClose}>Cancel</button>
+          <button className="btn-primary flex-1" onClick={submit} disabled={relocate.isPending}>
+            {relocate.isPending ? 'Relocating...' : 'Confirm Relocation'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab Views ────────────────────────────────────────────────────────────────
 function PersonalTab({ s }: { s: any }) {
   const initials = s.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
@@ -343,12 +421,19 @@ function GuardianTab({ s }: { s: any }) {
 }
 
 function StayTab({ s }: { s: any }) {
+  const [showRelocateModal, setShowRelocateModal] = useState(false);
   const prop = s.propertyId as any;
   const room = s.room;
   const floor = s.floor;
   const bed = s.bedId as any;
   return (
     <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold text-text-primary text-sm">Accommodation Details</h3>
+        <button onClick={() => setShowRelocateModal(true)} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+          <Edit className="w-3.5 h-3.5" /> Relocate / Change Bed
+        </button>
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InfoRow label="Property" value={prop?.name} />
         <InfoRow label="Floor" value={floor?.name} />
@@ -362,6 +447,7 @@ function StayTab({ s }: { s: any }) {
         <InfoRow label="Security Deposit" value={`₹${s.securityDeposit?.toLocaleString('en-IN') ?? 0}`} />
         <InfoRow label="Deposit Status" value="Held" />
       </div>
+      {showRelocateModal && <RelocateTenantModal s={s} onClose={() => setShowRelocateModal(false)} />}
     </div>
   );
 }
