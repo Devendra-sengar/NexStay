@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-mongoose.connect('mongodb://localhost:27017/nexstay').then(async () => {
+mongoose.connect('mongodb://localhost:27017/nexstay').then(async () => { 
   const db = mongoose.connection.db;
   
   // Find the last created student
