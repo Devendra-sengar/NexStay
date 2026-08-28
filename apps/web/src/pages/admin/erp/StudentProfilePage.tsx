@@ -657,7 +657,6 @@ export default function StudentProfilePage() {
   const { pathname } = useLocation();
   const isWarden = pathname.startsWith('/warden');
   const [activeTab, setActiveTab] = useState('personal');
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const { data: student, isLoading } = useErpStudentById(id);
 
@@ -741,7 +740,6 @@ export default function StudentProfilePage() {
           {activeTab === 'complaints' && <ComplaintsTab complaints={student.complaints ?? []} />}
         </div>
       </div>
-      {isEditModalOpen && <EditTenantModal student={student} onClose={() => setIsEditModalOpen(false)} />}
     </div>
   );
 }
