@@ -496,8 +496,10 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
     let finalPropertyId = propertyId;
 
     // ── Look up the owner's hostel so we can link it on the student/user ──────
+    // BUG FIX: Don't just lookup by ownerId (which gets the FIRST property they created).
+    // Lookup by the SPECIFIC propertyId this student is being added to!
     const ownerHostel = await (await import('../models/Hostel.model')).Hostel
-      .findOne({ ownerId: new mongoose.Types.ObjectId(tenantId) })
+      .findOne({ propertyId: new mongoose.Types.ObjectId(finalPropertyId) })
       .select('_id hostelCode name')
       .lean();
     const ownerHostelId = req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER' ? req.user.hostelId : (ownerHostel?._id ?? null);

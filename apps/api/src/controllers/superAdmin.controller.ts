@@ -155,7 +155,14 @@ export const getAllProperties = async (req: AuthRequest, res: Response): Promise
       Property.find(filter).populate('tenantId', 'name email businessName ownerVerificationStatus').sort({ createdAt: -1 }).skip((p - 1) * lim).limit(lim).lean(),
       Property.countDocuments(filter),
     ]);
-    res.json({ success: true, data: props, total, hasNextPage: p * lim < total });
+
+    const enriched = await Promise.all(props.map(async (prop) => {
+      const { Hostel } = await import('../models/Hostel.model');
+      const hostel = await Hostel.findOne({ propertyId: prop._id }).select('hostelCode').lean();
+      return { ...prop, hostelCode: hostel?.hostelCode || null };
+    }));
+
+    res.json({ success: true, data: enriched, total, hasNextPage: p * lim < total });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
 
@@ -183,6 +190,29 @@ export const approveProperty = async (req: AuthRequest, res: Response): Promise<
     }
 
     await prop.save();
+
+    // Check if Hostel already exists for this property, if not, create it
+    const { Hostel } = await import('../models/Hostel.model');
+    const existingHostel = await Hostel.findOne({ propertyId: prop._id });
+    if (!existingHostel) {
+      const { Counter } = await import('../models/Counter.model');
+      let counter = await Counter.findByIdAndUpdate('hostelCode', { $inc: { seq: 1 } }, { new: true });
+      if (!counter) {
+        counter = await Counter.create({ _id: 'hostelCode', seq: 1 });
+      }
+      const hostelCode = `NST-${String(counter.seq).padStart(3, '0')}`;
+      
+      await Hostel.create({
+        hostelCode,
+        name: prop.name,
+        gender: prop.gender,
+        ownerId: prop.tenantId,
+        propertyId: prop._id,
+        isActive: true,
+        address: { city: prop.city, state: prop.state, street: prop.address, pincode: prop.pincode },
+        messEnabled: prop.foodIncluded,
+      });
+    }
     notify({
       userId: prop.tenantId.toString(),
       type: 'PROPERTY_APPROVED',

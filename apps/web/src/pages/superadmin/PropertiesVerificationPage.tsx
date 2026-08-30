@@ -218,10 +218,15 @@ export default function SuperPropertiesPage() {
                 return (
                   <tr key={p._id} className="hover:bg-surface-input/40">
                     <td className="py-2.5 px-4 border-b border-surface-border text-sm font-medium">
-                      <div className="flex items-center gap-2">
-                        {p.name}
-                        {isNew(p.createdAt) && tab === 'PENDING' && (
-                          <span className="badge badge-info text-[10px]">NEW</span>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          {p.name}
+                          {isNew(p.createdAt) && tab === 'PENDING' && (
+                            <span className="badge badge-info text-[10px]">NEW</span>
+                          )}
+                        </div>
+                        {p.hostelCode && (
+                          <span className="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded w-fit">{p.hostelCode}</span>
                         )}
                       </div>
                     </td>

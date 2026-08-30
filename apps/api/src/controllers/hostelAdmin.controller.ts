@@ -197,7 +197,7 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
       const roomIds = rooms.map(r => r._id);
       const { start: mStart } = currentMonthRange();
 
-      const [totalBeds, occupiedBeds, monthRent] = await Promise.all([
+      const [totalBeds, occupiedBeds, monthRent, hostel] = await Promise.all([
         Bed.countDocuments({ roomId: { $in: roomIds } }),
         Bed.countDocuments({ roomId: { $in: roomIds }, status: { $in: ['OCCUPIED', 'RESERVED'] } }),
         RentRecord.aggregate([
@@ -211,6 +211,7 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
           },
           { $group: { _id: null, total: { $sum: '$paidAmount' } } },
         ]),
+        (await import('../models/Hostel.model')).Hostel.findOne({ propertyId: p._id }).select('hostelCode').lean(),
       ]);
       return {
         ...p,
@@ -219,6 +220,7 @@ export const getAdminProperties = async (req: AuthRequest, res: Response): Promi
         occupiedBeds,
         occupancyPct: totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0,
         monthlyRevenue: monthRent[0]?.total ?? 0,
+        hostelCode: hostel?.hostelCode || null,
       };
     }));
 

@@ -92,6 +92,9 @@ function PropertyCard({ property, onEdit, onDelete, onTogglePause, onToggleMenu,
       {/* Content */}
       <div className="p-4">
         <h3 className="font-bold text-text-primary text-sm truncate mb-0.5">{property.name}</h3>
+        {property.hostelCode && (
+          <p className="text-xs font-mono text-indigo-600 bg-indigo-50 inline-block px-1.5 py-0.5 rounded mb-1">{property.hostelCode}</p>
+        )}
         <p className="text-xs text-text-muted mb-3">{property.city}, {property.state}</p>
 
         {/* Stats */}
