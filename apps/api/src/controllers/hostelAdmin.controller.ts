@@ -23,7 +23,7 @@ function currentMonthRange() {
   return { start, end };
 }
 
-async function getWardenPropertyId(req: AuthRequest, tenantId: string): Promise<string | null> {
+export async function getWardenPropertyId(req: AuthRequest, tenantId: string): Promise<string | null> {
   if (req.user?.role === 'WARDEN' || req.user?.role === 'MESS_MANAGER') {
     if (req.user.hostelId) {
       const { Hostel } = await import('../models/Hostel.model');
@@ -544,7 +544,7 @@ export const updateMyHostelSettings = async (req: AuthRequest, res: Response): P
     const { id } = req.params;
     
     // Only allow updating printTemplate and printLogoUrl for now
-    const { printTemplate, printLogoUrl, isComplaintFeatureEnabled, allowCustomPaymentAmount } = req.body;
+    const { printTemplate, printLogoUrl, isComplaintFeatureEnabled, allowCustomPaymentAmount, showRentInBedPicker } = req.body;
 
     const hostel = await Hostel.findOne({ _id: id, ownerId });
     if (!hostel) {
@@ -556,6 +556,7 @@ export const updateMyHostelSettings = async (req: AuthRequest, res: Response): P
     if (printLogoUrl !== undefined) hostel.printLogoUrl = printLogoUrl;
     if (isComplaintFeatureEnabled !== undefined) hostel.isComplaintFeatureEnabled = isComplaintFeatureEnabled;
     if (allowCustomPaymentAmount !== undefined) hostel.allowCustomPaymentAmount = allowCustomPaymentAmount;
+    if (showRentInBedPicker !== undefined) hostel.showRentInBedPicker = showRentInBedPicker;
 
     await hostel.save();
 
@@ -563,6 +564,7 @@ export const updateMyHostelSettings = async (req: AuthRequest, res: Response): P
     const propertyUpdates: any = {};
     if (isComplaintFeatureEnabled !== undefined) propertyUpdates.isComplaintFeatureEnabled = isComplaintFeatureEnabled;
     if (allowCustomPaymentAmount !== undefined) propertyUpdates.allowCustomPaymentAmount = allowCustomPaymentAmount;
+    if (showRentInBedPicker !== undefined) propertyUpdates.showRentInBedPicker = showRentInBedPicker;
 
     if (Object.keys(propertyUpdates).length > 0) {
       await Property.updateMany({ tenantId: ownerId }, { $set: propertyUpdates });

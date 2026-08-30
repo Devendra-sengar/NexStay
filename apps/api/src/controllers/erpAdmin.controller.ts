@@ -17,6 +17,7 @@ import { PaymentTransaction } from '../models/PaymentTransaction.model';
 import { LedgerEntry } from '../models/LedgerEntry.model';
 import { AuditLog } from '../models/AuditLog.model';
 import { notify } from '../services/notification.service';
+import { getWardenPropertyId } from './hostelAdmin.controller';
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -255,12 +256,27 @@ export const deleteRoom = async (req: AuthRequest, res: Response): Promise<void>
 export const getErpStudents = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tenantId = req.user!.tenantId || req.user!.id;
-    const { propertyId, status, search, page = '1', limit = '20' } = req.query as Record<string, string>;
+    const { propertyId, status, search, page = '1', limit = '20', sort = 'newest' } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, parseInt(limit));
 
+    let sortObj: any = { createdAt: -1 };
+    if (sort === 'oldest') sortObj = { createdAt: 1 };
+    else if (sort === 'name_asc') sortObj = { name: 1 };
+    else if (sort === 'name_desc') sortObj = { name: -1 };
+    else if (sort === 'rent_high') sortObj = { monthlyRent: -1 };
+    else if (sort === 'rent_low') sortObj = { monthlyRent: 1 };
+
     const filter: any = { tenantId };
-    if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    
+    // If a warden is logged in, restrict to their assigned property
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) {
+      filter.propertyId = wardenPropertyId;
+    } else if (propertyId) {
+      filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    }
+
     if (status && status !== 'ALL') filter.status = status;
     if (search) filter.$or = [{ name: { $regex: search, $options: 'i' } }, { phone: { $regex: search, $options: 'i' } }];
 
@@ -268,7 +284,7 @@ export const getErpStudents = async (req: AuthRequest, res: Response): Promise<v
       HostelStudent.find(filter)
         .populate('propertyId', 'name')
         .populate('bedId', 'bedNumber roomId')
-        .sort({ createdAt: -1 })
+        .sort(sortObj)
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .lean(),
@@ -293,7 +309,14 @@ export const getErpStudents = async (req: AuthRequest, res: Response): Promise<v
 export const getErpStudentById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tenantId = req.user!.tenantId || req.user!.id;
-    const student = await HostelStudent.findOne({ _id: req.params.id, tenantId })
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    
+    const filter: any = { _id: req.params.id, tenantId };
+    if (wardenPropertyId) {
+      filter.propertyId = wardenPropertyId;
+    }
+
+    const student = await HostelStudent.findOne(filter)
       .populate('propertyId', 'name city address')
       .populate('bedId', 'bedNumber roomId')
       .lean();
@@ -493,6 +516,17 @@ export const processCheckIn = async (req: AuthRequest, res: Response): Promise<v
         res.status(400).json({ success: false, message: 'name, phone, email, propertyId, bedId required for walk-in' });
         return;
       }
+    }
+
+    const Property = (await import('../models/Property.model')).Property;
+    const prop = await Property.findById(finalPropertyId).lean();
+    if (prop && prop.verificationStatus !== 'APPROVED') {
+      if (session) await session.abortTransaction();
+      res.status(400).json({ success: false, message: 'Property is not approved yet. Cannot check-in tenants.' });
+      return;
+    }
+
+    if (!bookingId) {
 
       // ── Duplicate check: one phone → one active student per property (this hostel owner) ──
       const existingStudent = await HostelStudent.findOne({
@@ -972,6 +1006,9 @@ export const bulkCreateStudents = async (req: AuthRequest, res: Response): Promi
       return undefined;
     };
 
+    const Property = (await import('../models/Property.model')).Property;
+    const propertyCache = new Map();
+
     for (const student of students) {
       const {
         name, phone, email, propertyId, admissionDate,
@@ -985,6 +1022,15 @@ export const bulkCreateStudents = async (req: AuthRequest, res: Response): Promi
       try {
         if (!name || !phone || !email || !propertyId) {
           throw new Error('Missing required fields (name, phone, email, propertyId)');
+        }
+
+        if (!propertyCache.has(propertyId)) {
+          const prop = await Property.findById(propertyId).lean();
+          propertyCache.set(propertyId, prop);
+        }
+        const prop = propertyCache.get(propertyId);
+        if (prop && prop.verificationStatus !== 'APPROVED') {
+          throw new Error('Property is not approved yet');
         }
 
         const existingStudent = await HostelStudent.findOne({
@@ -1099,6 +1145,12 @@ export const finalizeDraft = async (req: AuthRequest, res: Response): Promise<vo
     const student = await HostelStudent.findOne({ _id: req.params.id, tenantId }).session(session);
     if (!student) throw new Error('Student not found');
     if (student.status !== 'DRAFT') throw new Error('Student is not in draft state');
+
+    const Property = (await import('../models/Property.model')).Property;
+    const prop = await Property.findById(student.propertyId).lean();
+    if (prop && prop.verificationStatus !== 'APPROVED') {
+      throw new Error('Property is not approved yet. Cannot finalize draft.');
+    }
 
     const {
       roomId, bedId,

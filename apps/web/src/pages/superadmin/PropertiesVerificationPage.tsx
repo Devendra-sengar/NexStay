@@ -204,7 +204,7 @@ export default function SuperPropertiesPage() {
         <input className="input-field pl-9 w-full max-w-sm" placeholder="Search by name or city…" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-10 rounded-lg" />)}</div>
         ) : (

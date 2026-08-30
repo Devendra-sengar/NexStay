@@ -258,7 +258,7 @@ export default function MarketplaceBookingsPage() {
         </div>
       ) : (
         <>
-          <div className="card overflow-hidden">
+          <div className="card overflow-x-auto">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

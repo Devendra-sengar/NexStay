@@ -87,8 +87,8 @@ body {
 
   /* Data table */
   .data-table { @apply w-full text-[13px]; }
-  .data-table th { @apply text-left text-text-muted font-semibold py-2.5 px-4 border-b border-surface-border bg-slate-50 uppercase tracking-wider text-[11px]; }
-  .data-table td { @apply py-2.5 px-4 border-b border-surface-border text-text-primary; }
+  .data-table th { @apply text-left text-text-muted font-semibold py-2.5 px-4 border-b border-surface-border bg-slate-50 uppercase tracking-wider text-[11px] whitespace-nowrap; }
+  .data-table td { @apply py-2.5 px-4 border-b border-surface-border text-text-primary whitespace-nowrap; }
   .data-table tr:hover td { background-color: rgba(241,245,249,0.7); }
 
   /* Form label */

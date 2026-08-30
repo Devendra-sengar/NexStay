@@ -155,7 +155,7 @@ export default function ExpensesPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Table */}
-        <div className="lg:col-span-2 card overflow-hidden">
+        <div className="lg:col-span-2 card overflow-x-auto">
           <div className="overflow-x-auto">
             {isLoading ? (
               <div className="p-8 space-y-3">{[1,2,3].map(i=><div key={i} className="skeleton h-12 rounded-lg"/>)}</div>

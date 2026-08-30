@@ -41,7 +41,7 @@ function PropertyCard({ property, onEdit, onDelete, onTogglePause, onToggleMenu,
   const coverImage = property.images?.[0];
 
   return (
-    <div className="card overflow-hidden hover:shadow-md transition-shadow">
+    <div className="card overflow-x-auto hover:shadow-md transition-shadow">
       {/* Cover */}
       <div className="relative h-40 bg-slate-100">
         {coverImage ? (

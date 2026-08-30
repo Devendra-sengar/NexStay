@@ -21,6 +21,7 @@ export default function StudentsPage() {
   const [status, setStatus] = useState('ACTIVE');
   const [propertyId, setPropertyId] = useState('');
   const [page, setPage] = useState(1);
+  const [sort, setSort] = useState('newest');
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [studentToFinalize, setStudentToFinalize] = useState<any>(null);
   const [selectedDrafts, setSelectedDrafts] = useState<string[]>([]);
@@ -33,6 +34,7 @@ export default function StudentsPage() {
     status: status === 'ALL' ? undefined : status,
     propertyId: propertyId || undefined,
     page,
+    sort,
   });
 
   const students = data?.data ?? [];
@@ -100,6 +102,20 @@ export default function StudentsPage() {
           <option value="">All Properties</option>
           {properties.map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}
         </select>
+        
+        <select
+          className="input-field w-36"
+          value={sort}
+          onChange={e => { setSort(e.target.value); setPage(1); }}
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="name_asc">Name (A-Z)</option>
+          <option value="name_desc">Name (Z-A)</option>
+          <option value="rent_high">Rent (High-Low)</option>
+          <option value="rent_low">Rent (Low-High)</option>
+        </select>
+
         <div className="flex rounded-lg border border-surface-border overflow-hidden">
           {STATUSES.map(s => (
             <button
@@ -115,7 +131,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-8 space-y-3">

@@ -111,7 +111,7 @@ function RevenueTab({ propId }: { propId: string }) {
           </ResponsiveContainer>
         </div>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <table className="data-table">
           <thead><tr>{['Month','Due','Collected','Pending','Expenses','Net Surplus'].map(h=><th key={h}>{h}</th>)}</tr></thead>
           <tbody>
@@ -165,7 +165,7 @@ function CollectionTab({ propId, month, setMonth }: { propId: string; month: str
           </div>
         </div>
       )}
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <table className="data-table">
           <thead><tr>{['Tenant','Phone','Room','Due','Paid','Balance','Status'].map(h=><th key={h}>{h}</th>)}</tr></thead>
           <tbody>
@@ -228,7 +228,7 @@ function ExpensesTab({ propId, month, setMonth }: { propId: string; month: strin
           </div>
         )}
         {!compare && (
-          <div className="lg:col-span-2 card overflow-hidden">
+          <div className="lg:col-span-2 card overflow-x-auto">
             <table className="data-table">
               <thead><tr>{['Category','Amount','% of Total','vs Last Month'].map(h=><th key={h}>{h}</th>)}</tr></thead>
               <tbody>
@@ -281,7 +281,7 @@ function ProfitTab({ propId }: { propId: string }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <table className="data-table">
           <thead><tr>{['Month','Revenue','Expenses','Net','Status'].map(h=><th key={h}>{h}</th>)}</tr></thead>
           <tbody>

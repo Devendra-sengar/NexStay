@@ -59,7 +59,7 @@ export default function SuperReportsPage() {
       </div>
 
       {/* Data table */}
-      <div className="card overflow-hidden mb-6">
+      <div className="card overflow-x-auto mb-6">
         {isLoading ? (
           <div className="p-6 space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-8 rounded" />)}</div>
         ) : (

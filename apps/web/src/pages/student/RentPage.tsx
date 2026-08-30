@@ -344,7 +344,7 @@ export default function StudentRentPage() {
       {records.length === 0 ? (
         <div className="card p-10 text-center text-text-muted text-sm">No rent records found</div>
       ) : (
-        <div className="card overflow-hidden mb-8">
+        <div className="card overflow-x-auto mb-8">
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
@@ -424,7 +424,7 @@ export default function StudentRentPage() {
       {txsData?.data?.length === 0 ? (
         <div className="card p-10 text-center text-text-muted text-sm mb-10">No transactions found.</div>
       ) : (
-        <div className="card overflow-hidden mb-10">
+        <div className="card overflow-x-auto mb-10">
           <div className="overflow-x-auto">
             <table className="data-table">
               <thead>

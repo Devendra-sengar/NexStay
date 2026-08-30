@@ -89,7 +89,7 @@ export default function InventoryPage() {
         </select>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1,2,3].map(i=><div key={i} className="skeleton h-12 rounded-lg"/>)}</div>
         ) : items.length === 0 ? (

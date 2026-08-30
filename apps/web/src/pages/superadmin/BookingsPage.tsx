@@ -54,7 +54,7 @@ export default function SuperBookingsPage() {
         )}
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1,2,3,4].map(i => <div key={i} className="skeleton h-10 rounded-lg" />)}</div>
         ) : (

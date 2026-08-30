@@ -12,6 +12,7 @@ export default function HostelSettingsPage() {
   const [logoUrl, setLogoUrl] = useState<string>('');
   const [isComplaintFeatureEnabled, setIsComplaintFeatureEnabled] = useState<boolean>(true);
   const [allowCustomPaymentAmount, setAllowCustomPaymentAmount] = useState<boolean>(true);
+  const [showRentInBedPicker, setShowRentInBedPicker] = useState<boolean>(false);
 
   useEffect(() => {
     if (hostels && hostels.length > 0 && !selectedHostelId) {
@@ -25,6 +26,7 @@ export default function HostelSettingsPage() {
       setLogoUrl(h?.printLogoUrl || '');
       setIsComplaintFeatureEnabled(h?.isComplaintFeatureEnabled ?? true);
       setAllowCustomPaymentAmount(h?.allowCustomPaymentAmount ?? true);
+      setShowRentInBedPicker(h?.showRentInBedPicker ?? false);
     }
   }, [selectedHostelId, hostels]);
 
@@ -33,7 +35,7 @@ export default function HostelSettingsPage() {
     try {
       await updateSettings.mutateAsync({
         id: selectedHostelId,
-        data: { printLogoUrl: logoUrl, isComplaintFeatureEnabled, allowCustomPaymentAmount }
+        data: { printLogoUrl: logoUrl, isComplaintFeatureEnabled, allowCustomPaymentAmount, showRentInBedPicker }
       });
       toast.success('Hostel settings updated successfully');
     } catch (err: any) {
@@ -153,6 +155,14 @@ export default function HostelSettingsPage() {
               <div>
                 <span className="text-sm font-semibold text-text-primary block">Allow Custom Rent Amount Payment</span>
                 <span className="text-xs text-text-muted">Allow tenants to edit the payable amount when uploading rent payment proof online</span>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" className="w-4 h-4 text-primary rounded border-surface-border focus:ring-primary"
+                checked={showRentInBedPicker} onChange={e => setShowRentInBedPicker(e.target.checked)} />
+              <div>
+                <span className="text-sm font-semibold text-text-primary block">Show Rent in Bed Selection</span>
+                <span className="text-xs text-text-muted">Display bed prices in the bed selection screen during tenant check-in</span>
               </div>
             </label>
           </div>

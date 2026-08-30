@@ -61,7 +61,7 @@ export default function OwnersVerificationPage() {
         <p className="text-sm text-text-secondary mt-0.5">Pending business verification requests from hostel owners</p>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-12 rounded-lg" />)}</div>
         ) : owners.length === 0 ? (

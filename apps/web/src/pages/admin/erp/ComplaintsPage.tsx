@@ -242,12 +242,12 @@ export default function AdminComplaintsPage() {
 
   return (
     <div className="page-container">
-      <div className="mb-6 flex justify-between items-start">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Complaints</h1>
           <p className="text-sm text-text-secondary mt-0.5">Manage and resolve student & guest complaints</p>
         </div>
-        <button onClick={() => setIsRaiseModalOpen(true)} className="btn-primary py-2 px-4">
+        <button onClick={() => setIsRaiseModalOpen(true)} className="btn-primary py-2 px-4 shrink-0 w-full sm:w-auto">
           <MessageSquare className="w-4 h-4 mr-2" />
           Raise Complaint
         </button>
@@ -255,14 +255,14 @@ export default function AdminComplaintsPage() {
 
       {/* Filters */}
       <div className="card p-4 mb-5 flex flex-wrap gap-3 items-center">
-        <select className="input-field w-44" value={propId} onChange={e => { setPropId(e.target.value); setPage(1); }}><option value="">All Properties</option>{properties.map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}</select>
-        <select className="input-field w-36" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>{CATEGORIES.map(c => <option key={c} value={c}>{c === 'ALL' ? 'All Categories' : `${CAT_ICONS[c]} ${c}`}</option>)}</select>
-        <div className="flex rounded-lg border border-surface-border overflow-hidden">
-          {STATUS_OPTS.map(s => <button key={s} onClick={() => { setStatus(s); setPage(1); }} className={cn('px-2.5 py-2 text-xs font-medium', status === s ? 'bg-primary text-white' : 'bg-white text-text-secondary hover:bg-surface-input')}>{s.replace('_', ' ')}</button>)}
+        <select className="input-field flex-1 min-w-[130px] sm:w-44 sm:flex-none" value={propId} onChange={e => { setPropId(e.target.value); setPage(1); }}><option value="">All Properties</option>{properties.map((p: any) => <option key={p._id} value={p._id}>{p.name}</option>)}</select>
+        <select className="input-field flex-1 min-w-[130px] sm:w-36 sm:flex-none" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>{CATEGORIES.map(c => <option key={c} value={c}>{c === 'ALL' ? 'All Categories' : `${CAT_ICONS[c]} ${c}`}</option>)}</select>
+        <div className="flex rounded-lg border border-surface-border overflow-hidden w-full sm:w-auto">
+          {STATUS_OPTS.map(s => <button key={s} onClick={() => { setStatus(s); setPage(1); }} className={cn('flex-1 sm:flex-none px-2.5 py-2 text-xs font-medium', status === s ? 'bg-primary text-white' : 'bg-white text-text-secondary hover:bg-surface-input')}>{s.replace('_', ' ')}</button>)}
         </div>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1, 2, 3].map(i => <div key={i} className="skeleton h-12 rounded-lg" />)}</div>
         ) : complaints.length === 0 ? (

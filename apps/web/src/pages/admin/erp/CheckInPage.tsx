@@ -153,6 +153,7 @@ function BedPicker({ value, onChange }: { value: string; onChange: (bedId: strin
   const { data: beds } = useRoomBeds(selRoom);
 
   const currentFloor = floors?.[floorIdx];
+  const selectedProperty = properties.find((p: any) => p._id === propId);
 
   return (
     <div className="space-y-4">
@@ -205,12 +206,15 @@ function BedPicker({ value, onChange }: { value: string; onChange: (bedId: strin
                     <button key={bed._id}
                       onClick={() => bed.status === 'AVAILABLE' && onChange(bed._id, propId, bed.price)}
                       disabled={bed.status !== 'AVAILABLE'}
-                      className={cn('px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all',
+                      className={cn('px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all flex flex-col items-center justify-center',
                         value === bed._id ? 'bg-primary text-white border-primary' :
                         bed.status === 'AVAILABLE' ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100' :
                         bed.status === 'OCCUPIED' ? 'bg-red-50 border-red-200 text-red-400 cursor-not-allowed' :
                         'bg-amber-50 border-amber-200 text-amber-400 cursor-not-allowed')}>
-                      {bed.bedNumber} ({bed.status})
+                      <span>{bed.bedNumber} ({bed.status})</span>
+                      {selectedProperty?.showRentInBedPicker && bed.price > 0 && (
+                        <span className="text-[10px] font-normal opacity-80 mt-0.5">₹{bed.price}/mo</span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -562,11 +566,11 @@ export default function CheckInPage() {
         {/* ── WALK-IN FLOW ── */}
         {!isBookingFlow && step === 0 && (
           <div className="space-y-3">
-            <h2 className="font-semibold text-text-primary mb-3">Student Information</h2>
+            <h2 className="font-semibold text-text-primary mb-3">Tenant Information</h2>
             {([
               ['name', 'Name *', 'text'],
               ['email', 'Email *', 'email'],
-              ['college', 'College', 'text'],
+              ['college', 'College / Organization', 'text'],
               ['guardianName', 'Guardian Name', 'text'],
             ] as [string, string, string][]).map(([field, lbl, type]) => (
               <div key={field}>
@@ -657,7 +661,6 @@ export default function CheckInPage() {
                   ['aadhaarNumber', 'Aadhaar Card No.', 'text'],
                   ['education', 'Education', 'text'],
                   ['occupation', 'Occupation', 'text'],
-                  ['organization', 'Organization', 'text'],
                   ['vehicleNumber', 'Vehicle No.', 'text'],
                 ] as [string, string, string][]).map(([field, lbl, type]) => (
                   <div key={field}>
@@ -736,7 +739,7 @@ export default function CheckInPage() {
               setSelectedBedId(bid); 
               setSelectedPropertyId(pid); 
               if (price) {
-                setStayDetails(s => ({ ...s, monthlyRent: price }));
+                setStayDetails(s => ({ ...s, monthlyRent: price, initialRentAmount: price }));
               }
             }} />
             {selectedBedId ? (

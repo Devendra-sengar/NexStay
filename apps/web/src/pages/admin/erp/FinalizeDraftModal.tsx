@@ -211,12 +211,8 @@ export function FinalizeDraftModal({ student, onClose }: FinalizeDraftModalProps
                 <input type="text" name="occupation" value={formData.occupation} onChange={handleChange} className="input-field" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-secondary">Company / Organization</label>
+                <label className="text-sm font-medium text-text-secondary">College / Organization</label>
                 <input type="text" name="organization" value={formData.organization} onChange={handleChange} className="input-field" />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text-secondary">College Name</label>
-                <input type="text" name="college" value={formData.college} onChange={handleChange} className="input-field" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-text-secondary">Vehicle Number</label>

@@ -736,11 +736,11 @@ export default function RentFeesPage() {
 
       {/* Table & Ledger */}
       {tab === 'TRANSACTIONS' ? (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <TransactionsLedger rows={txRows} isLoading={txsLoading} onReview={(tx) => setModal({ type: 'tx-proof', record: tx })} />
         </div>
       ) : (
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-8 space-y-3">{[1,2,3].map(i=><div key={i} className="skeleton h-12 rounded-lg"/>)}</div>

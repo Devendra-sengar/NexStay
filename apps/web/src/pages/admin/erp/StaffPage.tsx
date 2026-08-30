@@ -200,7 +200,7 @@ export default function StaffPage() {
         </div>
       </div>
 
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1,2,3].map(i=><div key={i} className="skeleton h-14 rounded-lg"/>)}</div>
         ) : members.length === 0 ? (

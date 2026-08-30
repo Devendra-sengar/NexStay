@@ -72,7 +72,7 @@ function GuestsTab() {
           <option value="SUSPENDED">Suspended</option>
         </select>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-10 rounded-lg" />)}</div>
         ) : (
@@ -157,7 +157,7 @@ function OwnersTab() {
           <option value="REJECTED">Rejected</option>
         </select>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {isLoading ? (
           <div className="p-8 space-y-3">{[1,2,3].map(i => <div key={i} className="skeleton h-10 rounded-lg" />)}</div>
         ) : (

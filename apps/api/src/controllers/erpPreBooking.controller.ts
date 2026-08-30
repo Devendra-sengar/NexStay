@@ -30,6 +30,13 @@ export const createPreBooking = async (req: AuthRequest, res: Response): Promise
       medicalHistory, stayingPeriod
     } = req.body;
 
+    const Property = (await import('../models/Property.model')).Property;
+    const prop = await Property.findById(finalPropertyId).lean();
+    if (prop && prop.verificationStatus !== 'APPROVED') {
+      res.status(400).json({ success: false, message: 'Property is not approved yet. Cannot create future bookings.' });
+      return;
+    }
+
     const newBooking = new ErpPreBooking({
       tenantId,
       hostelId: hostelId || null,

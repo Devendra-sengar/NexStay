@@ -19,6 +19,7 @@ export interface IPropertyDoc extends Document {
   foodIncluded: boolean;
   isComplaintFeatureEnabled: boolean;
   allowCustomPaymentAmount: boolean;
+  showRentInBedPicker: boolean;
   images: string[];
   videoUrl?: string;
   rentStartingFrom: number;
@@ -62,6 +63,7 @@ const PropertySchema = new Schema<IPropertyDoc>(
     foodIncluded: { type: Boolean, default: false },
     isComplaintFeatureEnabled: { type: Boolean, default: true },
     allowCustomPaymentAmount: { type: Boolean, default: true },
+    showRentInBedPicker: { type: Boolean, default: false },
     images: [{ type: String }],
     videoUrl: { type: String, default: '' },
     rentStartingFrom: { type: Number, default: 0 },

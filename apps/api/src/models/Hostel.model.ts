@@ -17,6 +17,7 @@ export interface IHostelDoc extends Document {
   propertyId?: mongoose.Types.ObjectId | null;
   isComplaintFeatureEnabled: boolean;
   allowCustomPaymentAmount: boolean;
+  showRentInBedPicker: boolean;
   messEnabled: boolean;
   messTimings: {
     breakfast: string;
@@ -65,6 +66,7 @@ const HostelSchema = new Schema<IHostelDoc>(
     },
     isComplaintFeatureEnabled: { type: Boolean, default: true },
     allowCustomPaymentAmount: { type: Boolean, default: true },
+    showRentInBedPicker: { type: Boolean, default: false },
     messEnabled: { type: Boolean, default: true },
     messTimings: {
       breakfast: { type: String, default: '8:00 AM - 9:30 AM' },

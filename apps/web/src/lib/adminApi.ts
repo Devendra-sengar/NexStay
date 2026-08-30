@@ -211,7 +211,7 @@ export function useDeleteRoom() {
   });
 }
 
-export function useErpStudents(params?: { propertyId?: string; status?: string; search?: string; page?: number }) {
+export function useErpStudents(params?: { propertyId?: string; status?: string; search?: string; page?: number; sort?: string }) {
   return useQuery({
     queryKey: ['erp-students', params],
     queryFn: async () => {

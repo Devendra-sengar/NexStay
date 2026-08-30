@@ -20,14 +20,15 @@ export const getWardenDashboard = async (req: AuthRequest, res: Response): Promi
     const hostelId = req.user?.hostelId;
     if (!hostelId) { res.status(400).json({ success: false, message: 'No hostel assigned' }); return; }
 
-    const hostel = await Hostel.findById(hostelId).select('name hostelCode messEnabled messTimings').lean();
+    const hostel = await Hostel.findById(hostelId).select('name hostelCode messEnabled messTimings propertyId').lean();
+    const propertyId = hostel?.propertyId;
 
     const [totalStudents, totalBeds, occupiedBeds, openComplaints, pendingRentCount] = await Promise.all([
-      HostelStudent.countDocuments({ propertyId: hostelId, status: 'ACTIVE' }),
-      Bed.countDocuments({ propertyId: hostelId }),
-      Bed.countDocuments({ propertyId: hostelId, status: 'OCCUPIED' }),
-      Complaint.countDocuments({ propertyId: hostelId, status: 'OPEN' }),
-      RentRecord.countDocuments({ propertyId: hostelId, status: { $in: ['UNPAID', 'PARTIAL'] } }),
+      HostelStudent.countDocuments({ propertyId, status: 'ACTIVE' }),
+      Bed.countDocuments({ propertyId }),
+      Bed.countDocuments({ propertyId, status: 'OCCUPIED' }),
+      Complaint.countDocuments({ propertyId, status: 'OPEN' }),
+      RentRecord.countDocuments({ propertyId, status: { $in: ['UNPAID', 'PARTIAL'] } }),
     ]);
 
     const availableBeds = totalBeds - occupiedBeds;
@@ -58,7 +59,11 @@ export const getStudents = async (req: AuthRequest, res: Response): Promise<void
     const hostelId = req.user?.hostelId;
     const { search, status = 'ACTIVE', page = '1', limit = '20' } = req.query as Record<string, string>;
     const p = Math.max(1, parseInt(page)), lim = parseInt(limit);
-    const filter: any = { propertyId: hostelId, status };
+    
+    const hostel = await Hostel.findById(hostelId).select('propertyId').lean();
+    const propertyId = hostel?.propertyId;
+    
+    const filter: any = { propertyId, status };
     if (search) filter.$or = [
       { name: { $regex: search, $options: 'i' } },
       { phone: { $regex: search, $options: 'i' } },
@@ -80,7 +85,10 @@ export const getStudents = async (req: AuthRequest, res: Response): Promise<void
 export const getStudentDetail = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const hostelId = req.user?.hostelId;
-    const student = await HostelStudent.findOne({ _id: req.params.id, propertyId: hostelId })
+    const hostel = await Hostel.findById(hostelId).select('propertyId').lean();
+    const propertyId = hostel?.propertyId;
+
+    const student = await HostelStudent.findOne({ _id: req.params.id, propertyId })
       .populate('bedId', 'bedNumber status')
       .lean();
     if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
@@ -88,7 +96,7 @@ export const getStudentDetail = async (req: AuthRequest, res: Response): Promise
     // Fetch rent records for this student
     const rentRecords = await RentRecord.find({ hostelStudentId: student._id })
       .sort({ month: -1 }).limit(6).lean();
-    const complaints = await Complaint.find({ propertyId: hostelId, hostelStudentId: student._id })
+    const complaints = await Complaint.find({ propertyId, hostelStudentId: student._id })
       .sort({ createdAt: -1 }).limit(5).lean();
 
     res.json({ success: true, data: { ...student, rentRecords, complaints } });
@@ -101,13 +109,16 @@ export const getRooms = async (req: AuthRequest, res: Response): Promise<void> =
     const hostelId = req.user?.hostelId;
     const tenantId = req.user?.tenantId;
 
-    const floors = await Floor.find({ propertyId: hostelId, tenantId }).sort({ order: 1 }).lean();
+    const hostel = await Hostel.findById(hostelId).select('propertyId').lean();
+    const propertyId = hostel?.propertyId;
+
+    const floors = await Floor.find({ propertyId, tenantId }).sort({ order: 1 }).lean();
     const floorIds = floors.map(f => f._id);
 
-    const rooms = await Room.find({ propertyId: hostelId, tenantId }).lean();
+    const rooms = await Room.find({ propertyId, tenantId }).lean();
     const roomIds = rooms.map(r => r._id);
 
-    const beds = await Bed.find({ propertyId: hostelId, tenantId }).lean();
+    const beds = await Bed.find({ propertyId, tenantId }).lean();
 
     const totalBeds = beds.length;
     const occupiedBeds = beds.filter(b => b.status === 'OCCUPIED').length;
@@ -130,7 +141,11 @@ export const getComplaints = async (req: AuthRequest, res: Response): Promise<vo
     const hostelId = req.user?.hostelId;
     const { status, page = '1', limit = '20' } = req.query as Record<string, string>;
     const p = Math.max(1, parseInt(page)), lim = parseInt(limit);
-    const filter: any = { propertyId: hostelId };
+    
+    const hostel = await Hostel.findById(hostelId).select('propertyId').lean();
+    const propertyId = hostel?.propertyId;
+
+    const filter: any = { propertyId };
     if (status && status !== 'ALL') filter.status = status;
     const [complaints, total] = await Promise.all([
       Complaint.find(filter).sort({ createdAt: -1 }).skip((p - 1) * lim).limit(lim).lean(),
@@ -146,8 +161,10 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response): Pr
     const hostelId = req.user?.hostelId;
     const { status, note } = req.body;
     if (!status) { res.status(400).json({ success: false, message: 'status is required' }); return; }
+    const hostel = await Hostel.findById(hostelId).select('propertyId').lean();
+    const propertyId = hostel?.propertyId;
 
-    const complaint = await Complaint.findOne({ _id: req.params.id, propertyId: hostelId });
+    const complaint = await Complaint.findOne({ _id: req.params.id, propertyId });
     if (!complaint) { res.status(404).json({ success: false, message: 'Complaint not found' }); return; }
 
     complaint.status = status;
@@ -165,7 +182,11 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
     const hostelId = req.user?.hostelId;
     const { status, month, page = '1', limit = '20' } = req.query as Record<string, string>;
     const p = Math.max(1, parseInt(page)), lim = parseInt(limit);
-    const filter: any = { propertyId: hostelId };
+    
+    const hostel = await Hostel.findById(hostelId).select('propertyId').lean();
+    const propertyId = hostel?.propertyId;
+
+    const filter: any = { propertyId };
     if (status && status !== 'ALL') filter.status = status;
     if (month) filter.month = month;
     const [records, total] = await Promise.all([
@@ -186,12 +207,15 @@ export const getMySalary = async (req: AuthRequest, res: Response): Promise<void
     const tenantId = req.user?.tenantId;
     const me = await User.findById(req.user?.id).select('name phone email').lean();
 
+    const hostel = await Hostel.findById(hostelId).select('propertyId').lean();
+    const propertyId = hostel?.propertyId;
+
     // Find ERP Staff record matching this user's phone
-    const staffRecord = await Staff.findOne({ propertyId: hostelId, phone: (me as any)?.phone }).lean();
+    const staffRecord = await Staff.findOne({ propertyId, phone: (me as any)?.phone }).lean();
 
     // Find salary expense records
     const salaryExpenses = await Expense.find({
-      propertyId: hostelId,
+      propertyId,
       tenantId,
       category: 'STAFF_SALARY',
       description: { $regex: (me as any)?.name || '', $options: 'i' },

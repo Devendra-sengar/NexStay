@@ -48,7 +48,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
             motherName: row['mother name'] || row["mother's name"] || '',
             fatherContact: row['father contact no'] || row['father contact'] || '',
             permanentAddress: row['permanent address'] || row['address'] || '',
-            organization: row['organization name'] || row['company'] || row['college'] || '',
+            organization: row['organization name'] || row['organization'] || row['company'] || row['college'] || '',
             bloodGroup: row['blood group'] || '',
             maritalStatus: row['maritial status'] || row['marital status'] || '',
             email: row['email address'] || row['email'] || '',
@@ -71,10 +71,10 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
     const headers = [
       'Name', 'Phone', 'Email', 'Date of Birth', 'Admission Date', 
       'Aadhaar Number', 'Occupation', 'Father Name', 'Mother Name',
-      'Father Contact', 'Permanent Address', 'Organization', 'Blood Group',
+      'Father Contact', 'Permanent Address', 'College / Organization', 'Blood Group',
       'Marital Status', 'Registration Amount', 'Registration Date',
       'Monthly Rent', 'Security Deposit', 'Staying Period', 'Education',
-      'Medical History', 'Vehicle Number', 'College', 'Guardian Name',
+      'Medical History', 'Vehicle Number', 'Guardian Name',
       'Guardian Phone', 'Guardian Address', 'Father Occupation'
     ];
     
@@ -85,7 +85,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
       '9876543211', '123 Main St, City', 'Tech Corp', 'O+',
       'Single', '500', '2026-08-27',
       '10000', '20000', '12', 'B.Tech',
-      'None', 'MH-12-AB-1234', 'Engineering College', 'Alice Smith',
+      'None', 'MH-12-AB-1234', 'Alice Smith',
       '9876543212', '456 Local St, City', 'Engineer'
     ];
 
@@ -212,7 +212,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
                   </p>
                 )}
               </div>
-              <div className="card overflow-hidden border border-surface-border">
+              <div className="card overflow-x-auto border border-surface-border">
                 <div className="overflow-x-auto max-h-[400px]">
                   <table className="w-full text-left border-collapse text-sm">
                     <thead className="bg-surface-100 sticky top-0 z-10">
