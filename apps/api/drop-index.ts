@@ -6,7 +6,7 @@ async function checkAndDrop() {
   try {
     const conn = await mongoose.createConnection(uri).asPromise();
     // @ts-ignore
-    const admin = conn.db.admin();
+    const admin = conn.db.admin(); 
     const dbs = await admin.listDatabases();
     console.log('All databases:', dbs.databases.map((d: any) => d.name));
     
