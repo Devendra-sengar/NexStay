@@ -279,6 +279,25 @@ export const createAdminProperty = async (req: AuthRequest, res: Response): Prom
       allowCustomPaymentAmount: defaultHostel?.allowCustomPaymentAmount ?? true,
     });
 
+    // Generate hostelCode and create Hostel immediately
+    const { Counter } = await import('../models/Counter.model');
+    let counter = await Counter.findByIdAndUpdate('hostelCode', { $inc: { seq: 1 } }, { new: true });
+    if (!counter) {
+      counter = await Counter.create({ _id: 'hostelCode', seq: 1 });
+    }
+    const hostelCode = `NST-${String(counter.seq).padStart(3, '0')}`;
+
+    await Hostel.create({
+      hostelCode,
+      name,
+      gender,
+      ownerId: tenantId,
+      propertyId: property._id,
+      isActive: true,
+      address: { city, state, street: address, pincode },
+      messEnabled: foodIncluded ?? false,
+    });
+
     // Create floors, rooms, beds from roomSetups
     if (Array.isArray(roomSetups) && roomSetups.length > 0) {
       for (let si = 0; si < roomSetups.length; si++) {

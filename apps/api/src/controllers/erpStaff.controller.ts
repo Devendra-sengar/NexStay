@@ -9,6 +9,7 @@ import { Property } from '../models/Property.model';
 import { User } from '../models/User.model';
 import { Hostel } from '../models/Hostel.model';
 import bcrypt from 'bcryptjs';
+import { getWardenPropertyId } from './hostelAdmin.controller';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function generatePassword(length = 10): string {
@@ -27,7 +28,12 @@ export const getStaff = async (req: AuthRequest, res: Response): Promise<void> =
     const tenantId = req.user!.tenantId || req.user!.id;
     const { propertyId, role, status, search } = req.query as Record<string, string>;
     const filter: any = { tenantId };
-    if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) {
+      filter.propertyId = wardenPropertyId;
+    } else if (propertyId) {
+      filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    }
     if (role) filter.role = role;
     if (status === 'ACTIVE') filter.isActive = true;
     if (status === 'INACTIVE') filter.isActive = false;
@@ -58,7 +64,7 @@ export const createStaff = async (req: AuthRequest, res: Response): Promise<void
     if (!prop) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
     
     // Find associated hostel (if any) to link staff directly to the hostel
-    const hostel = await Hostel.findOne({ ownerId: tenantId }).lean();
+    const hostel = await Hostel.findOne({ ownerId: tenantId, propertyId }).lean();
 
     const staff = await Staff.create({
       tenantId, propertyId, hostelId: hostel?._id || null, name, phone, email: email || '', role,
@@ -267,6 +273,11 @@ export const createAdminComplaint = async (req: AuthRequest, res: Response): Pro
       res.status(400).json({ success: false, message: 'All fields are required' }); return;
     }
 
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId && String(wardenPropertyId) !== String(propertyId)) {
+      res.status(403).json({ success: false, message: 'Forbidden' }); return;
+    }
+
     const { HostelStudent } = await import('../models/HostelStudent.model');
     const student = await HostelStudent.findOne({ _id: hostelStudentId, tenantId }).lean();
     if (!student) { res.status(404).json({ success: false, message: 'Student not found' }); return; }
@@ -304,7 +315,13 @@ export const getAdminComplaints = async (req: AuthRequest, res: Response): Promi
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(50, parseInt(limit));
     const filter: any = { tenantId };
-    if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) {
+      filter.propertyId = wardenPropertyId;
+    } else if (propertyId) {
+      filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    }
     if (status && status !== 'ALL') filter.status = status;
     if (category && category !== 'ALL') filter.category = category;
 
@@ -325,7 +342,11 @@ export const getAdminComplaints = async (req: AuthRequest, res: Response): Promi
 export const getAdminComplaintById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tenantId = req.user!.tenantId || req.user!.id;
-    const complaint = await Complaint.findOne({ _id: req.params.id, tenantId })
+    const filter: any = { _id: req.params.id, tenantId };
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) filter.propertyId = wardenPropertyId;
+
+    const complaint = await Complaint.findOne(filter)
       .populate('propertyId', 'name')
       .populate('guestId', 'name phone email')
       .populate('hostelStudentId', 'name phone email')
@@ -343,7 +364,11 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response): Pr
     if (!status || !note?.trim()) {
       res.status(400).json({ success: false, message: 'status and note are required' }); return;
     }
-    const complaint = await Complaint.findOne({ _id: req.params.id, tenantId });
+    const filter: any = { _id: req.params.id, tenantId };
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) filter.propertyId = wardenPropertyId;
+
+    const complaint = await Complaint.findOne(filter);
     if (!complaint) { res.status(404).json({ success: false, message: 'Not found' }); return; }
     complaint.status = status;
     complaint.statusHistory.push({ status, note, changedBy: 'Admin', changedAt: new Date() });
@@ -359,7 +384,10 @@ export const addInternalNote = async (req: AuthRequest, res: Response): Promise<
     const tenantId = req.user!.tenantId || req.user!.id;
     const { note } = req.body;
     if (!note?.trim()) { res.status(400).json({ success: false, message: 'note required' }); return; }
-    const complaint = await Complaint.findOne({ _id: req.params.id, tenantId });
+    const filter: any = { _id: req.params.id, tenantId };
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) filter.propertyId = wardenPropertyId;
+    const complaint = await Complaint.findOne(filter);
     if (!complaint) { res.status(404).json({ success: false, message: 'Not found' }); return; }
     complaint.internalNotes.push({ note, addedBy: 'Admin', addedAt: new Date() });
     await complaint.save();

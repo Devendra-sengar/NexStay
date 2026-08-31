@@ -657,19 +657,20 @@ export default function RentFeesPage() {
   const [month, setMonth] = useState(ym());
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [tab, setTab] = useState<'RENT'|'FEE'|'TRANSACTIONS'>('RENT');
+  const [tab, setTab] = useState<'RECORDS'|'TRANSACTIONS'>('RECORDS');
   const [selected, setSelected] = useState<string[]>([]);
   const [modal, setModal] = useState<{type:string;record?:any}|null>(null);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const sendReminders = useSendReminders();
 
   const { data: dash } = useRentDashboard(propId||undefined);
-  const { data: records, isLoading } = useRentRecords({ propertyId:propId||undefined, status:status==='ALL'?undefined:status, month:month||undefined, search:search||undefined, page, type:tab==='TRANSACTIONS'?'RENT':tab });
-  const { data: txData, isLoading: txsLoading } = useTransactions({ propertyId:propId||undefined });
+  const { data: records, isLoading } = useRentRecords({ propertyId:propId||undefined, status:status==='ALL'?undefined:status, month:month||undefined, search:search||undefined, page, type:tab==='TRANSACTIONS'?undefined:undefined });
+  const { data: txData, isLoading: txsLoading } = useTransactions({ propertyId:propId||undefined, status:status==='ALL'?undefined:status, month:month||undefined, search:search||undefined, page, limit: 10 });
 
   const rows = records?.data ?? [];
   const total = records?.total ?? 0;
-  const txRows = txData ?? [];
+  const txRows = txData?.data ?? [];
+  const txTotal = txData?.total ?? 0;
 
   const toggleSelect = (id: string) => setSelected(s => s.includes(id) ? s.filter(x=>x!==id) : [...s, id]);
   const allSelected = rows.length > 0 && rows.every((r:any) => selected.includes(r._id));
@@ -711,8 +712,8 @@ export default function RentFeesPage() {
       {/* Filters */}
       <div className="bg-white border border-surface-border rounded-lg p-3 mb-4 flex flex-wrap gap-3 items-center shadow-sm">
         <div className="flex bg-surface-input p-1 rounded-md">
-          {(['RENT','FEE','TRANSACTIONS'] as const).map(t=>(
-            <button key={t} onClick={()=>{setTab(t);setPage(1);}} className={cn('px-3 py-1.5 text-xs font-semibold rounded',tab===t?'bg-white text-primary shadow-sm':'text-text-secondary hover:text-text-primary')}>{t==='RENT'?'Rent':t==='FEE'?'Fees':'Ledger'}</button>
+          {(['RECORDS','TRANSACTIONS'] as const).map(t=>(
+            <button key={t} onClick={()=>{setTab(t);setPage(1);}} className={cn('px-3 py-1.5 text-xs font-semibold rounded',tab===t?'bg-white text-primary shadow-sm':'text-text-secondary hover:text-text-primary')}>{t==='RECORDS'?'Rent & Fees':'Ledger'}</button>
           ))}
         </div>
         <div className="h-6 w-px bg-surface-border mx-1"></div>
@@ -750,7 +751,7 @@ export default function RentFeesPage() {
             <table className="data-table">
               <thead><tr>
                 <th><input type="checkbox" checked={allSelected} onChange={()=>allSelected?setSelected([]):setSelected(rows.map((r:any)=>r._id))} /></th>
-                {['Tenant','Property','Room','Month','Due Date','Rent','Fine','Discount','Total','Paid','Balance','Status','Proof','Actions'].map(h=><th key={h}>{h}</th>)}
+                {['Tenant','Property','Room','Type / Month','Due Date','Amount','Fine','Discount','Total','Paid','Balance','Status','Proof','Actions'].map(h=><th key={h}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {rows.map((r:any)=>{
@@ -813,12 +814,12 @@ export default function RentFeesPage() {
             </table>
           )}
         </div>
-        {total > 20 && (
+        {((tab === 'TRANSACTIONS' && txTotal > 10) || (tab !== 'TRANSACTIONS' && total > 20)) && (
           <div className="px-4 py-3 border-t border-surface-border flex justify-between text-sm">
-            <span className="text-text-muted">Page {page} of {Math.ceil(total/20)}</span>
+            <span className="text-text-muted">Page {page} of {Math.ceil((tab === 'TRANSACTIONS' ? txTotal : total)/(tab === 'TRANSACTIONS' ? 10 : 20))}</span>
             <div className="flex gap-2">
               <button className="btn-secondary text-xs py-1.5 px-3" disabled={page===1} onClick={()=>setPage(p=>p-1)}>Prev</button>
-              <button className="btn-secondary text-xs py-1.5 px-3" disabled={!records?.hasNextPage} onClick={()=>setPage(p=>p+1)}>Next</button>
+              <button className="btn-secondary text-xs py-1.5 px-3" disabled={tab === 'TRANSACTIONS' ? !txData?.hasNextPage : !records?.hasNextPage} onClick={()=>setPage(p=>p+1)}>Next</button>
             </div>
           </div>
         )}

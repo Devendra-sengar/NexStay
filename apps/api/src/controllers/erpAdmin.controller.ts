@@ -32,6 +32,11 @@ export const getErpRooms = async (req: AuthRequest, res: Response): Promise<void
     const prop = await Property.findOne({ _id: propertyId, tenantId }).lean();
     if (!prop) { res.status(404).json({ success: false, message: 'Property not found' }); return; }
 
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId && String(wardenPropertyId) !== String(propertyId)) {
+      res.status(403).json({ success: false, message: 'Forbidden: You cannot access rooms for this property.' }); return;
+    }
+
     const floors = await Floor.find({ propertyId, tenantId }).sort({ order: 1 }).lean();
     const rooms  = await Room.find({ propertyId, tenantId }).lean();
     const beds   = await Bed.find({ propertyId, tenantId }).lean();
@@ -60,6 +65,11 @@ export const getRoomBeds = async (req: AuthRequest, res: Response): Promise<void
 
     const room = await Room.findOne({ _id: roomId, tenantId }).lean();
     if (!room) { res.status(404).json({ success: false, message: 'Room not found' }); return; }
+
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId && String(wardenPropertyId) !== String(room.propertyId)) {
+      res.status(403).json({ success: false, message: 'Forbidden: You cannot access beds for this property.' }); return;
+    }
 
     const beds = await Bed.find({ roomId, tenantId }).lean();
 

@@ -14,6 +14,7 @@ import { AuditLog } from '../models/AuditLog.model';
 import { Notification } from '../models/Notification.model';
 import { notify } from '../services/notification.service';
 import { calculateDynamicFine } from '../utils/penalty';
+import { getWardenPropertyId } from './hostelAdmin.controller';
 
 const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
@@ -24,7 +25,12 @@ export const getRentDashboard = async (req: AuthRequest, res: Response): Promise
     const { propertyId } = req.query as Record<string, string>;
 
     const filter: any = { tenantId };
-    if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) {
+      filter.propertyId = wardenPropertyId;
+    } else if (propertyId) {
+      filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    }
 
     const now = new Date();
     const monthStr = ym(now);
@@ -121,11 +127,38 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
     const limitNum = Math.min(50, parseInt(limit));
 
     const filter: any = { tenantId };
-    if (propertyId) filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    if (wardenPropertyId) {
+      filter.propertyId = wardenPropertyId;
+    } else if (propertyId) {
+      filter.propertyId = new mongoose.Types.ObjectId(propertyId);
+    }
     if (status && status !== 'ALL') filter.status = status;
-    if (month) filter.month = month;
     if (type === 'FEE') filter.isFee = true;
     else if (type === 'RENT') filter.isFee = { $ne: true };
+    
+    if (search) {
+      const { HostelStudent } = await import('../models/HostelStudent.model');
+      const residents = await HostelStudent.find({ tenantId, name: { $regex: search, $options: 'i' } }).select('_id').lean();
+      filter.hostelStudentId = { $in: residents.map(r => r._id) };
+    }
+
+    if (month) {
+      const [y, m] = month.split('-');
+      const start = new Date(parseInt(y), parseInt(m) - 1, 1);
+      const end = new Date(parseInt(y), parseInt(m), 0, 23, 59, 59, 999);
+      
+      if (type === 'FEE') {
+        filter.dueDate = { $gte: start, $lte: end };
+      } else if (type === 'RENT') {
+        filter.month = month;
+      } else {
+        filter.$or = [
+          { month },
+          { isFee: true, dueDate: { $gte: start, $lte: end } }
+        ];
+      }
+    }
 
     let records = await RentRecord.find(filter)
       .populate('hostelStudentId', 'name phone')
@@ -135,12 +168,6 @@ export const getRentRecords = async (req: AuthRequest, res: Response): Promise<v
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
       .lean();
-
-    if (search) {
-      records = records.filter((r: any) =>
-        (r.hostelStudentId as any)?.name?.toLowerCase().includes(search.toLowerCase())
-      );
-    }
 
     records = records.map((r: any) => {
       const computedFine = calculateDynamicFine(r, r.propertyId || {});
@@ -587,23 +614,52 @@ export const proofAction = async (req: AuthRequest, res: Response): Promise<void
 export const getTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const tenantId = req.user!.tenantId || req.user!.id;
-    const { propertyId, status } = req.query as Record<string, string>;
+    const { propertyId, status, month, search, page = '1', limit = '10' } = req.query as Record<string, string>;
 
     const filter: any = { tenantId };
-    if (status) filter.status = status;
-
-    let invoiceIds: any[] = [];
-    if (propertyId) {
-      const records = await RentRecord.find({ propertyId, tenantId }).select('_id').lean();
-      invoiceIds = records.map(r => r._id);
-      filter.invoiceId = { $in: invoiceIds };
+    const wardenPropertyId = await getWardenPropertyId(req, tenantId);
+    
+    // Map status from frontend to backend states
+    if (status && status !== 'ALL') {
+      if (status === 'PENDING') filter.status = 'PENDING';
+      else if (status === 'APPROVED') filter.status = 'VERIFIED';
+      else if (status === 'REJECTED') filter.status = 'REJECTED';
+      else filter.status = status; // e.g. PENDING_RESIDENT
     }
 
-    const txs = await PaymentSubmission.find(filter)
-      .populate('invoiceId', 'month amount paidAmount fine status')
-      .populate('residentId', 'name roomNumber guestId')
-      .sort({ createdAt: -1 })
-      .lean();
+    if (wardenPropertyId) {
+      filter.propertyId = wardenPropertyId;
+    } else if (propertyId) {
+      filter.propertyId = propertyId;
+    }
+
+    // Filter by student name
+    if (search) {
+      const residents = await HostelStudent.find({ tenantId, name: { $regex: search, $options: 'i' } }).select('_id').lean();
+      filter.residentId = { $in: residents.map(r => r._id) };
+    }
+
+    // Filter by month
+    if (month) {
+      const [y, m] = month.split('-');
+      const start = new Date(parseInt(y), parseInt(m) - 1, 1);
+      const end = new Date(parseInt(y), parseInt(m), 0, 23, 59, 59, 999);
+      filter.createdAt = { $gte: start, $lte: end };
+    }
+
+    const p = Math.max(1, parseInt(page));
+    const lim = parseInt(limit);
+
+    const [txs, total] = await Promise.all([
+      PaymentSubmission.find(filter)
+        .populate('invoiceId', 'month amount paidAmount fine status')
+        .populate('residentId', 'name roomNumber guestId')
+        .sort({ createdAt: -1 })
+        .skip((p - 1) * lim)
+        .limit(lim)
+        .lean(),
+      PaymentSubmission.countDocuments(filter)
+    ]);
 
     // Temporarily map to old frontend fields to avoid breaking the frontend until it's refactored
     const mappedTxs = txs.map(tx => ({
@@ -614,7 +670,7 @@ export const getTransactions = async (req: AuthRequest, res: Response): Promise<
       status: tx.status === 'PENDING' ? 'PENDING_VERIFICATION' : tx.status === 'VERIFIED' ? 'APPROVED' : tx.status === 'PENDING_RESIDENT' ? 'PENDING_RESIDENT' : 'REJECTED'
     }));
 
-    res.json({ success: true, data: mappedTxs });
+    res.json({ success: true, data: mappedTxs, total, page: p, hasNextPage: p * lim < total });
   } catch (err: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }

@@ -305,12 +305,12 @@ export function useRecordRentPayment() {
   });
 }
 
-export function useTransactions(params?: { propertyId?: string; status?: string }) {
+export function useTransactions(params?: { propertyId?: string; status?: string; month?: string; search?: string; page?: number; limit?: number }) {
   return useQuery({
     queryKey: ['erp-transactions', params],
     queryFn: async () => {
       const { data } = await erp('/transactions', { params });
-      return data.data as any[];
+      return data as { data: any[]; total: number; hasNextPage: boolean };
     },
   });
 }
