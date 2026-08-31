@@ -33,7 +33,7 @@ async function checkAndDrop() {
           } else {
             console.log('bookingId_1 not found.');
           }
-        }
+        } 
       }
     }
     
