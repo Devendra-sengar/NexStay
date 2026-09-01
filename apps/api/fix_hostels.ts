@@ -18,7 +18,7 @@ async function fix() {
       const hostelCode = `NST-${String(counter.seq).padStart(3, '0')}`;
       await Hostel.create({
         hostelCode,
-        name: p.name,
+        name: p.name, 
         gender: p.gender,
         ownerId: p.tenantId,
         propertyId: p._id,
