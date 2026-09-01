@@ -8,5 +8,5 @@
       "source": "/api/:path*",
       "destination": "https://nexstay-oj8v.onrender.com/api/:path*"
     }   
-  ]
+  ] 
 }
