@@ -739,6 +739,15 @@ export default function RentFeesPage() {
       {tab === 'TRANSACTIONS' ? (
         <div className="card overflow-x-auto">
           <TransactionsLedger rows={txRows} isLoading={txsLoading} onReview={(tx) => setModal({ type: 'tx-proof', record: tx })} />
+          {txTotal > 10 && (
+            <div className="px-4 py-3 border-t border-surface-border flex justify-between text-sm">
+              <span className="text-text-muted">Page {page} of {Math.ceil(txTotal/10)}</span>
+              <div className="flex gap-2">
+                <button className="btn-secondary text-xs py-1.5 px-3" disabled={page===1} onClick={()=>setPage(p=>p-1)}>Prev</button>
+                <button className="btn-secondary text-xs py-1.5 px-3" disabled={!txData?.hasNextPage} onClick={()=>setPage(p=>p+1)}>Next</button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
       <div className="card overflow-x-auto">
@@ -814,12 +823,12 @@ export default function RentFeesPage() {
             </table>
           )}
         </div>
-        {((tab === 'TRANSACTIONS' && txTotal > 10) || (tab !== 'TRANSACTIONS' && total > 20)) && (
+        {total > 20 && (
           <div className="px-4 py-3 border-t border-surface-border flex justify-between text-sm">
-            <span className="text-text-muted">Page {page} of {Math.ceil((tab === 'TRANSACTIONS' ? txTotal : total)/(tab === 'TRANSACTIONS' ? 10 : 20))}</span>
+            <span className="text-text-muted">Page {page} of {Math.ceil(total/20)}</span>
             <div className="flex gap-2">
               <button className="btn-secondary text-xs py-1.5 px-3" disabled={page===1} onClick={()=>setPage(p=>p-1)}>Prev</button>
-              <button className="btn-secondary text-xs py-1.5 px-3" disabled={tab === 'TRANSACTIONS' ? !txData?.hasNextPage : !records?.hasNextPage} onClick={()=>setPage(p=>p+1)}>Next</button>
+              <button className="btn-secondary text-xs py-1.5 px-3" disabled={!records?.hasNextPage} onClick={()=>setPage(p=>p+1)}>Next</button>
             </div>
           </div>
         )}
